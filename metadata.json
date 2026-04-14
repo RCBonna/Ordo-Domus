@@ -1,0 +1,5 @@
+{
+  "name": "Organizador de Inventário",
+  "description": "Extrai dados estruturados de frases bagunçadas sobre itens guardados.",
+  "requestFramePermissions": []
+}
