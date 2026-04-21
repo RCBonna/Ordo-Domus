@@ -1,0 +1,26 @@
+-- Tabela para armazenar os itens do inventário
+create table itens_inventario (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users not null, -- Relaciona o item ao usuário (SaaS)
+  nome text not null,
+  categoria text,
+  comodo text not null,
+  armario text,
+  caixa text,
+  validade date,
+  quantidade numeric default 1,
+  criado_em timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- Ativar o Row Level Security (Segurança de Nível de Linha)
+alter table itens_inventario enable row level security;
+
+-- Política: Usuários só podem ver seus próprios itens
+create policy "Usuários podem ver seus próprios itens"
+  on itens_inventario for select
+  using (auth.uid() = user_id);
+
+-- Política: Usuários só podem inserir seus próprios itens
+create policy "Usuários podem inserir seus próprios itens"
+  on itens_inventario for insert
+  with check (auth.uid() = user_id);
