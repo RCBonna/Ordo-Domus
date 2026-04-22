@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Package, Loader2, Plus, History, MapPin, Calendar, Tag, Layers, Archive, RefreshCw, PlusCircle, Trash2 } from 'lucide-react';
+import { supabase } from './lib/supabaseClient';
 
 export default function OrdoDomus() {
   const [input, setInput] = useState('');
@@ -27,43 +28,74 @@ export default function OrdoDomus() {
     setMergeStatus(null);
 
     try {
+      // 1. Extrai os dados com o Gemini (A Inteligência)
       const data = await extractInventoryData(input);
       setCurrentResult(data);
 
-      if (history.length === 0) {
-        setHistory([data]);
-        setMergeStatus({ action: 'ADD', message: 'Novo item adicionado ao inventário.' });
-      } else {
-        const decision = await mergeInventoryItem(data, history);
-        if (decision.action === 'MERGE' && decision.matchIndex !== undefined && decision.matchIndex !== null) {
-          setHistory(prev => {
-            const newHistory = [...prev];
-            const existingItem = newHistory[decision.matchIndex!];
-            const newQuantity = decision.mergedItem?.quantidade 
-              || ((Number(existingItem.quantidade) || 0) + (Number(data.quantidade) || 0));
-            
-            newHistory[decision.matchIndex!] = {
-              ...existingItem,
-              quantidade: newQuantity
-            };
-            return newHistory;
-          });
-          setMergeStatus({ action: 'MERGE', message: 'Item existente atualizado (quantidades somadas).' });
-        } else {
-          setHistory(prev => [data, ...prev]);
-          setMergeStatus({ action: 'ADD', message: 'Novo item adicionado ao inventário.' });
-        }
+      // 2. Verifica se existe uma sessão ativa (Login)
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        throw new Error("Você precisa fazer login no topo da página antes de salvar itens.");
       }
+
+      // 3. Descobre o 'unidade_id' vinculado ao usuário logado
+      const { data: membro, error: erroMembro } = await supabase
+        .from('membros_unidade')
+        .select('unidade_id')
+        .eq('user_id', session.user.id)
+        .single();
+
+      if (erroMembro || !membro) {
+        throw new Error("Sua conta não está vinculada a uma Unidade. Verifique o banco de dados.");
+      }
+
+      // 4. Salva DEFINITIVAMENTE no Supabase
+      const { data: itemSalvo, error: erroInsert } = await supabase
+        .from('itens_inventario')
+        .insert({
+          unidade_id: membro.unidade_id,
+          nome: data.item || 'Item sem nome',
+          categoria: data.categoria,
+          comodo: data.comodo || 'Não informado',
+          armario: data.armario,
+          caixa: data.caixa,
+          quantidade: Number(data.quantidade) || 1
+          // NOTA TÉCNICA: Omiti a 'validade' neste primeiro teste porque o Supabase 
+          // espera um formato de data estrito (YYYY-MM-DD). Se a IA devolver "Dezembro",
+          // o banco recusa o insert. Trataremos isso na próxima iteração!
+        })
+        .select() // Pede para o banco devolver o dado recém-criado
+        .single();
+
+      if (erroInsert) {
+        console.error("Erro do Supabase:", erroInsert);
+        throw new Error("Falha ao gravar no banco de dados.");
+      }
+
+      // 5. Atualiza a interface mapeando o retorno do banco para o padrão da tela
+      const novoItemNaTela: ExtractedItem = {
+        item: itemSalvo.nome,
+        categoria: itemSalvo.categoria,
+        comodo: itemSalvo.comodo,
+        armario: itemSalvo.armario,
+        caixa: itemSalvo.caixa,
+        validade: '',
+        quantidade: itemSalvo.quantidade.toString()
+      };
+
+      setHistory(prev => [novoItemNaTela, ...prev]);
+      setMergeStatus({ action: 'ADD', message: 'Item gravado com sucesso no Supabase!' });
       
       setInput('');
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError('Ocorreu um erro ao extrair os dados. Tente novamente.');
+      setError(err.message || 'Ocorreu um erro ao processar a extração.');
     } finally {
       setIsExtracting(false);
     }
   };
-
+  
   const handleClearHistory = () => {
     setHistory([]);
     setCurrentResult(null);
