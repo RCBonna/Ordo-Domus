@@ -11,6 +11,14 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Package, Loader2, Plus, History, MapPin, Calendar, Tag, Layers, Archive, RefreshCw, PlusCircle, Trash2 } from 'lucide-react';
 import { supabase } from './lib/supabaseClient';
 
+// Função para padronizar o texto: "fURADEIRA" -> "Furadeira"
+const formatarTexto = (texto?: string | null) => {
+  if (!texto) return '';
+  const limpo = texto.trim();
+  if (limpo.length === 0) return '';
+  return limpo.charAt(0).toUpperCase() + limpo.slice(1).toLowerCase();
+};
+
 export default function OrdoDomus() {
   const [input, setInput] = useState('');
   const [isExtracting, setIsExtracting] = useState(false);
@@ -50,22 +58,19 @@ export default function OrdoDomus() {
         throw new Error("Sua conta não está vinculada a uma Unidade. Verifique o banco de dados.");
       }
 
-      // 4. Salva DEFINITIVAMENTE no Supabase
+      // 4. Salva DEFINITIVAMENTE no Supabase com os textos formatados
       const { data: itemSalvo, error: erroInsert } = await supabase
         .from('itens_inventario')
         .insert({
           unidade_id: membro.unidade_id,
-          nome: data.item || 'Item sem nome',
-          categoria: data.categoria,
-          comodo: data.comodo || 'Não informado',
-          armario: data.armario,
-          caixa: data.caixa,
+          nome: formatarTexto(data.item) || 'Item sem nome',
+          categoria: data.categoria, // Categorias geralmente deixamos como a IA mandou ou padronizamos depois
+          comodo: formatarTexto(data.comodo) || 'Não informado',
+          armario: formatarTexto(data.armario),
+          caixa: formatarTexto(data.caixa),
           quantidade: Number(data.quantidade) || 1
-          // NOTA TÉCNICA: Omiti a 'validade' neste primeiro teste porque o Supabase 
-          // espera um formato de data estrito (YYYY-MM-DD). Se a IA devolver "Dezembro",
-          // o banco recusa o insert. Trataremos isso na próxima iteração!
         })
-        .select() // Pede para o banco devolver o dado recém-criado
+        .select() 
         .single();
 
       if (erroInsert) {
@@ -95,7 +100,7 @@ export default function OrdoDomus() {
       setIsExtracting(false);
     }
   };
-  
+
   const handleClearHistory = () => {
     setHistory([]);
     setCurrentResult(null);
