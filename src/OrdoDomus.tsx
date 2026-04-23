@@ -42,17 +42,26 @@ export default function OrdoDomus() {
       if (lista.length > 0) setUnidadeAtiva(lista[0]); // Define a primeira como padrão
     }
   };
-  // Efeito para carregar as unidades assim que o usuário estiver logado
+  // Monitor de autenticação em tempo real
   useEffect(() => {
-    const checkUser = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
+    // 1. Checa a sessão atual imediatamente
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) carregarUnidades(session.user.id);
+    });
+
+    // 2. Escuta mudanças (Login/Logout) para agir na hora
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         carregarUnidades(session.user.id);
+      } else {
+        setUnidades([]);
+        setUnidadeAtiva(null);
       }
-    };
-    checkUser();
-  }, []);
+    });
 
+    return () => subscription.unsubscribe();
+  }, []);
+  
   const handleExtract = async () => {
     if (!input.trim()) return;
     
@@ -170,7 +179,7 @@ export default function OrdoDomus() {
                 ) : (
                   // APENAS EXIBIÇÃO PARA SINGLE-TENANT
                   <span className="font-medium text-sm">
-                    {unidadeAtiva?.nome || 'Carregando...'}
+                    {unidadeAtiva ? unidadeAtiva.nome : 'Carregando...'}
                   </span>
                 )}
               </div>
