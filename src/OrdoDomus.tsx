@@ -1,5 +1,5 @@
 import Auth from './components/Auth'
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { extractInventoryData, mergeInventoryItem, type ExtractedItem } from './services/geminiService';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -26,6 +26,32 @@ export default function OrdoDomus() {
   const [history, setHistory] = useState<ExtractedItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [mergeStatus, setMergeStatus] = useState<{ action: 'MERGE' | 'ADD', message: string } | null>(null);
+  const [unidades, setUnidades] = useState<any[]>([]);
+  const [unidadeAtiva, setUnidadeAtiva] = useState<any>(null);
+
+  // Função para buscar as unidades do usuário
+  const carregarUnidades = async (userId: string) => {
+    const { data, error } = await supabase
+      .from('membros_unidade')
+      .select('unidade_id, unidades(id, nome)')
+      .eq('user_id', userId);
+
+    if (!error && data) {
+      const lista = data.map(item => item.unidades);
+      setUnidades(lista);
+      if (lista.length > 0) setUnidadeAtiva(lista[0]); // Define a primeira como padrão
+    }
+  };
+  // Efeito para carregar as unidades assim que o usuário estiver logado
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        carregarUnidades(session.user.id);
+      }
+    };
+    checkUser();
+  }, []);
 
   const handleExtract = async () => {
     if (!input.trim()) return;
@@ -62,12 +88,13 @@ export default function OrdoDomus() {
       const { data: itemSalvo, error: erroInsert } = await supabase
         .from('itens_inventario')
         .insert({
-          unidade_id: membro.unidade_id,
+          //unidade_id: membro.unidade_id,
+          unidade_id: unidadeAtiva.id,
           nome: formatarTexto(data.item) || 'Item sem nome',
           categoria: data.categoria, // Categorias geralmente deixamos como a IA mandou ou padronizamos depois
           comodo: formatarTexto(data.comodo) || 'Não informado',
-          armario: formatarTexto(data.armario),
-          caixa: formatarTexto(data.caixa),
+          armario: formatarTexto(data.armario) || 'Não informado',
+          caixa: formatarTexto(data.caixa) || 'Não informado',
           quantidade: Number(data.quantidade) || 1
         })
         .select() 
@@ -124,8 +151,29 @@ export default function OrdoDomus() {
               <Package className="w-6 h-6" />
             </div>
             <div>
-              <h1 className="text-2xl font-semibold tracking-tight">Organizador de Inventário</h1>
+              <h1 className="text-2xl font-semibold tracking-tight">Ordo Domus - Casa Organizada</h1>
               <p className="text-muted-foreground text-sm">Extraia dados estruturados de frases bagunçadas.</p>
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-primary" />
+                
+                {unidades.length > 1 ? (
+                  // SELETOR PARA MULTI-TENANT
+                  <select 
+                    value={unidadeAtiva?.id} 
+                    onChange={(e) => setUnidadeAtiva(unidades.find(u => u.id === e.target.value))}
+                    className="bg-transparent font-medium text-sm border-none focus:ring-0 cursor-pointer"
+                  >
+                    {unidades.map(u => (
+                      <option key={u.id} value={u.id}>{u.nome}</option>
+                    ))}
+                  </select>
+                ) : (
+                  // APENAS EXIBIÇÃO PARA SINGLE-TENANT
+                  <span className="font-medium text-sm">
+                    {unidadeAtiva?.nome || 'Carregando...'}
+                  </span>
+                )}
+              </div>
             </div>
           </header>
 
@@ -145,7 +193,7 @@ export default function OrdoDomus() {
                     <Label htmlFor="inventory-input" className="sr-only">Frase</Label>
                     <Textarea
                       id="inventory-input"
-                      placeholder="Ex: Coloquei 3 caixas de leite que vencem em dezembro de 2025 na dispensa da cozinha..."
+                      placeholder="Ex: Coloquei 3 caixas de leite que vencem em dezembro de 2025 na cozinha, armário azul, ..."
                       className="min-h-[120px] resize-none rounded-xl bg-gray-50/50 border-gray-200 focus-visible:ring-1"
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
