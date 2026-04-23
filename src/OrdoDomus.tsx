@@ -31,26 +31,40 @@ export default function OrdoDomus() {
 
   // Função para buscar as unidades do usuário
   const carregarUnidades = async (userId: string) => {
+    console.log("Iniciando carga de unidades para:", userId);
     const { data, error } = await supabase
       .from('membros_unidade')
-      .select('unidade_id, unidades(id, nome)')
+      .select(`
+        unidade_id,
+        unidades (
+          id,
+          nome
+        )
+      `)
       .eq('user_id', userId);
 
-    if (!error && data) {
-      const lista = data.map(item => item.unidades);
+    if (error) {
+      console.error("Erro ao carregar unidades:", error);
+      return;
+    }
+
+    if (data) {
+      console.log("Dados brutos das unidades:", data);
+      // Ajuste para extrair o objeto interno 'unidades' corretamente
+      const lista = data.map(item => item.unidades).filter(Boolean);
+      console.log("Lista de unidades processada:", lista);
+      
       setUnidades(lista);
-      if (lista.length > 0) setUnidadeAtiva(lista[0]); // Define a primeira como padrão
+      if (lista.length > 0) {
+        setUnidadeAtiva(lista[0]);
+      }
     }
   };
   // Monitor de autenticação em tempo real
-  useEffect(() => {
-    // 1. Checa a sessão atual imediatamente
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) carregarUnidades(session.user.id);
-    });
-
-    // 2. Escuta mudanças (Login/Logout) para agir na hora
+useEffect(() => {
+    // Escuta mudanças de autenticação em tempo real
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log("Evento de Autenticação:", _event);
       if (session?.user) {
         carregarUnidades(session.user.id);
       } else {
@@ -59,7 +73,9 @@ export default function OrdoDomus() {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
   
   const handleExtract = async () => {
