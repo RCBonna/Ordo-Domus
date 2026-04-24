@@ -193,7 +193,7 @@ useEffect(() => {
             <div>
               <h1 className="text-2xl font-semibold tracking-tight">Ordo Domus - Casa Organizada</h1>
               <p className="text-muted-foreground text-sm">Extraia dados estruturados de frases bagunçadas.</p>
-              /* Mostra a unidade ativa ou um seletor caso haja mais de uma unidade vinculada ao usuário */
+              {/* Mostra a unidade ativa ou um seletor caso haja mais de uma unidade vinculada ao usuário */}
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-primary" />
                 {unidadeAtiva ? (
