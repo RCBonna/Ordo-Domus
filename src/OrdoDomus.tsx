@@ -63,21 +63,26 @@ export default function OrdoDomus() {
   // Monitor de autenticação em tempo real
 useEffect(() => {
   const inicializarSessao = async () => {
-    setIsAuthLoading(true); // Começa carregando
+    // 1. Buscamos a sessão atual
     const { data: { session } } = await supabase.auth.getSession();
+    
     if (session?.user) {
+      // Se houver usuário, carregamos as unidades ANTES de liberar o loading
       await carregarUnidades(session.user.id);
     }
-    setIsAuthLoading(false); // Terminou a checagem inicial
+    
+    // Agora sim liberamos a interface
+    setIsAuthLoading(false);
   };
 
   inicializarSessao();
 
-  const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+  const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
     if (session?.user) {
-      carregarUnidades(session.user.id);
+      await carregarUnidades(session.user.id);
       setIsAuthLoading(false);
     } else {
+      // Se deslogar, limpamos TUDO imediatamente
       setUnidades([]);
       setUnidadeAtiva(null);
       setHistory([]);
@@ -87,6 +92,7 @@ useEffect(() => {
 
   return () => subscription.unsubscribe();
 }, []);
+
   const handleExtract = async () => {
     if (!input.trim()) return;
     
@@ -189,16 +195,14 @@ useEffect(() => {
               {/* Mostra a unidade ativa ou um seletor caso haja mais de uma unidade vinculada ao usuário */}
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-primary" />
-                {/* Se estiver carregando o login, mostra "Verificando..." */}
                 {isAuthLoading ? (
-                  <span className="text-sm text-muted-foreground animate-pulse">Verificando acesso...</span>
-                ) : unidadeAtiva ? (
-                  // Se estiver logado e tiver unidade, mostra o seletor ou nome
+                  <span className="text-sm text-muted-foreground animate-pulse">Validando acesso...</span>
+                ) : unidadeAtiva && unidades.length > 0 ? ( // SÓ MOSTRA SE TIVER UNIDADE E NÃO ESTIVER CARREGANDO
                   unidades.length > 1 ? (
                     <select 
                       value={unidadeAtiva.id} 
                       onChange={(e) => setUnidadeAtiva(unidades.find(u => u.id === e.target.value))}
-                      className="bg-transparent font-medium text-sm border-none focus:ring-0 cursor-pointer"
+                      className="bg-transparent font-medium text-sm border-none focus:ring-0 cursor-pointer p-0 h-auto"
                     >
                       {unidades.map(u => (
                         <option key={u.id} value={u.id}>{u.nome}</option>
@@ -208,8 +212,7 @@ useEffect(() => {
                     <span className="font-medium text-sm">{unidadeAtiva.nome}</span>
                   )
                 ) : (
-                  // Se realmente não estiver logado
-                  <span className="text-sm text-muted-foreground italic">Aguardando login...</span>
+                  <span className="text-sm text-muted-foreground italic">Faça login para gerenciar</span>
                 )}
               </div>
             </div>
