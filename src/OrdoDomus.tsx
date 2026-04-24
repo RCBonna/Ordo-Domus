@@ -62,22 +62,37 @@ export default function OrdoDomus() {
   };
   // Monitor de autenticação em tempo real
 useEffect(() => {
-    // Escuta mudanças de autenticação em tempo real
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log("Evento de Autenticação:", _event);
-      if (session?.user) {
-        carregarUnidades(session.user.id);
-      } else {
-        setUnidades([]);
-        setUnidadeAtiva(null);
-      }
-    });
+  // 1. Verifica se existe uma sessão ativa ao carregar a página
+  const inicializarSessao = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      carregarUnidades(session.user.id);
+    } else {
+      // Se não houver sessão, garante que tudo esteja limpo
+      setUnidades([]);
+      setUnidadeAtiva(null);
+    }
+  };
 
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, []);
-  
+  inicializarSessao();
+
+  // 2. Monitor de mudanças de estado (Login/Logout)
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    console.log("Evento de Autenticação:", event);
+    
+    if (session?.user) {
+      carregarUnidades(session.user.id);
+    } else {
+      // Caso o evento seja de LOGOUT (SIGNED_OUT), limpamos os estados na hora
+      setUnidades([]);
+      setUnidadeAtiva(null);
+      setHistory([]); // Limpa o histórico da tela também por segurança
+    }
+  });
+
+  return () => subscription.unsubscribe();
+}, []);
+
   const handleExtract = async () => {
     if (!input.trim()) return;
     
@@ -178,25 +193,25 @@ useEffect(() => {
             <div>
               <h1 className="text-2xl font-semibold tracking-tight">Ordo Domus - Casa Organizada</h1>
               <p className="text-muted-foreground text-sm">Extraia dados estruturados de frases bagunçadas.</p>
+              /* Mostra a unidade ativa ou um seletor caso haja mais de uma unidade vinculada ao usuário */
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-primary" />
-                
-                {unidades.length > 1 ? (
-                  // SELETOR PARA MULTI-TENANT
-                  <select 
-                    value={unidadeAtiva?.id} 
-                    onChange={(e) => setUnidadeAtiva(unidades.find(u => u.id === e.target.value))}
-                    className="bg-transparent font-medium text-sm border-none focus:ring-0 cursor-pointer"
-                  >
-                    {unidades.map(u => (
-                      <option key={u.id} value={u.id}>{u.nome}</option>
-                    ))}
-                  </select>
+                {unidadeAtiva ? (
+                  unidades.length > 1 ? (
+                    <select 
+                      value={unidadeAtiva.id} 
+                      onChange={(e) => setUnidadeAtiva(unidades.find(u => u.id === e.target.value))}
+                      className="bg-transparent font-medium text-sm border-none focus:ring-0 cursor-pointer"
+                    >
+                      {unidades.map(u => (
+                        <option key={u.id} value={u.id}>{u.nome}</option>
+                      ))}
+                    </select>
+                  ) : (
+                    <span className="font-medium text-sm">{unidadeAtiva.nome}</span>
+                  )
                 ) : (
-                  // APENAS EXIBIÇÃO PARA SINGLE-TENANT
-                  <span className="font-medium text-sm">
-                    {unidadeAtiva ? unidadeAtiva.nome : 'Carregando...'}
-                  </span>
+                  <span className="text-sm text-muted-foreground italic">Aguardando login...</span>
                 )}
               </div>
             </div>
