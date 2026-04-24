@@ -28,7 +28,7 @@ export default function OrdoDomus() {
   const [mergeStatus, setMergeStatus] = useState<{ action: 'MERGE' | 'ADD', message: string } | null>(null);
   const [unidades, setUnidades] = useState<any[]>([]);
   const [unidadeAtiva, setUnidadeAtiva] = useState<any>(null);
-
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   // Função para buscar as unidades do usuário
   const carregarUnidades = async (userId: string) => {
     console.log("Iniciando carga de unidades para:", userId);
@@ -62,37 +62,31 @@ export default function OrdoDomus() {
   };
   // Monitor de autenticação em tempo real
 useEffect(() => {
-  // 1. Verifica se existe uma sessão ativa ao carregar a página
   const inicializarSessao = async () => {
+    setIsAuthLoading(true); // Começa carregando
     const { data: { session } } = await supabase.auth.getSession();
     if (session?.user) {
-      carregarUnidades(session.user.id);
-    } else {
-      // Se não houver sessão, garante que tudo esteja limpo
-      setUnidades([]);
-      setUnidadeAtiva(null);
+      await carregarUnidades(session.user.id);
     }
+    setIsAuthLoading(false); // Terminou a checagem inicial
   };
 
   inicializarSessao();
 
-  // 2. Monitor de mudanças de estado (Login/Logout)
   const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-    console.log("Evento de Autenticação:", event);
-    
     if (session?.user) {
       carregarUnidades(session.user.id);
+      setIsAuthLoading(false);
     } else {
-      // Caso o evento seja de LOGOUT (SIGNED_OUT), limpamos os estados na hora
       setUnidades([]);
       setUnidadeAtiva(null);
-      setHistory([]); // Limpa o histórico da tela também por segurança
+      setHistory([]);
+      setIsAuthLoading(false);
     }
   });
 
   return () => subscription.unsubscribe();
 }, []);
-
   const handleExtract = async () => {
     if (!input.trim()) return;
     
@@ -184,7 +178,6 @@ useEffect(() => {
         </div>
 
         <div className="max-w-5xl mx-auto space-y-8">
-          
           {/* Header */}
           <header className="flex items-center gap-3 pb-6 border-b border-gray-200">
             <div className="w-12 h-12 bg-primary rounded-2xl flex items-center justify-center text-primary-foreground shadow-sm">
@@ -196,7 +189,11 @@ useEffect(() => {
               {/* Mostra a unidade ativa ou um seletor caso haja mais de uma unidade vinculada ao usuário */}
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-primary" />
-                {unidadeAtiva ? (
+                {/* Se estiver carregando o login, mostra "Verificando..." */}
+                {isAuthLoading ? (
+                  <span className="text-sm text-muted-foreground animate-pulse">Verificando acesso...</span>
+                ) : unidadeAtiva ? (
+                  // Se estiver logado e tiver unidade, mostra o seletor ou nome
                   unidades.length > 1 ? (
                     <select 
                       value={unidadeAtiva.id} 
@@ -211,6 +208,7 @@ useEffect(() => {
                     <span className="font-medium text-sm">{unidadeAtiva.nome}</span>
                   )
                 ) : (
+                  // Se realmente não estiver logado
                   <span className="text-sm text-muted-foreground italic">Aguardando login...</span>
                 )}
               </div>
