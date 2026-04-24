@@ -20,6 +20,36 @@ const formatarTexto = (texto?: any) => {
   return limpo.charAt(0).toUpperCase() + limpo.slice(1).toLowerCase();
 };
 
+// Blindagem de Datas: Aceita DD/MM/YY, DD/MM, corrige meses inválidos e insere o ano atual
+const formatarData = (dataRaw?: string | null) => {
+  if (!dataRaw || dataRaw.trim() === '-' || dataRaw.trim() === '') return '';
+  
+  // Extrai apenas os números (ex: "20/06/26" -> [20, 06, 26])
+  const regex = /(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?/;
+  const match = dataRaw.trim().match(regex);
+  
+  if (!match) return dataRaw; // Se a IA devolver "Amanhã", deixa passar
+
+  let dia = parseInt(match[1], 10);
+  let mes = parseInt(match[2], 10);
+  let ano = match[3] ? parseInt(match[3], 10) : new Date().getFullYear();
+
+  // Tratamento para usuários que invertem dia e mês ou digitam 20/20/2026
+  if (mes > 12) {
+      if (dia <= 12) {
+          // É provável que tenha digitado no formato americano MM/DD
+          let temp = dia; dia = mes; mes = temp;
+      } else {
+          return ''; // Data absurda (ex: 25/15/2026) - melhor anular
+      }
+  }
+  
+  if (dia > 31 || dia < 1) return '';
+  if (ano < 100) ano += 2000; // Converte '26' para '2026'
+
+  return `${dia.toString().padStart(2, '0')}/${mes.toString().padStart(2, '0')}/${ano}`;
+};
+
 export default function OrdoDomus() {
   const [input, setInput] = useState('');
   const [isExtracting, setIsExtracting] = useState(false);
@@ -126,6 +156,7 @@ export default function OrdoDomus() {
         throw new Error("Sua sessão expirou. Por favor, faça login novamente.");
       }
 
+// 4. Salva DEFINITIVAMENTE no Supabase
       const { data: itemSalvo, error: erroInsert } = await supabase
         .from('itens_inventario')
         .insert({
@@ -133,9 +164,10 @@ export default function OrdoDomus() {
           nome: formatarTexto(data.item) || 'Item sem nome',
           categoria: data.categoria,
           comodo: formatarTexto(data.comodo) || 'Não informado',
-          armario: formatarTexto(data.armario) || 'Não informado',
-          caixa: formatarTexto(data.caixa) || 'Não informado',
-          quantidade: Number(data.quantidade) || 1
+          armario: formatarTexto(data.armario),
+          caixa: formatarTexto(data.caixa),
+          quantidade: Number(data.quantidade) || 1,
+          validade: formatarData(data.validade) || null // Aplica a nova função aqui!
         })
         .select() 
         .single();
@@ -159,9 +191,16 @@ export default function OrdoDomus() {
       setMergeStatus({ action: 'ADD', message: 'Item gravado com sucesso no Supabase!' });
       
       setInput('');
-    } catch (err: any) {
+// 5 . Verifica se precisa fazer merge com algum item existente
+} catch (err: any) {
       console.error(err);
-      setError(err.message || 'Ocorreu um erro ao processar a extração.');
+      
+      // Intercepta a falha do Gemini e traduz para o usuário
+      if (err.message && err.message.includes('503')) {
+         setError('O servidor de IA está com alta demanda. Respire fundo, aguarde 5 segundos e tente novamente.');
+      } else {
+         setError('Ocorreu um erro ao processar a frase. Verifique a conexão e tente novamente.');
+      }
     } finally {
       setIsExtracting(false);
     }
@@ -221,7 +260,10 @@ export default function OrdoDomus() {
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={() => supabase.auth.signOut()}
+              onClick={async () => {
+                await supabase.auth.signOut();
+                window.location.reload(); // Limpa 100% da RAM e do Cache Visual
+              }}
               className="text-muted-foreground hover:text-destructive shrink-0"
             >
               <LogOut className="w-4 h-4 mr-2" />
