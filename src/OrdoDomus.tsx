@@ -60,29 +60,31 @@ export default function OrdoDomus() {
       }
     }
   };
-  // Monitor de autenticação em tempo real
+// Monitor de autenticação em tempo real
 useEffect(() => {
+  let isMounted = true; // Proteção para chamadas assíncronas
+
   const inicializarSessao = async () => {
-    // 1. Buscamos a sessão atual
     const { data: { session } } = await supabase.auth.getSession();
     
-    if (session?.user) {
-      // Se houver usuário, carregamos as unidades ANTES de liberar o loading
+    if (session?.user && isMounted) {
+      // Só carrega se não tiver unidades ainda ou se o usuário for novo
       await carregarUnidades(session.user.id);
     }
     
-    // Agora sim liberamos a interface
-    setIsAuthLoading(false);
+    if (isMounted) setIsAuthLoading(false);
   };
 
   inicializarSessao();
 
+  // Escuta mudanças, mas apenas executa se o evento for relevante
   const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-    if (session?.user) {
+    if (!isMounted) return;
+
+    if (event === 'SIGNED_IN' && session?.user) {
       await carregarUnidades(session.user.id);
       setIsAuthLoading(false);
-    } else {
-      // Se deslogar, limpamos TUDO imediatamente
+    } else if (event === 'SIGNED_OUT') {
       setUnidades([]);
       setUnidadeAtiva(null);
       setHistory([]);
@@ -90,9 +92,11 @@ useEffect(() => {
     }
   });
 
-  return () => subscription.unsubscribe();
-}, []);
-
+  return () => {
+    isMounted = false;
+    subscription.unsubscribe();
+  };
+}, []); // Mantemos o array vazio para rodar apenas no "mount"
   const handleExtract = async () => {
     if (!input.trim()) return;
     
@@ -180,7 +184,26 @@ useEffect(() => {
         
         {/* Componente de Login no Topo */}
         <div className="max-w-5xl mx-auto mb-8">
-          <Auth />
+          {/* Só mostra o login se não houver unidade ativa e não estiver carregando */}
+          {!isAuthLoading && !unidadeAtiva && (
+            <div className="max-w-5xl mx-auto mb-8">
+              <Auth />
+            </div>
+          )}
+
+          {/* Se estiver logado, podemos mostrar um botão de "Sair" no lugar */}
+          {!isAuthLoading && unidadeAtiva && (
+            <div className="max-w-5xl mx-auto mb-8 flex justify-end">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => supabase.auth.signOut()}
+                className="text-muted-foreground hover:text-destructive"
+              >
+                Sair do Sistema
+              </Button>
+            </div>
+          )}
         </div>
 
         <div className="max-w-5xl mx-auto space-y-8">
