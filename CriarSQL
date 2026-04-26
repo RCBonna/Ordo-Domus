@@ -1,26 +1,96 @@
--- Tabela para armazenar os itens do inventário
+-- ==========================================
+-- 1. CRIAÇÃO DAS TABELAS (SEM POLICIES)
+-- ==========================================
+
+-- TABELA 1: Unidades 
+-- Representa as casas ou ambientes físicos (Ex: "Casa de Praia", "Galpão Principal")
+create table unidades (
+  id uuid default gen_random_uuid() primary key,
+  nome text not null,
+  criado_em timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- TABELA 2: Membros da Unidade
+-- O vínculo entre Contas de Usuário do Auth e a Tabela de Unidades
+create table membros_unidade (
+  unidade_id uuid references unidades(id) on delete cascade not null,
+  user_id uuid references auth.users not null,
+  adicionado_em timestamp with time zone default timezone('utc'::text, now()) not null,
+  primary key (unidade_id, user_id)
+);
+
+-- TABELA 3: Itens do Inventário
+-- Base que seu sistema em React (OrdoDomus.tsx) realmente puxa e injeta
 create table itens_inventario (
   id uuid default gen_random_uuid() primary key,
-  user_id uuid references auth.users not null, -- Relaciona o item ao usuário (SaaS)
+  unidade_id uuid references unidades(id) on delete cascade not null,
   nome text not null,
   categoria text,
   comodo text not null,
   armario text,
   caixa text,
-  validade date,
+  validade text, -- Mantido como 'text' para que textos brutos de datas vindos da IA não quebrem o type de 'DATE'
   quantidade numeric default 1,
   criado_em timestamp with time zone default timezone('utc'::text, now()) not null
 );
 
--- Ativar o Row Level Security (Segurança de Nível de Linha)
+-- ==========================================
+-- 2. HABILITANDO SEGURANÇA (RLS)
+-- ==========================================
+
+alter table unidades enable row level security;
+alter table membros_unidade enable row level security;
 alter table itens_inventario enable row level security;
 
--- Política: Usuários só podem ver seus próprios itens
-create policy "Usuários podem ver seus próprios itens"
-  on itens_inventario for select
-  using (auth.uid() = user_id);
+-- ==========================================
+-- 3. CRIANDO AS REGRAS (POLICIES)
+-- Estas regras dependem das tabelas acima já estarem criadas
+-- ==========================================
 
--- Política: Usuários só podem inserir seus próprios itens
-create policy "Usuários podem inserir seus próprios itens"
+-- Política RLS: Você só pode enxergar as Unidades onde você está registrado como Membro.
+create policy "Ver as próprias unidades"
+  on unidades for select
+  using (
+    id in (
+      select unidade_id from membros_unidade where user_id = auth.uid()
+    )
+  );
+
+-- Política RLS: Você só enxerga instâncias suas ou de quem partilha a casa contigo
+create policy "Ver membros"
+  on membros_unidade for select
+  using (user_id = auth.uid());
+
+
+-- Políticas de RLS para os Itens: Só permite interagir com a DB se a chave "unidade_id" bater com alguma casa do membro logado.
+create policy "Leitura - Acesso à minha Unidade"
+  on itens_inventario for select
+  using (
+    unidade_id in (
+      select unidade_id from membros_unidade where user_id = auth.uid()
+    )
+  );
+
+create policy "Gravação - Acesso à minha Unidade"
   on itens_inventario for insert
-  with check (auth.uid() = user_id);
+  with check (
+    unidade_id in (
+      select unidade_id from membros_unidade where user_id = auth.uid()
+    )
+  );
+
+create policy "Updates (MERGE) - Acesso à minha Unidade"
+  on itens_inventario for update
+  using (
+    unidade_id in (
+      select unidade_id from membros_unidade where user_id = auth.uid()
+    )
+  );
+
+create policy "Delete - Acesso à minha Unidade"
+  on itens_inventario for delete
+  using (
+    unidade_id in (
+      select unidade_id from membros_unidade where user_id = auth.uid()
+    )
+  );

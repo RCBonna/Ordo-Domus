@@ -1,5 +1,9 @@
 import { useState } from 'react'
 import { supabase } from '../lib/supabaseClient'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Loader2 } from 'lucide-react'
 
 export default function Auth() {
   const [loading, setLoading] = useState(false)
@@ -20,25 +24,41 @@ export default function Auth() {
     setLoading(false)
   }
 
-  // Por enquanto, ele retorna apenas um esboço simples para testarmos a lógica
   return (
-    <div className="auth-container">
-      <form onSubmit={handleLogin}>
-        <input 
-          type="email" 
-          placeholder="Seu e-mail" 
-          value={email} 
-          onChange={(e) => setEmail(e.target.value)} 
-        />
-        <input 
-          type="password" 
-          placeholder="Sua senha" 
-          value={password} 
-          onChange={(e) => setPassword(e.target.value)} 
-        />
-        <button disabled={loading}>
-          {loading ? 'Carregando...' : 'Entrar'}
-        </button>
+    <div className="w-full">
+      <form onSubmit={handleLogin} className="space-y-4">
+        <div className="space-y-2 text-left">
+          <Label htmlFor="email">E-mail</Label>
+          <Input 
+            id="email"
+            type="email" 
+            placeholder="nome@exemplo.com" 
+            value={email} 
+            onChange={(e) => setEmail(e.target.value)}
+            required
+          />
+        </div>
+        <div className="space-y-2 text-left">
+          <Label htmlFor="password">Senha</Label>
+          <Input 
+            id="password"
+            type="password" 
+            placeholder="••••••••" 
+            value={password} 
+            onChange={(e) => setPassword(e.target.value)}
+            required
+          />
+        </div>
+        <Button disabled={loading} type="submit" className="w-full h-11 rounded-xl mt-6">
+          {loading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Entrando...
+            </>
+          ) : (
+            'Acessar Sistema'
+          )}
+        </Button>
       </form>
     </div>
   )

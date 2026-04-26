@@ -57,8 +57,14 @@ export default function OrdoDomus() {
   const [history, setHistory] = useState<ExtractedItem[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [mergeStatus, setMergeStatus] = useState<{ action: 'MERGE' | 'ADD', message: string } | null>(null);
-  const [unidades, setUnidades] = useState<any[]>([]);
-  const [unidadeAtiva, setUnidadeAtiva] = useState<any>(null);
+  
+  interface Unidade {
+    id: string;
+    nome: string;
+  }
+  const [unidades, setUnidades] = useState<Unidade[]>([]);
+  const [unidadeAtiva, setUnidadeAtiva] = useState<Unidade | null>(null);
+  
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   const carregarUnidades = async (userId: string) => {
@@ -79,7 +85,8 @@ export default function OrdoDomus() {
     }
 
     if (data) {
-      const lista = data.map(item => item.unidades).filter(Boolean);
+      const rawLista = data.flatMap(item => item.unidades).filter(Boolean);
+      const lista = rawLista as any as Unidade[];
       setUnidades(lista);
       if (lista.length > 0) {
         setUnidadeAtiva(lista[0]);
@@ -156,42 +163,86 @@ export default function OrdoDomus() {
         throw new Error("Sua sessão expirou. Por favor, faça login novamente.");
       }
 
-// 4. Salva DEFINITIVAMENTE no Supabase
-      const { data: itemSalvo, error: erroInsert } = await supabase
+      // NOVO PASSO 4/5: Verifica se há itens similares para fazer MERGE
+      const { data: itensExistentes, error: erroBusca } = await supabase
         .from('itens_inventario')
-        .insert({
-          unidade_id: unidadeAtiva.id,
-          nome: formatarTexto(data.item) || 'Item sem nome',
-          categoria: data.categoria,
-          comodo: formatarTexto(data.comodo) || 'Não informado',
-          armario: formatarTexto(data.armario),
-          caixa: formatarTexto(data.caixa),
-          quantidade: Number(data.quantidade) || 1,
-          validade: formatarData(data.validade) || null // Aplica a nova função aqui!
-        })
-        .select() 
-        .single();
+        .select('*')
+        .eq('unidade_id', unidadeAtiva.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
 
-      if (erroInsert) {
-        console.error("Erro do Supabase:", erroInsert);
-        throw new Error("Falha ao gravar no banco de dados.");
+      let acaoFinal: 'MERGE' | 'ADD' = 'ADD';
+      let itemModificadoNaTela: ExtractedItem | null = null;
+      let mensagem = '';
+
+      if (!erroBusca && itensExistentes && itensExistentes.length > 0) {
+        const listaParaIA = itensExistentes.map(dbItem => ({
+            item: dbItem.nome,
+            categoria: dbItem.categoria,
+            comodo: dbItem.comodo,
+            armario: dbItem.armario,
+            caixa: dbItem.caixa,
+            validade: dbItem.validade || '',
+            quantidade: dbItem.quantidade
+        }));
+
+        try {
+          const decisao = await mergeInventoryItem(data, listaParaIA);
+          if (decisao.action === 'MERGE' && decisao.matchIndex !== undefined && decisao.mergedItem) {
+             const idExistente = itensExistentes[decisao.matchIndex].id;
+             
+             // Faz um UPDATE no banco
+             const { error: erroUpdate } = await supabase
+                .from('itens_inventario')
+                .update({ quantidade: Number(decisao.mergedItem.quantidade) })
+                .eq('id', idExistente);
+
+             if (erroUpdate) throw new Error("Falha ao atualizar a soma no banco.");
+             
+             acaoFinal = 'MERGE';
+             mensagem = 'A quantidade foi somada a um item existente!';
+             itemModificadoNaTela = { ...decisao.mergedItem, quantidade: Number(decisao.mergedItem.quantidade) };
+          }
+        } catch (e) {
+          console.error("Falha silenciosa no motor de IA de merge, fallback para criação de novo", e);
+        }
       }
 
-      const novoItemNaTela: ExtractedItem = {
-        item: itemSalvo.nome,
-        categoria: itemSalvo.categoria,
-        comodo: itemSalvo.comodo,
-        armario: itemSalvo.armario,
-        caixa: itemSalvo.caixa,
-        validade: '',
-        quantidade: itemSalvo.quantidade.toString()
-      };
+      if (acaoFinal === 'ADD') {
+        const { data: itemSalvo, error: erroInsert } = await supabase
+          .from('itens_inventario')
+          .insert({
+            unidade_id: unidadeAtiva.id,
+            nome: formatarTexto(data.item) || 'Item sem nome',
+            categoria: data.categoria,
+            comodo: formatarTexto(data.comodo) || 'Não informado',
+            armario: formatarTexto(data.armario),
+            caixa: formatarTexto(data.caixa),
+            quantidade: Number(data.quantidade) || 1,
+            validade: formatarData(data.validade) || null
+          })
+          .select() 
+          .single();
 
-      setHistory(prev => [novoItemNaTela, ...prev]);
-      setMergeStatus({ action: 'ADD', message: 'Item gravado com sucesso no Supabase!' });
-      
+        if (erroInsert) throw new Error("Falha ao gravar no banco de dados.");
+        
+        mensagem = 'Item gravado com sucesso no inventário!';
+        itemModificadoNaTela = {
+          item: itemSalvo.nome,
+          categoria: itemSalvo.categoria,
+          comodo: itemSalvo.comodo,
+          armario: itemSalvo.armario,
+          caixa: itemSalvo.caixa,
+          validade: itemSalvo.validade || '',
+          quantidade: Number(itemSalvo.quantidade)
+        };
+      }
+
+      if (itemModificadoNaTela) {
+         setHistory(prev => [itemModificadoNaTela!, ...prev]);
+      }
+      setMergeStatus({ action: acaoFinal, message: mensagem });
       setInput('');
-// 5 . Verifica se precisa fazer merge com algum item existente
 } catch (err: any) {
       console.error(err);
       
