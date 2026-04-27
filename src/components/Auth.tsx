@@ -3,30 +3,84 @@ import { supabase } from '../lib/supabaseClient'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Loader2 } from 'lucide-react'
+import { Loader2, Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react'
 
 export default function Auth() {
   const [loading, setLoading] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [isLogin, setIsLogin] = useState(true)
+  const [showPassword, setShowPassword] = useState(false)
+  const [message, setMessage] = useState<{ type: 'error' | 'success', text: string } | null>(null)
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const traduzirErro = (msg: string) => {
+    if (msg.includes('Password should be at least 6 characters')) return 'A senha deve ter pelo menos 6 caracteres.';
+    if (msg.includes('Invalid login credentials')) return 'E-mail ou senha incorretos.';
+    if (msg.includes('User already registered')) return 'Este e-mail já está cadastrado. Faça o login.';
+    return msg; // Retorna original se não tiver tradução
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
+    setMessage(null)
     
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    })
+    // Validação local ANTES de chamar a API (evita mensagens fora de ordem)
+    if (!isLogin && password.length < 6) {
+      setMessage({ type: 'error', text: 'A senha deve ter pelo menos 6 caracteres.' })
+      setLoading(false)
+      return
+    }
 
-    if (error) alert(error.message)
-    else alert('Login realizado com sucesso!')
+    if (isLogin) {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
+      if (error) setMessage({ type: 'error', text: traduzirErro(error.message) })
+    } else {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+      })
+      if (error) {
+        setMessage({ type: 'error', text: traduzirErro(error.message) })
+      } else if (data?.user?.identities?.length === 0) {
+        // Supabase retorna "sucesso" mas sem identities quando o e-mail já existe
+        setMessage({ type: 'error', text: 'Este e-mail já está cadastrado. Faça o login.' })
+      } else {
+        setMessage({ type: 'success', text: 'Conta criada com sucesso! Você já foi logado automaticamente.' })
+      }
+    }
+    
     setLoading(false)
   }
 
   return (
     <div className="w-full">
-      <form onSubmit={handleLogin} className="space-y-4">
+      <div className="flex gap-2 mb-6 p-1 bg-gray-100 rounded-xl">
+        <button 
+          className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${isLogin ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}
+          onClick={() => { setIsLogin(true); setMessage(null); }}
+        >
+          Entrar
+        </button>
+        <button 
+          className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${!isLogin ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}
+          onClick={() => { setIsLogin(false); setMessage(null); }}
+        >
+          Criar Conta
+        </button>
+      </div>
+
+      {message && (
+        <div className={`p-4 mb-6 rounded-xl flex items-start gap-3 text-sm font-medium ${message.type === 'error' ? 'bg-red-50 text-red-800 border border-red-100' : 'bg-green-50 text-green-800 border border-green-100'}`}>
+          {message.type === 'error' ? <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" /> : <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" />}
+          <span>{message.text}</span>
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2 text-left">
           <Label htmlFor="email">E-mail</Label>
           <Input 
@@ -36,27 +90,39 @@ export default function Auth() {
             value={email} 
             onChange={(e) => setEmail(e.target.value)}
             required
+            className="rounded-xl"
           />
         </div>
         <div className="space-y-2 text-left">
           <Label htmlFor="password">Senha</Label>
-          <Input 
-            id="password"
-            type="password" 
-            placeholder="••••••••" 
-            value={password} 
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
+          <div className="relative">
+            <Input 
+              id="password"
+              type={showPassword ? "text" : "password"} 
+              placeholder="••••••••" 
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+              className="rounded-xl pr-10"
+            />
+            <button 
+              type="button"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            </button>
+          </div>
         </div>
-        <Button disabled={loading} type="submit" className="w-full h-11 rounded-xl mt-6">
+        <Button disabled={loading} type="submit" className="w-full h-11 rounded-xl mt-6 transition-all">
           {loading ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Entrando...
+              {isLogin ? 'Entrando...' : 'Criando...'}
             </>
           ) : (
-            'Acessar Sistema'
+            isLogin ? 'Acessar Sistema' : 'Criar Nova Conta'
           )}
         </Button>
       </form>

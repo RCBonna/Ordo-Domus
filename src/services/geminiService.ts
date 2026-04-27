@@ -23,7 +23,7 @@ export async function extractInventoryData(text: string): Promise<ExtractedItem>
     model: "gemini-3-flash-preview",
     contents: `Extraia os dados de inventário da seguinte frase: "${text}"`,
     config: {
-      systemInstruction: "Você é um organizador de inventário profissional. Extraia as informações da frase fornecida e retorne um objeto JSON estrito com os campos solicitados. Se alguma informação não estiver presente na frase, use uma string vazia ou null conforme apropriado.",
+      systemInstruction: "Você é um organizador de inventário profissional. Extraia as informações e retorne JSON. REGRA DE CLASSIFICAÇÃO VITAL: O campo 'armario' deve conter APENAS o Móvel ou Eletrodoméstico principal (ex: Geladeira, Freezer, Armário, Despensa). O campo 'caixa' deve conter as subdivisões internas, como Prateleiras, Gavetas, Caixas organizadoras ou Potes (ex: Prateleira 2, Gaveta de legumes, Pote azul). Exemplo: 'na prateleira 2 do freezer' -> armario: 'freezer', caixa: 'prateleira 2'. Se faltar dado, retorne string vazia ou null.",
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
@@ -42,11 +42,11 @@ export async function extractInventoryData(text: string): Promise<ExtractedItem>
           },
           armario: {
             type: Type.STRING,
-            description: "O armário ou móvel específico onde o item está (ex: armário debaixo, prateleira superior).",
+            description: "O móvel ou eletrodoméstico principal (ex: Geladeira, Armário da pia, Rack).",
           },
           caixa: {
             type: Type.STRING,
-            description: "A caixa ou recipiente onde o item foi colocado (ex: caixa organizadora azul).",
+            description: "A subdivisão interna, prateleira, gaveta ou caixa (ex: Prateleira 2, Gaveta inferior, Pote de vidro).",
           },
           validade: {
             type: Type.STRING,

@@ -1,6 +1,9 @@
 // Blindagem geral: Todo o código foi escrito com a premissa de que a interface pode ser burlada, ou seja, que dados inesperados podem chegar até as funções. Por isso, há validações e tratamentos de erro em pontos críticos para evitar que o sistema quebre ou fique travado.
-import Auth from './components/Auth'
-import { useState, useEffect } from 'react';
+import Auth from './components/Auth';
+import GuestView from './components/GuestView';
+import AdminPanel from './components/AdminPanel';
+import Onboarding from './components/Onboarding';
+import { useState, useEffect, useRef } from 'react';
 import { extractInventoryData, mergeInventoryItem, type ExtractedItem } from './services/geminiService';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Package, Loader2, Plus, History, MapPin, Calendar, Tag, Layers, Archive, RefreshCw, PlusCircle, Trash2, LogOut } from 'lucide-react';
+import { Package, Loader2, Plus, History, MapPin, Calendar, Tag, Layers, Archive, RefreshCw, PlusCircle, Trash2, LogOut, Mic, MicOff } from 'lucide-react';
 import { supabase } from './lib/supabaseClient';
 
 // Blindagem 1: Garante que o formatarTexto não quebre se receber números ou dados nulos
@@ -24,28 +27,25 @@ const formatarTexto = (texto?: any) => {
 const formatarData = (dataRaw?: string | null) => {
   if (!dataRaw || dataRaw.trim() === '-' || dataRaw.trim() === '') return '';
   
-  // Extrai apenas os números (ex: "20/06/26" -> [20, 06, 26])
   const regex = /(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?/;
   const match = dataRaw.trim().match(regex);
   
-  if (!match) return dataRaw; // Se a IA devolver "Amanhã", deixa passar
+  if (!match) return dataRaw;
 
   let dia = parseInt(match[1], 10);
   let mes = parseInt(match[2], 10);
   let ano = match[3] ? parseInt(match[3], 10) : new Date().getFullYear();
 
-  // Tratamento para usuários que invertem dia e mês ou digitam 20/20/2026
   if (mes > 12) {
       if (dia <= 12) {
-          // É provável que tenha digitado no formato americano MM/DD
           let temp = dia; dia = mes; mes = temp;
       } else {
-          return ''; // Data absurda (ex: 25/15/2026) - melhor anular
+          return '';
       }
   }
   
   if (dia > 31 || dia < 1) return '';
-  if (ano < 100) ano += 2000; // Converte '26' para '2026'
+  if (ano < 100) ano += 2000;
 
   return `${dia.toString().padStart(2, '0')}/${mes.toString().padStart(2, '0')}/${ano}`;
 };
@@ -61,16 +61,24 @@ export default function OrdoDomus() {
   interface Unidade {
     id: string;
     nome: string;
+    papel: string;
+    status: string;
   }
   const [unidades, setUnidades] = useState<Unidade[]>([]);
   const [unidadeAtiva, setUnidadeAtiva] = useState<Unidade | null>(null);
   
   const [isAuthLoading, setIsAuthLoading] = useState(true);
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const recognitionRef = useRef<any>(null);
 
   const carregarUnidades = async (userId: string) => {
+    console.log("[OrdoDomus] carregarUnidades chamado para userId:", userId);
     const { data, error } = await supabase
       .from('membros_unidade')
       .select(`
+        papel,
+        status,
         unidade_id,
         unidades (
           id,
@@ -80,64 +88,201 @@ export default function OrdoDomus() {
       .eq('user_id', userId);
 
     if (error) {
-      console.error("Erro ao carregar unidades:", error);
+      console.error("[OrdoDomus] Erro RLS ao carregar unidades:", error);
       return;
     }
 
+    console.log("[OrdoDomus] Dados retornados de membros_unidade:", JSON.stringify(data));
+
     if (data) {
-      const rawLista = data.flatMap(item => item.unidades).filter(Boolean);
+      const rawLista = data.map(item => {
+        if (!item.unidades) return null;
+        const casa = Array.isArray(item.unidades) ? item.unidades[0] : item.unidades;
+        // @ts-ignore
+        return { id: casa.id, nome: casa.nome, papel: item.papel, status: item.status };
+      }).filter(Boolean);
       const lista = rawLista as any as Unidade[];
+      console.log("[OrdoDomus] Lista de unidades processada:", JSON.stringify(lista));
       setUnidades(lista);
-      if (lista.length > 0) {
-        setUnidadeAtiva(lista[0]);
+      
+      if (lista.length === 1) {
+        setUnidadeAtiva(lista[0]); // Seleciona a única encontrada
+      } else {
+        setUnidadeAtiva(null); // Força a tela de seleção se houver > 1
       }
     }
   };
 
+  const [isRecording, setIsRecording] = useState(false);
+  const toggleRecording = () => {
+    // @ts-ignore
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+       setError("Seu navegador não suporta gravação de áudio.");
+       return;
+    }
+    
+    // Se já está gravando, PARA a instância armazenada no ref
+    if (isRecording && recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+      setIsRecording(false);
+      return; 
+    }
+
+    try {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.lang = 'pt-BR';
+        recognition.interimResults = false;
+
+        recognition.onstart = () => setIsRecording(true);
+        recognition.onresult = (event: any) => {
+            const lastResult = event.results[event.results.length - 1];
+            const transcript = lastResult[0].transcript;
+            setInput(prev => prev ? prev + " " + transcript : transcript);
+        };
+        recognition.onerror = (event: any) => {
+            console.error("[Mic]", event.error);
+            setIsRecording(false);
+            recognitionRef.current = null;
+        };
+        recognition.onend = () => {
+            setIsRecording(false);
+            recognitionRef.current = null;
+        };
+        
+        recognitionRef.current = recognition;
+        recognition.start();
+    } catch(e) {
+        setIsRecording(false);
+        recognitionRef.current = null;
+    }
+  };
+
+  // --- LOGOUT: Limpa estado React, chama API, e recarrega ---
+  const handleLogout = async () => {
+    console.log("[OrdoDomus] Logout...");
+    setCurrentUserEmail(null);
+    setCurrentUserId(null);
+    setUnidades([]);
+    setUnidadeAtiva(null);
+    setHistory([]);
+    setCurrentResult(null);
+    setMergeStatus(null);
+    setError(null);
+
+    try {
+      await supabase.auth.signOut({ scope: 'local' });
+    } catch (e) {
+      console.error("[OrdoDomus] Erro no signOut:", e);
+    }
+    // Reload garante limpeza total do cache e estado
+    window.location.reload();
+  };
+
+  // --- AUTH EFFECT 1: Detecta sessão (SEM await pesado no callback) ---
   useEffect(() => {
-    let isMounted = true;
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log("[OrdoDomus] Auth event:", event, "session?", !!session);
 
-    const inicializarSessao = async () => {
-      try {
-        setIsAuthLoading(true);
-        // Blindagem 2: Tenta ler a sessão com tratamento de erro
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) throw error; // Cai no catch e limpa o lixo do cache
-        
-        if (session?.user && isMounted) {
-          await carregarUnidades(session.user.id);
-        }
-      } catch (err) {
-        console.error("Cache de sessão corrompido. Forçando logout para limpar...", err);
-        await supabase.auth.signOut();
-      } finally {
-        // Garante que a tela sempre vai destravar, dando erro ou não
-        if (isMounted) setIsAuthLoading(false);
-      }
-    };
-
-    inicializarSessao();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!isMounted) return;
-
-      if (event === 'SIGNED_IN' && session?.user) {
-        await carregarUnidades(session.user.id);
-        setIsAuthLoading(false);
-      } else if (event === 'SIGNED_OUT') {
+      if (session?.user) {
+        setCurrentUserEmail(session.user.email || null);
+        setCurrentUserId(session.user.id);
+      } else {
+        setCurrentUserEmail(null);
+        setCurrentUserId(null);
         setUnidades([]);
         setUnidadeAtiva(null);
         setHistory([]);
-        setIsAuthLoading(false);
       }
+      setIsAuthLoading(false);
     });
 
+    // Fallback se Supabase travar
+    const timeoutId = setTimeout(() => setIsAuthLoading(false), 4000);
+
     return () => {
-      isMounted = false;
       subscription.unsubscribe();
+      clearTimeout(timeoutId);
     };
   }, []);
+
+  // --- AUTH EFFECT 2: Quando userId mudar, carrega as unidades (com retry) ---
+  useEffect(() => {
+    if (!currentUserId) return;
+
+    let cancelled = false;
+
+    const carregar = async (tentativa: number) => {
+      if (cancelled) return;
+      console.log(`[OrdoDomus] Carregando unidades (tentativa ${tentativa})...`);
+      
+      try {
+        const { data, error: queryError } = await supabase
+          .from('membros_unidade')
+          .select(`
+            papel,
+            status,
+            unidade_id,
+            unidades (
+              id,
+              nome
+            )
+          `)
+          .eq('user_id', currentUserId);
+
+        if (cancelled) return;
+
+        if (queryError) {
+          console.error("[OrdoDomus] Erro RLS:", queryError);
+          // Retry se for erro de auth/permissão
+          if (tentativa < 3) {
+            setTimeout(() => carregar(tentativa + 1), 1000);
+          }
+          return;
+        }
+
+        console.log("[OrdoDomus] Dados retornados:", JSON.stringify(data));
+
+        const rawLista = (data || []).map(item => {
+          if (!item.unidades) return null;
+          const casa = Array.isArray(item.unidades) ? item.unidades[0] : item.unidades;
+          // @ts-ignore
+          return { id: casa.id, nome: casa.nome, papel: item.papel, status: item.status };
+        }).filter(Boolean) as Unidade[];
+
+        console.log("[OrdoDomus] Lista processada:", JSON.stringify(rawLista));
+
+        if (rawLista.length === 0 && tentativa < 3) {
+          // Pode ser timing do token JWT — retry
+          console.log("[OrdoDomus] Lista vazia, retentando em 1.5s...");
+          setTimeout(() => carregar(tentativa + 1), 1500);
+          return;
+        }
+
+        setUnidades(rawLista);
+        if (rawLista.length === 1) {
+          setUnidadeAtiva(rawLista[0]);
+        } else if (rawLista.length > 1) {
+          setUnidadeAtiva(null);
+        }
+      } catch (e) {
+        console.error("[OrdoDomus] EXCEPTION:", e);
+        if (tentativa < 3) {
+          setTimeout(() => carregar(tentativa + 1), 1500);
+        }
+      }
+    };
+
+    // Delay inicial de 300ms para dar tempo ao token JWT
+    const timerId = setTimeout(() => carregar(1), 300);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timerId);
+    };
+  }, [currentUserId]);
 
   const handleExtract = async () => {
     if (!input.trim()) return;
@@ -285,19 +430,25 @@ export default function OrdoDomus() {
                 <MapPin className="h-4 w-4 text-primary" />
                 {isAuthLoading ? (
                   <span className="text-sm text-muted-foreground animate-pulse">Validando acesso...</span>
-                ) : unidadeAtiva && unidades.length > 0 ? ( 
-                  unidades.length > 1 ? (
-                    <select 
-                      value={unidadeAtiva.id} 
-                      onChange={(e) => setUnidadeAtiva(unidades.find(u => u.id === e.target.value))}
-                      className="bg-transparent font-medium text-sm border-none focus:ring-0 cursor-pointer p-0 h-auto"
-                    >
-                      {unidades.map(u => (
-                        <option key={u.id} value={u.id}>{u.nome}</option>
-                      ))}
-                    </select>
+                ) : currentUserEmail ? ( 
+                  unidades.length > 0 ? (
+                    unidades.length > 1 && unidadeAtiva ? (
+                      <select 
+                        value={unidadeAtiva.id} 
+                        onChange={(e) => setUnidadeAtiva(unidades.find(u => u.id === e.target.value))}
+                        className="bg-transparent font-medium text-sm border-none focus:ring-0 cursor-pointer p-0 h-auto"
+                      >
+                        {unidades.map(u => (
+                          <option key={u.id} value={u.id}>{u.nome}</option>
+                        ))}
+                      </select>
+                    ) : unidadeAtiva ? (
+                      <span className="font-medium text-sm">{unidadeAtiva.nome}</span>
+                    ) : (
+                      <span className="font-medium text-sm text-blue-600">Selecione uma unidade abaixo</span>
+                    )
                   ) : (
-                    <span className="font-medium text-sm">{unidadeAtiva.nome}</span>
+                    <span className="font-medium text-sm text-orange-500">Nenhuma unidade vinculada</span>
                   )
                 ) : (
                   <span className="text-sm text-destructive font-medium">Aguardando login</span>
@@ -307,24 +458,26 @@ export default function OrdoDomus() {
           </div>
 
           {/* BOTÃO DE SAIR ALINHADO NO HEADER */}
-          {isSistemaLiberado && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={async () => {
-                await supabase.auth.signOut();
-                window.location.reload(); // Limpa 100% da RAM e do Cache Visual
-              }}
-              className="text-muted-foreground hover:text-destructive shrink-0"
-            >
-              <LogOut className="w-4 h-4 mr-2" />
-              Sair do Sistema
-            </Button>
+          {currentUserEmail && !isAuthLoading && (
+            <div className="flex items-center gap-4">
+              <span className="text-sm text-muted-foreground hidden md:inline-block">
+                {currentUserEmail}
+              </span>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handleLogout}
+                className="text-muted-foreground hover:text-destructive shrink-0"
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Sair
+              </Button>
+            </div>
           )}
         </header>
 
         {/* MÓDULO DE LOGIN CENTRALIZADO (Se não estiver logado) */}
-        {!isSistemaLiberado && !isAuthLoading && (
+        {!currentUserEmail && !isAuthLoading && (
           <Card className="border-none shadow-md rounded-[24px] max-w-md mx-auto my-12 bg-white">
             <CardHeader className="text-center pb-2">
               <CardTitle className="text-xl">Bem-vindo ao Ordo Domus</CardTitle>
@@ -337,8 +490,41 @@ export default function OrdoDomus() {
         )}
 
         {/* CORPO DO SISTEMA */}
-        <div className={`grid grid-cols-1 lg:grid-cols-12 gap-8 transition-opacity duration-300 ${!isSistemaLiberado ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
-          
+        <div className={`transition-opacity duration-300 ${!currentUserEmail ? 'opacity-40 pointer-events-none hidden' : 'opacity-100'} mt-4`}>
+          {currentUserEmail && !unidadeAtiva && unidades.length > 1 ? (
+             <div className="text-center p-12 bg-white rounded-[24px] shadow-sm max-w-lg mx-auto border border-gray-100 mt-12">
+                <div className="w-16 h-16 bg-blue-50/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <MapPin className="w-8 h-8 text-blue-500" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-800">Selecione uma Unidade</h2>
+                <p className="text-muted-foreground mt-2 mb-6">Você faz parte de mais de uma unidade. Qual você deseja acessar agora?</p>
+                <div className="space-y-3">
+                  {unidades.map(u => (
+                     <Button key={u.id} variant="outline" className="w-full justify-start h-12 text-base" onClick={() => setUnidadeAtiva(u)}>
+                       {u.nome} <span className="ml-auto text-xs text-muted-foreground uppercase">{u.papel}</span>
+                     </Button>
+                  ))}
+                </div>
+             </div>
+          ) : currentUserEmail && !unidadeAtiva && unidades.length === 0 ? (
+             <Onboarding onSuccess={async () => {
+               const { data: { session } } = await supabase.auth.getSession();
+               if (session?.user) await carregarUnidades(session.user.id);
+             }} />
+          ) : isSistemaLiberado && unidadeAtiva?.status === 'pendente' ? (
+             <div className="text-center p-12 bg-white rounded-[24px] shadow-sm max-w-lg mx-auto border border-gray-100 mt-12">
+                <div className="w-16 h-16 bg-orange-100/50 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Loader2 className="w-8 h-8 text-orange-600 animate-spin" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-800">Aguardando Aprovação</h2>
+                <p className="text-muted-foreground mt-2">Sua solicitação de acesso foi enviada. O administrador da unidade precisa aprovar você como convidado para que o inventário seja liberado.</p>
+             </div>
+          ) : isSistemaLiberado && unidadeAtiva?.papel === 'convidado' ? (
+             <GuestView unidadeId={unidadeAtiva.id} />
+          ) : (
+            <>
+               {isSistemaLiberado && unidadeAtiva?.papel !== 'convidado' && <AdminPanel unidadeId={unidadeAtiva.id} papel={unidadeAtiva.papel} />}
+               <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-2">
           {/* Left Column: Input and Current Result */}
           <div className="lg:col-span-5 space-y-6">
             <Card className="border-none shadow-sm rounded-[24px]">
@@ -350,7 +536,19 @@ export default function OrdoDomus() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="inventory-input" className="sr-only">Frase</Label>
+                  <div className="flex justify-between items-end mb-2">
+                    <Label htmlFor="inventory-input" className="sr-only">Frase</Label>
+                    <Button 
+                      variant={isRecording ? "destructive" : "outline"}
+                      size="sm"
+                      onClick={toggleRecording}
+                      disabled={isExtracting || !isSistemaLiberado}
+                      className={`gap-2 rounded-xl transition-all ${isRecording ? "animate-pulse" : ""}`}
+                    >
+                      {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                      {isRecording ? "Parar Gravação" : "Falar no Microfone"}
+                    </Button>
+                  </div>
                   <Textarea
                     id="inventory-input"
                     placeholder="Ex: Coloquei 3 caixas de leite na cozinha, armário azul..."
@@ -418,13 +616,13 @@ export default function OrdoDomus() {
                     </div>
                     <div className="space-y-1">
                       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                        <Layers className="w-3 h-3" /> Armário
+                        <Layers className="w-3 h-3" /> Móvel / Eletro
                       </p>
                       <p className="font-medium text-sm">{currentResult.armario || '-'}</p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1">
-                        <Archive className="w-3 h-3" /> Caixa
+                        <Archive className="w-3 h-3" /> Divisão / Caixa
                       </p>
                       <p className="font-medium text-sm">{currentResult.caixa || '-'}</p>
                     </div>
@@ -524,6 +722,9 @@ export default function OrdoDomus() {
               </CardContent>
             </Card>
           </div>
+               </div>
+            </>
+          )}
         </div>
 
       </div>
