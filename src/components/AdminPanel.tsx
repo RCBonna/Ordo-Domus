@@ -22,15 +22,9 @@ export default function AdminPanel({ unidadeId, papel }: Props) {
     }
     
     setLoading(true);
-    // Para renderizar o nome do convidado, precisamos dos dados do Auth ou de uma tabela profiles.
-    // Como Supabase oculta Auth nativamente, vamos pegar o ID como base por enquanto,
-    // ou se houver uma tabela profiles pública futura, puxaríamos de lá. 
-    // Por hora mostraremos o ID do usuário (ou o e-mail se exposto).
+    // Usa função SECURITY DEFINER para buscar pendentes (evita recursão RLS)
     const { data, error } = await supabase
-      .from('membros_unidade')
-      .select('*')
-      .eq('unidade_id', unidadeId)
-      .eq('status', 'pendente');
+      .rpc('listar_pendentes', { p_unidade_id: unidadeId });
       
     if (!error && data) {
       setPendentes(data);
@@ -44,25 +38,18 @@ export default function AdminPanel({ unidadeId, papel }: Props) {
 
   const aprovarConvidado = async (userId: string) => {
     const { error } = await supabase
-      .from('membros_unidade')
-      .update({ status: 'aprovado' })
-      .eq('unidade_id', unidadeId)
-      .eq('user_id', userId);
+      .rpc('aprovar_membro', { p_unidade_id: unidadeId, p_user_id: userId });
 
     if (!error) {
-      // Remove da lista
       setPendentes(prev => prev.filter(p => p.user_id !== userId));
     } else {
-      alert("Erro ao aprovar: " + error.message);
+      console.error("Erro ao aprovar:", error.message);
     }
   };
 
   const rejeitarConvidado = async (userId: string) => {
     const { error } = await supabase
-      .from('membros_unidade')
-      .delete()
-      .eq('unidade_id', unidadeId)
-      .eq('user_id', userId);
+      .rpc('rejeitar_membro', { p_unidade_id: unidadeId, p_user_id: userId });
 
     if (!error) {
       setPendentes(prev => prev.filter(p => p.user_id !== userId));

@@ -72,9 +72,10 @@ export default function OrdoDomus() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const recognitionRef = useRef<any>(null);
 
-  const carregarUnidades = async (userId: string) => {
-    console.log("[OrdoDomus] carregarUnidades chamado para userId:", userId);
-    const { data, error } = await supabase
+  // --- Função centralizada para carregar unidades do usuário ---
+  const carregarUnidades = async (userId: string): Promise<Unidade[]> => {
+    console.log("[OrdoDomus] carregarUnidades para:", userId);
+    const { data, error: queryError } = await supabase
       .from('membros_unidade')
       .select(`
         papel,
@@ -87,32 +88,110 @@ export default function OrdoDomus() {
       `)
       .eq('user_id', userId);
 
-    if (error) {
-      console.error("[OrdoDomus] Erro RLS ao carregar unidades:", error);
-      return;
+    if (queryError) {
+      console.error("[OrdoDomus] Erro ao carregar unidades:", queryError);
+      return [];
     }
 
-    console.log("[OrdoDomus] Dados retornados de membros_unidade:", JSON.stringify(data));
+    console.log("[OrdoDomus] Dados retornados:", JSON.stringify(data));
 
-    if (data) {
-      const rawLista = data.map(item => {
-        if (!item.unidades) return null;
-        const casa = Array.isArray(item.unidades) ? item.unidades[0] : item.unidades;
-        // @ts-ignore
-        return { id: casa.id, nome: casa.nome, papel: item.papel, status: item.status };
-      }).filter(Boolean);
-      const lista = rawLista as any as Unidade[];
-      console.log("[OrdoDomus] Lista de unidades processada:", JSON.stringify(lista));
-      setUnidades(lista);
-      
-      if (lista.length === 1) {
-        setUnidadeAtiva(lista[0]); // Seleciona a única encontrada
-      } else {
-        setUnidadeAtiva(null); // Força a tela de seleção se houver > 1
-      }
-    }
+    const lista = (data || []).map(item => {
+      if (!item.unidades) return null;
+      const casa = Array.isArray(item.unidades) ? item.unidades[0] : item.unidades;
+      // @ts-ignore
+      return { id: casa.id, nome: casa.nome, papel: item.papel, status: item.status };
+    }).filter(Boolean) as Unidade[];
+
+    console.log("[OrdoDomus] Lista processada:", JSON.stringify(lista));
+    return lista;
   };
 
+  // --- LOGOUT: Limpa estado React e encerra sessão globalmente ---
+  const handleLogout = async () => {
+    console.log("[OrdoDomus] Logout...");
+    // 1. Limpa todo o estado React PRIMEIRO (UI reage instantaneamente)
+    setCurrentUserEmail(null);
+    setCurrentUserId(null);
+    setUnidades([]);
+    setUnidadeAtiva(null);
+    setHistory([]);
+    setCurrentResult(null);
+    setMergeStatus(null);
+    setError(null);
+    setIsAuthLoading(false);
+
+    // 2. Encerra sessão no Supabase (scope global = limpa refresh token no servidor)
+    try {
+      await supabase.auth.signOut({ scope: 'global' });
+    } catch (e) {
+      console.error("[OrdoDomus] Erro no signOut:", e);
+    }
+    // NÃO faz reload — o estado React já está limpo e a UI já mostra login
+  };
+
+  // --- AUTH: Um único useEffect para tudo ---
+  useEffect(() => {
+    let cancelled = false;
+
+    // Função que processa uma sessão (carrega unidades antes de liberar a UI)
+    const processarSessao = async (userId: string, email: string | undefined) => {
+      if (cancelled) return;
+
+      setCurrentUserId(userId);
+      setCurrentUserEmail(email || null);
+
+      // Carregar unidades ANTES de desligar o loading
+      const lista = await carregarUnidades(userId);
+      if (cancelled) return;
+
+      setUnidades(lista);
+      if (lista.length === 1) {
+        setUnidadeAtiva(lista[0]);
+      } else {
+        setUnidadeAtiva(null);
+      }
+      setIsAuthLoading(false);
+    };
+
+    // 1. Checar sessão existente ao montar
+    const inicializar = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (cancelled) return;
+
+      if (session?.user) {
+        await processarSessao(session.user.id, session.user.email);
+      } else {
+        setIsAuthLoading(false);
+      }
+    };
+
+    inicializar();
+
+    // 2. Escutar mudanças de auth (login, logout, token refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("[OrdoDomus] Auth event:", event);
+
+      if (event === 'SIGNED_IN' && session?.user) {
+        await processarSessao(session.user.id, session.user.email);
+      } else if (event === 'SIGNED_OUT') {
+        if (cancelled) return;
+        setCurrentUserEmail(null);
+        setCurrentUserId(null);
+        setUnidades([]);
+        setUnidadeAtiva(null);
+        setHistory([]);
+        setIsAuthLoading(false);
+      }
+      // Ignora TOKEN_REFRESHED, INITIAL_SESSION, etc.
+    });
+
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
+  }, []);
+
+  // --- MICROFONE ---
   const [isRecording, setIsRecording] = useState(false);
   const toggleRecording = () => {
     // @ts-ignore
@@ -169,130 +248,6 @@ export default function OrdoDomus() {
       }
     };
   }, []);
-
-  // --- LOGOUT: Limpa estado React, chama API, e recarrega ---
-  const handleLogout = async () => {
-    console.log("[OrdoDomus] Logout...");
-    setCurrentUserEmail(null);
-    setCurrentUserId(null);
-    setUnidades([]);
-    setUnidadeAtiva(null);
-    setHistory([]);
-    setCurrentResult(null);
-    setMergeStatus(null);
-    setError(null);
-
-    try {
-      await supabase.auth.signOut({ scope: 'local' });
-    } catch (e) {
-      console.error("[OrdoDomus] Erro no signOut:", e);
-    }
-    // Reload garante limpeza total do cache e estado
-    window.location.reload();
-  };
-
-  // --- AUTH EFFECT 1: Detecta sessão (SEM await pesado no callback) ---
-  useEffect(() => {
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log("[OrdoDomus] Auth event:", event, "session?", !!session);
-
-      if (session?.user) {
-        setCurrentUserEmail(session.user.email || null);
-        setCurrentUserId(session.user.id);
-      } else {
-        setCurrentUserEmail(null);
-        setCurrentUserId(null);
-        setUnidades([]);
-        setUnidadeAtiva(null);
-        setHistory([]);
-      }
-      setIsAuthLoading(false);
-    });
-
-    // Fallback se Supabase travar
-    const timeoutId = setTimeout(() => setIsAuthLoading(false), 4000);
-
-    return () => {
-      subscription.unsubscribe();
-      clearTimeout(timeoutId);
-    };
-  }, []);
-
-  // --- AUTH EFFECT 2: Quando userId mudar, carrega as unidades (com retry) ---
-  useEffect(() => {
-    if (!currentUserId) return;
-
-    let cancelled = false;
-
-    const carregar = async (tentativa: number) => {
-      if (cancelled) return;
-      console.log(`[OrdoDomus] Carregando unidades (tentativa ${tentativa})...`);
-      
-      try {
-        const { data, error: queryError } = await supabase
-          .from('membros_unidade')
-          .select(`
-            papel,
-            status,
-            unidade_id,
-            unidades (
-              id,
-              nome
-            )
-          `)
-          .eq('user_id', currentUserId);
-
-        if (cancelled) return;
-
-        if (queryError) {
-          console.error("[OrdoDomus] Erro RLS:", queryError);
-          // Retry se for erro de auth/permissão
-          if (tentativa < 3) {
-            setTimeout(() => carregar(tentativa + 1), 1000);
-          }
-          return;
-        }
-
-        console.log("[OrdoDomus] Dados retornados:", JSON.stringify(data));
-
-        const rawLista = (data || []).map(item => {
-          if (!item.unidades) return null;
-          const casa = Array.isArray(item.unidades) ? item.unidades[0] : item.unidades;
-          // @ts-ignore
-          return { id: casa.id, nome: casa.nome, papel: item.papel, status: item.status };
-        }).filter(Boolean) as Unidade[];
-
-        console.log("[OrdoDomus] Lista processada:", JSON.stringify(rawLista));
-
-        if (rawLista.length === 0 && tentativa < 3) {
-          // Pode ser timing do token JWT — retry
-          console.log("[OrdoDomus] Lista vazia, retentando em 1.5s...");
-          setTimeout(() => carregar(tentativa + 1), 1500);
-          return;
-        }
-
-        setUnidades(rawLista);
-        if (rawLista.length === 1) {
-          setUnidadeAtiva(rawLista[0]);
-        } else if (rawLista.length > 1) {
-          setUnidadeAtiva(null);
-        }
-      } catch (e) {
-        console.error("[OrdoDomus] EXCEPTION:", e);
-        if (tentativa < 3) {
-          setTimeout(() => carregar(tentativa + 1), 1500);
-        }
-      }
-    };
-
-    // Delay inicial de 300ms para dar tempo ao token JWT
-    const timerId = setTimeout(() => carregar(1), 300);
-
-    return () => {
-      cancelled = true;
-      clearTimeout(timerId);
-    };
-  }, [currentUserId]);
 
   const handleExtract = async () => {
     if (!input.trim()) return;
@@ -468,7 +423,11 @@ export default function OrdoDomus() {
           ) : currentUserEmail && !unidadeAtiva && unidades.length === 0 ? (
              <Onboarding onSuccess={async () => {
                const { data: { session } } = await supabase.auth.getSession();
-               if (session?.user) await carregarUnidades(session.user.id);
+               if (session?.user) {
+                 const lista = await carregarUnidades(session.user.id);
+                 setUnidades(lista);
+                 if (lista.length === 1) setUnidadeAtiva(lista[0]);
+               }
              }} />
           ) : isSistemaLiberado && unidadeAtiva?.status === 'pendente' ? (
              <div className="text-center p-12 bg-white rounded-[24px] shadow-sm max-w-lg mx-auto border border-gray-100 mt-12">

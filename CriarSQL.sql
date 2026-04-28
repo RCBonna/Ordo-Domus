@@ -87,30 +87,18 @@ create policy "Admin deleta unidade"
   using (id in (select unidade_id from membros_unidade where user_id = auth.uid() and papel = 'admin'));
 
 -- POLICIES PARA membros_unidade (uso interno)
--- Admin vê TODOS os membros (inclusive pendentes, para poder aprovar).
--- Membros comuns veem apenas os aprovados da sua unidade.
+-- Cada usuário vê seus próprios registros (qualquer status).
+-- Admins veem todos os membros via função SECURITY DEFINER separada (sem recursão).
 create policy "Ver membros da unidade"
   on membros_unidade for select
-  using (
-    user_id = auth.uid()
-    OR
-    unidade_id IN (
-      SELECT unidade_id FROM membros_unidade
-      WHERE user_id = auth.uid() AND papel = 'admin'
-    )
-  );
+  using (user_id = auth.uid());
 
 create policy "Inserir membros"
   on membros_unidade for insert
   with check (auth.uid() = user_id);
 
-create policy "Admin atualiza membros"
-  on membros_unidade for update
-  using (unidade_id in (select unidade_id from membros_unidade where user_id = auth.uid() and papel = 'admin'));
-
-create policy "Admin deleta membros"
-  on membros_unidade for delete
-  using (unidade_id in (select unidade_id from membros_unidade where user_id = auth.uid() and papel = 'admin'));
+-- UPDATE e DELETE de membros são feitos via funções SECURITY DEFINER
+-- (aprovar_membro e rejeitar_membro) para evitar recursão RLS.
 
 -- POLICIES PARA itens_inventario
 create policy "Leitura para membros aprovados"
