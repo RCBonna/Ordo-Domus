@@ -4,7 +4,7 @@ import GuestView from './components/GuestView';
 import AdminPanel from './components/AdminPanel';
 import Onboarding from './components/Onboarding';
 import { useState, useEffect, useRef } from 'react';
-import { extractInventoryData, mergeInventoryItem, type ExtractedItem } from './services/geminiService';
+import { extractInventoryData, type ExtractedItem } from './services/geminiService';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -160,6 +160,16 @@ export default function OrdoDomus() {
     }
   };
 
+  // Cleanup: para o microfone se o componente desmontar
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+        recognitionRef.current = null;
+      }
+    };
+  }, []);
+
   // --- LOGOUT: Limpa estado React, chama API, e recarrega ---
   const handleLogout = async () => {
     console.log("[OrdoDomus] Logout...");
@@ -299,99 +309,48 @@ export default function OrdoDomus() {
     setMergeStatus(null);
 
     try {
+      // Passo 1: IA extrai os dados da frase (única chamada à IA)
       const data = await extractInventoryData(input);
       setCurrentResult(data);
 
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      if (!session) {
-        throw new Error("Sua sessão expirou. Por favor, faça login novamente.");
+      // Passo 2: Banco decide MERGE ou ADD (upsert determinístico — sem IA)
+      const { data: resultado, error: erroUpsert } = await supabase.rpc('upsert_inventario', {
+        p_unidade_id: unidadeAtiva.id,
+        p_nome: formatarTexto(data.item) || 'Item sem nome',
+        p_categoria: data.categoria || '',
+        p_comodo: formatarTexto(data.comodo) || 'Não informado',
+        p_armario: formatarTexto(data.armario) || '',
+        p_caixa: formatarTexto(data.caixa) || '',
+        p_quantidade: Number(data.quantidade) || 1,
+        p_validade: formatarData(data.validade) || ''
+      });
+
+      if (erroUpsert) {
+        console.error('[Upsert] Erro:', erroUpsert);
+        throw new Error('Falha ao gravar no banco de dados.');
       }
 
-      // NOVO PASSO 4/5: Verifica se há itens similares para fazer MERGE
-      const { data: itensExistentes, error: erroBusca } = await supabase
-        .from('itens_inventario')
-        .select('*')
-        .eq('unidade_id', unidadeAtiva.id)
-        .order('created_at', { ascending: false })
-        .limit(50);
+      const acaoFinal = resultado.acao as 'MERGE' | 'ADD';
+      const mensagem = acaoFinal === 'MERGE'
+        ? 'A quantidade foi somada a um item existente!'
+        : 'Item gravado com sucesso no inventário!';
 
-      let acaoFinal: 'MERGE' | 'ADD' = 'ADD';
-      let itemModificadoNaTela: ExtractedItem | null = null;
-      let mensagem = '';
+      const itemNaTela: ExtractedItem = {
+        item: resultado.nome,
+        categoria: resultado.categoria,
+        comodo: resultado.comodo,
+        armario: resultado.armario,
+        caixa: resultado.caixa,
+        validade: resultado.validade || '',
+        quantidade: Number(resultado.quantidade)
+      };
 
-      if (!erroBusca && itensExistentes && itensExistentes.length > 0) {
-        const listaParaIA = itensExistentes.map(dbItem => ({
-            item: dbItem.nome,
-            categoria: dbItem.categoria,
-            comodo: dbItem.comodo,
-            armario: dbItem.armario,
-            caixa: dbItem.caixa,
-            validade: dbItem.validade || '',
-            quantidade: dbItem.quantidade
-        }));
-
-        try {
-          const decisao = await mergeInventoryItem(data, listaParaIA);
-          if (decisao.action === 'MERGE' && decisao.matchIndex !== undefined && decisao.mergedItem) {
-             const idExistente = itensExistentes[decisao.matchIndex].id;
-             
-             // Faz um UPDATE no banco
-             const { error: erroUpdate } = await supabase
-                .from('itens_inventario')
-                .update({ quantidade: Number(decisao.mergedItem.quantidade) })
-                .eq('id', idExistente);
-
-             if (erroUpdate) throw new Error("Falha ao atualizar a soma no banco.");
-             
-             acaoFinal = 'MERGE';
-             mensagem = 'A quantidade foi somada a um item existente!';
-             itemModificadoNaTela = { ...decisao.mergedItem, quantidade: Number(decisao.mergedItem.quantidade) };
-          }
-        } catch (e) {
-          console.error("Falha silenciosa no motor de IA de merge, fallback para criação de novo", e);
-        }
-      }
-
-      if (acaoFinal === 'ADD') {
-        const { data: itemSalvo, error: erroInsert } = await supabase
-          .from('itens_inventario')
-          .insert({
-            unidade_id: unidadeAtiva.id,
-            nome: formatarTexto(data.item) || 'Item sem nome',
-            categoria: data.categoria,
-            comodo: formatarTexto(data.comodo) || 'Não informado',
-            armario: formatarTexto(data.armario),
-            caixa: formatarTexto(data.caixa),
-            quantidade: Number(data.quantidade) || 1,
-            validade: formatarData(data.validade) || null
-          })
-          .select() 
-          .single();
-
-        if (erroInsert) throw new Error("Falha ao gravar no banco de dados.");
-        
-        mensagem = 'Item gravado com sucesso no inventário!';
-        itemModificadoNaTela = {
-          item: itemSalvo.nome,
-          categoria: itemSalvo.categoria,
-          comodo: itemSalvo.comodo,
-          armario: itemSalvo.armario,
-          caixa: itemSalvo.caixa,
-          validade: itemSalvo.validade || '',
-          quantidade: Number(itemSalvo.quantidade)
-        };
-      }
-
-      if (itemModificadoNaTela) {
-         setHistory(prev => [itemModificadoNaTela!, ...prev]);
-      }
+      setHistory(prev => [itemNaTela, ...prev]);
       setMergeStatus({ action: acaoFinal, message: mensagem });
       setInput('');
-} catch (err: any) {
+    } catch (err: any) {
       console.error(err);
       
-      // Intercepta a falha do Gemini e traduz para o usuário
       if (err.message && err.message.includes('503')) {
          setError('O servidor de IA está com alta demanda. Respire fundo, aguarde 5 segundos e tente novamente.');
       } else {
