@@ -23,29 +23,39 @@ const formatarTexto = (texto?: any) => {
   return limpo.charAt(0).toUpperCase() + limpo.slice(1).toLowerCase();
 };
 
-// Blindagem de Datas: Aceita DD/MM/YY, DD/MM, corrige meses inválidos e insere o ano atual
+// Blindagem de Datas: Valida rigorosamente no formato DD/MM/AAAA brasileiro
 const formatarData = (dataRaw?: string | null) => {
   if (!dataRaw || dataRaw.trim() === '-' || dataRaw.trim() === '') return '';
   
   const regex = /(\d{1,2})[\/\-](\d{1,2})(?:[\/\-](\d{2,4}))?/;
   const match = dataRaw.trim().match(regex);
   
-  if (!match) return dataRaw;
+  if (!match) return '';
 
   let dia = parseInt(match[1], 10);
   let mes = parseInt(match[2], 10);
   let ano = match[3] ? parseInt(match[3], 10) : new Date().getFullYear();
 
-  if (mes > 12) {
-      if (dia <= 12) {
-          let temp = dia; dia = mes; mes = temp;
-      } else {
-          return '';
-      }
-  }
-  
-  if (dia > 31 || dia < 1) return '';
+  // Corrige ano curto (25 → 2025)
   if (ano < 100) ano += 2000;
+
+  // Se mês > 12 mas dia <= 12, assume que veio invertido (MM/DD)
+  if (mes > 12 && dia <= 12) {
+    [dia, mes] = [mes, dia];
+  }
+
+  // Validação básica de mês
+  if (mes < 1 || mes > 12) return '';
+
+  // Dias máximos por mês (considerando ano bissexto para fevereiro)
+  const bissexto = (ano % 4 === 0 && ano % 100 !== 0) || ano % 400 === 0;
+  const diasPorMes = [0, 31, bissexto ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+  const maxDia = diasPorMes[mes];
+
+  if (dia < 1 || dia > maxDia) return '';
+
+  // Validação de ano razoável (entre 2020 e 2099)
+  if (ano < 2020 || ano > 2099) return '';
 
   return `${dia.toString().padStart(2, '0')}/${mes.toString().padStart(2, '0')}/${ano}`;
 };

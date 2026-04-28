@@ -47,7 +47,7 @@ export async function extractInventoryData(text: string): Promise<ExtractedItem>
           },
           validade: {
             type: Type.STRING,
-            description: "A data de validade do item, se houver (ex: dezembro de 2025).",
+            description: "A data de validade do item no formato DD/MM/AAAA (brasileiro). Se o ano não for informado, use o ano atual. Se a data for apenas mês/ano (ex: 'dezembro de 2025'), use dia 01 como padrão (01/12/2025). Se não houver validade, retorne string vazia.",
           },
           quantidade: {
             type: Type.NUMBER,
