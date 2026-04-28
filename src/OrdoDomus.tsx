@@ -275,19 +275,30 @@ export default function OrdoDomus() {
 
     try {
       // Passo 1: IA extrai os dados da frase (única chamada à IA)
-      const data = await extractInventoryData(input);
+      const dataRaw = await extractInventoryData(input);
+
+      // Normaliza os dados para exibir na tela IGUAL ao que vai para o banco
+      const data: ExtractedItem = {
+        item: formatarTexto(dataRaw.item) || 'Item sem nome',
+        categoria: dataRaw.categoria || '',
+        comodo: formatarTexto(dataRaw.comodo) || 'Não informado',
+        armario: formatarTexto(dataRaw.armario) || '',
+        caixa: formatarTexto(dataRaw.caixa) || '',
+        validade: formatarData(dataRaw.validade) || '',
+        quantidade: Number(dataRaw.quantidade) || 1
+      };
       setCurrentResult(data);
 
       // Passo 2: Banco decide MERGE ou ADD (upsert determinístico — sem IA)
       const { data: resultado, error: erroUpsert } = await supabase.rpc('upsert_inventario', {
         p_unidade_id: unidadeAtiva.id,
-        p_nome: formatarTexto(data.item) || 'Item sem nome',
-        p_categoria: data.categoria || '',
-        p_comodo: formatarTexto(data.comodo) || 'Não informado',
-        p_armario: formatarTexto(data.armario) || '',
-        p_caixa: formatarTexto(data.caixa) || '',
-        p_quantidade: Number(data.quantidade) || 1,
-        p_validade: formatarData(data.validade) || ''
+        p_nome: data.item,
+        p_categoria: data.categoria,
+        p_comodo: data.comodo,
+        p_armario: data.armario,
+        p_caixa: data.caixa,
+        p_quantidade: data.quantidade,
+        p_validade: data.validade
       });
 
       if (erroUpsert) {
