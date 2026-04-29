@@ -14,23 +14,27 @@ export default function Auth() {
   const [message, setMessage] = useState<{ type: 'error' | 'success', text: string } | null>(null)
 
   const traduzirErro = (msg: string) => {
-    if (msg.includes('Password should be at least 6 characters')) return 'A senha deve ter pelo menos 6 caracteres.';
+    // Erros de autenticação
     if (msg.includes('Invalid login credentials')) return 'E-mail ou senha incorretos.';
+    if (msg.includes('Email not confirmed')) return 'E-mail não confirmado. Verifique sua caixa de entrada.';
     if (msg.includes('User already registered')) return 'Este e-mail já está cadastrado. Faça o login.';
-    return msg; // Retorna original se não tiver tradução
+    // Erros de senha
+    if (msg.includes('Password should be at least')) return 'A senha deve ter pelo menos 6 caracteres.';
+    if (msg.includes('password')) return 'Erro na senha: ' + msg;
+    // Erros de rate limit
+    if (msg.includes('rate limit') || msg.includes('too many requests')) return 'Muitas tentativas. Aguarde alguns minutos e tente novamente.';
+    if (msg.includes('For security purposes')) return 'Por segurança, aguarde alguns segundos antes de tentar novamente.';
+    // Erros de rede/servidor
+    if (msg.includes('fetch') || msg.includes('network')) return 'Erro de conexão. Verifique sua internet.';
+    if (msg.includes('500') || msg.includes('server')) return 'Erro interno do servidor. Tente novamente em instantes.';
+    // Fallback: retorna o original
+    return msg;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setMessage(null)
-    
-    // Validação local ANTES de chamar a API (evita mensagens fora de ordem)
-    if (!isLogin && password.length < 6) {
-      setMessage({ type: 'error', text: 'A senha deve ter pelo menos 6 caracteres.' })
-      setLoading(false)
-      return
-    }
 
     if (isLogin) {
       const { error } = await supabase.auth.signInWithPassword({
@@ -103,7 +107,7 @@ export default function Auth() {
               value={password} 
               onChange={(e) => setPassword(e.target.value)}
               required
-              minLength={6}
+
               className="rounded-xl pr-10"
             />
             <button 
