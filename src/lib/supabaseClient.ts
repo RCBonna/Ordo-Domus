@@ -8,5 +8,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
+    // Desabilita navigator.locks que causa timeout em StrictMode / múltiplas abas
+    lock: async (_name: string, _acquireTimeout: number, fn: () => Promise<any>) => fn(),
   }
 })
