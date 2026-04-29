@@ -86,32 +86,36 @@ export default function OrdoDomus() {
   const carregarUnidades = async (userId: string): Promise<Unidade[]> => {
     console.log("[OrdoDomus] carregarUnidades para:", userId);
     try {
-      const { data, error: queryError } = await supabase
+      // Query 1: Busca membros (RLS simples: user_id = auth.uid())
+      const { data: membros, error: erroMembros } = await supabase
         .from('membros_unidade')
-        .select(`
-          papel,
-          status,
-          unidade_id,
-          unidades (
-            id,
-            nome
-          )
-        `)
+        .select('unidade_id, papel, status')
         .eq('user_id', userId)
         .eq('status', 'aprovado');
 
-      if (queryError) {
-        console.error("[OrdoDomus] Erro ao carregar unidades:", queryError);
+      if (erroMembros || !membros || membros.length === 0) {
+        console.log("[OrdoDomus] Nenhum membro aprovado encontrado:", erroMembros);
         return [];
       }
 
-      console.log("[OrdoDomus] Dados retornados:", JSON.stringify(data));
+      const unidadeIds = membros.map(m => m.unidade_id);
 
-      const lista = (data || []).map(item => {
-        if (!item.unidades) return null;
-        const casa = Array.isArray(item.unidades) ? item.unidades[0] : item.unidades;
-        // @ts-ignore
-        return { id: casa.id, nome: casa.nome, papel: item.papel, status: item.status };
+      // Query 2: Busca nomes das unidades (sem JOIN, sem deadlock de RLS)
+      const { data: unidadesData, error: erroUnidades } = await supabase
+        .from('unidades')
+        .select('id, nome')
+        .in('id', unidadeIds);
+
+      if (erroUnidades || !unidadesData) {
+        console.error("[OrdoDomus] Erro ao buscar unidades:", erroUnidades);
+        return [];
+      }
+
+      // Combina membros + unidades manualmente
+      const lista: Unidade[] = membros.map(m => {
+        const unidade = unidadesData.find(u => u.id === m.unidade_id);
+        if (!unidade) return null;
+        return { id: unidade.id, nome: unidade.nome, papel: m.papel, status: m.status };
       }).filter(Boolean) as Unidade[];
 
       console.log("[OrdoDomus] Lista processada:", JSON.stringify(lista));
