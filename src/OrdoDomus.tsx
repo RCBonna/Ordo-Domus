@@ -85,35 +85,41 @@ export default function OrdoDomus() {
   // --- Função centralizada para carregar unidades do usuário ---
   const carregarUnidades = async (userId: string): Promise<Unidade[]> => {
     console.log("[OrdoDomus] carregarUnidades para:", userId);
-    const { data, error: queryError } = await supabase
-      .from('membros_unidade')
-      .select(`
-        papel,
-        status,
-        unidade_id,
-        unidades (
-          id,
-          nome
-        )
-      `)
-      .eq('user_id', userId);
+    try {
+      const { data, error: queryError } = await supabase
+        .from('membros_unidade')
+        .select(`
+          papel,
+          status,
+          unidade_id,
+          unidades (
+            id,
+            nome
+          )
+        `)
+        .eq('user_id', userId)
+        .eq('status', 'aprovado');
 
-    if (queryError) {
-      console.error("[OrdoDomus] Erro ao carregar unidades:", queryError);
+      if (queryError) {
+        console.error("[OrdoDomus] Erro ao carregar unidades:", queryError);
+        return [];
+      }
+
+      console.log("[OrdoDomus] Dados retornados:", JSON.stringify(data));
+
+      const lista = (data || []).map(item => {
+        if (!item.unidades) return null;
+        const casa = Array.isArray(item.unidades) ? item.unidades[0] : item.unidades;
+        // @ts-ignore
+        return { id: casa.id, nome: casa.nome, papel: item.papel, status: item.status };
+      }).filter(Boolean) as Unidade[];
+
+      console.log("[OrdoDomus] Lista processada:", JSON.stringify(lista));
+      return lista;
+    } catch (e) {
+      console.error("[OrdoDomus] Exceção em carregarUnidades:", e);
       return [];
     }
-
-    console.log("[OrdoDomus] Dados retornados:", JSON.stringify(data));
-
-    const lista = (data || []).map(item => {
-      if (!item.unidades) return null;
-      const casa = Array.isArray(item.unidades) ? item.unidades[0] : item.unidades;
-      // @ts-ignore
-      return { id: casa.id, nome: casa.nome, papel: item.papel, status: item.status };
-    }).filter(Boolean) as Unidade[];
-
-    console.log("[OrdoDomus] Lista processada:", JSON.stringify(lista));
-    return lista;
   };
 
   // --- LOGOUT: Limpa estado React e encerra sessão globalmente ---
@@ -199,6 +205,14 @@ export default function OrdoDomus() {
 
     inicializar();
 
+    // Timeout de segurança: NUNCA trava em "Validando acesso..."
+    const safetyTimeout = setTimeout(() => {
+      if (!cancelled) {
+        console.warn("[OrdoDomus] Timeout de segurança atingido (10s)");
+        setIsAuthLoading(false);
+      }
+    }, 10000);
+
     // 2. Escutar mudanças de auth (login, logout, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       console.log("[OrdoDomus] Auth event:", event, "loggingOut?", isLoggingOut.current);
@@ -221,6 +235,7 @@ export default function OrdoDomus() {
 
     return () => {
       cancelled = true;
+      clearTimeout(safetyTimeout);
       subscription.unsubscribe();
     };
   }, []);
