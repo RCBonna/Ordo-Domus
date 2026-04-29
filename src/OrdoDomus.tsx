@@ -153,13 +153,14 @@ export default function OrdoDomus() {
     const processarSessao = async (userId: string, email: string | undefined) => {
       if (cancelled || isLoggingOut.current) return;
 
-      setCurrentUserId(userId);
-      setCurrentUserEmail(email || null);
-
-      // Carregar unidades ANTES de desligar o loading
+      // Carregar unidades ANTES de atualizar qualquer estado visível
+      // (evita flash de Onboarding enquanto carrega)
       const lista = await carregarUnidades(userId);
       if (cancelled || isLoggingOut.current) return;
 
+      // Atualiza TUDO de uma vez — React 18 batcha estes sets
+      setCurrentUserId(userId);
+      setCurrentUserEmail(email || null);
       setUnidades(lista);
       if (lista.length === 1) {
         setUnidadeAtiva(lista[0]);
