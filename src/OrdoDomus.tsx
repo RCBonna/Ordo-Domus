@@ -117,8 +117,12 @@ export default function OrdoDomus() {
   };
 
   // --- LOGOUT: Limpa estado React e encerra sessão globalmente ---
+  const isLoggingOut = useRef(false);
+
   const handleLogout = async () => {
     console.log("[OrdoDomus] Logout...");
+    isLoggingOut.current = true;
+
     // 1. Limpa todo o estado React PRIMEIRO (UI reage instantaneamente)
     setCurrentUserEmail(null);
     setCurrentUserId(null);
@@ -136,7 +140,9 @@ export default function OrdoDomus() {
     } catch (e) {
       console.error("[OrdoDomus] Erro no signOut:", e);
     }
-    // NÃO faz reload — o estado React já está limpo e a UI já mostra login
+
+    // Pequeno delay para garantir que o evento SIGNED_OUT seja processado
+    setTimeout(() => { isLoggingOut.current = false; }, 2000);
   };
 
   // --- AUTH: Um único useEffect para tudo ---
@@ -145,14 +151,14 @@ export default function OrdoDomus() {
 
     // Função que processa uma sessão (carrega unidades antes de liberar a UI)
     const processarSessao = async (userId: string, email: string | undefined) => {
-      if (cancelled) return;
+      if (cancelled || isLoggingOut.current) return;
 
       setCurrentUserId(userId);
       setCurrentUserEmail(email || null);
 
       // Carregar unidades ANTES de desligar o loading
       const lista = await carregarUnidades(userId);
-      if (cancelled) return;
+      if (cancelled || isLoggingOut.current) return;
 
       setUnidades(lista);
       if (lista.length === 1) {
@@ -179,7 +185,9 @@ export default function OrdoDomus() {
 
     // 2. Escutar mudanças de auth (login, logout, token refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("[OrdoDomus] Auth event:", event);
+      console.log("[OrdoDomus] Auth event:", event, "loggingOut?", isLoggingOut.current);
+
+      if (isLoggingOut.current) return; // Ignora eventos durante o logout
 
       if (event === 'SIGNED_IN' && session?.user) {
         await processarSessao(session.user.id, session.user.email);
