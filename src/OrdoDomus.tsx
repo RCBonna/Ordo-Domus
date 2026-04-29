@@ -153,32 +153,47 @@ export default function OrdoDomus() {
     const processarSessao = async (userId: string, email: string | undefined) => {
       if (cancelled || isLoggingOut.current) return;
 
-      // Carregar unidades ANTES de atualizar qualquer estado visível
-      // (evita flash de Onboarding enquanto carrega)
-      const lista = await carregarUnidades(userId);
-      if (cancelled || isLoggingOut.current) return;
+      try {
+        // Carregar unidades ANTES de atualizar qualquer estado visível
+        // (evita flash de Onboarding enquanto carrega)
+        const lista = await carregarUnidades(userId);
+        if (cancelled || isLoggingOut.current) return;
 
-      // Atualiza TUDO de uma vez — React 18 batcha estes sets
-      setCurrentUserId(userId);
-      setCurrentUserEmail(email || null);
-      setUnidades(lista);
-      if (lista.length === 1) {
-        setUnidadeAtiva(lista[0]);
-      } else {
-        setUnidadeAtiva(null);
+        // Atualiza TUDO de uma vez — React 18 batcha estes sets
+        setCurrentUserId(userId);
+        setCurrentUserEmail(email || null);
+        setUnidades(lista);
+        if (lista.length === 1) {
+          setUnidadeAtiva(lista[0]);
+        } else {
+          setUnidadeAtiva(null);
+        }
+      } catch (e) {
+        console.error("[OrdoDomus] Erro ao processar sessão:", e);
+        // Mesmo com erro, mostra o usuário logado (poderá usar Onboarding)
+        if (!cancelled) {
+          setCurrentUserId(userId);
+          setCurrentUserEmail(email || null);
+        }
+      } finally {
+        if (!cancelled) setIsAuthLoading(false);
       }
-      setIsAuthLoading(false);
     };
 
     // 1. Checar sessão existente ao montar
     const inicializar = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (cancelled) return;
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (cancelled) return;
 
-      if (session?.user) {
-        await processarSessao(session.user.id, session.user.email);
-      } else {
-        setIsAuthLoading(false);
+        if (session?.user) {
+          await processarSessao(session.user.id, session.user.email);
+        } else {
+          setIsAuthLoading(false);
+        }
+      } catch (e) {
+        console.error("[OrdoDomus] Erro na inicialização:", e);
+        if (!cancelled) setIsAuthLoading(false);
       }
     };
 
