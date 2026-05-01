@@ -57,6 +57,13 @@ const formatarData = (dataRaw?: string | null) => {
   // Validação de ano razoável (entre 2020 e 2099)
   if (ano < 2020 || ano > 2099) return '';
 
+  // Se o ano for menor que o atual, provavelmente o usuário esqueceu o ano e a IA chutou errado.
+  // Vamos forçar para o ano atual do sistema se a data extraída parecer retroativa sem motivo.
+  const anoAtual = new Date().getFullYear();
+  if (ano < anoAtual) {
+    ano = anoAtual;
+  }
+
   return `${dia.toString().padStart(2, '0')}/${mes.toString().padStart(2, '0')}/${ano}`;
 };
 

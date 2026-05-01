@@ -16,11 +16,12 @@ export interface ExtractedItem {
 
 
 export async function extractInventoryData(text: string): Promise<ExtractedItem> {
+  const dataAtual = new Date().toLocaleDateString('pt-BR');
   const response = await ai.models.generateContent({
     model: "gemini-3-flash-preview",
-    contents: `Extraia os dados de inventário da seguinte frase: "${text}"`,
+    contents: `Hoje é dia ${dataAtual}. Extraia os dados de inventário da seguinte frase: "${text}"`,
     config: {
-      systemInstruction: "Você é um organizador de inventário profissional. Extraia as informações e retorne JSON. REGRA DE CLASSIFICAÇÃO VITAL: O campo 'armario' deve conter APENAS o Móvel ou Eletrodoméstico principal (ex: Geladeira, Freezer, Armário, Despensa). O campo 'caixa' deve conter as subdivisões internas, como Prateleiras, Gavetas, Caixas organizadoras ou Potes (ex: Prateleira 2, Gaveta de legumes, Pote azul). Exemplo: 'na prateleira 2 do freezer' -> armario: 'freezer', caixa: 'prateleira 2'. Se faltar dado, retorne string vazia ou null.",
+      systemInstruction: "Você é um organizador de inventário profissional. Extraia as informações e retorne JSON. REGRA DE CLASSIFICAÇÃO VITAL: O campo 'armario' deve conter APENAS o Móvel ou Eletrodoméstico principal (ex: Geladeira, Freezer, Armário, Despensa). O campo 'caixa' deve conter as subdivisões internas, como Prateleiras, Gavetas, Caixas organizadoras ou Potes (ex: Prateleira 2, Gaveta de legumes, Pote azul). Exemplo: 'na prateleira 2 do freezer' -> armario: 'freezer', caixa: 'prateleira 2'. Se faltar dado, retorne string vazia ou null. IMPORTANTE: Se o ano não for mencionado, use o ano da data de hoje fornecida.",
       responseMimeType: "application/json",
       responseSchema: {
         type: Type.OBJECT,
