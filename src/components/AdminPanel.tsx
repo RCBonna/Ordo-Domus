@@ -1,16 +1,17 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Users, CheckCircle2, Loader2, UserX, Share2, Check, Copy } from 'lucide-react';
+import { Users, Loader2, Share2, Check, Copy, ShieldCheck, UserMinus, UserCheck } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface Props {
   unidadeId: string;
   papel: string;
+  unidadeNome?: string;
 }
 
-export default function AdminPanel({ unidadeId, papel }: Props) {
+export default function AdminPanel({ unidadeId, papel, unidadeNome }: Props) {
   const [pendentes, setPendentes] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiado, setCopiado] = useState(false);
@@ -22,7 +23,6 @@ export default function AdminPanel({ unidadeId, papel }: Props) {
     }
     
     setLoading(true);
-    // Usa função SECURITY DEFINER para buscar pendentes (evita recursão RLS)
     const { data, error } = await supabase
       .rpc('listar_pendentes', { p_unidade_id: unidadeId });
       
@@ -42,8 +42,9 @@ export default function AdminPanel({ unidadeId, papel }: Props) {
 
     if (!error) {
       setPendentes(prev => prev.filter(p => p.user_id !== userId));
+      toast.success("Membro aprovado com sucesso!");
     } else {
-      console.error("Erro ao aprovar:", error.message);
+      toast.error("Erro ao aprovar membro.");
     }
   };
 
@@ -53,80 +54,132 @@ export default function AdminPanel({ unidadeId, papel }: Props) {
 
     if (!error) {
       setPendentes(prev => prev.filter(p => p.user_id !== userId));
+      toast.error("Solicitação rejeitada.");
+    } else {
+      toast.error("Erro ao processar ação.");
     }
   };
-
-  if (loading) return <Loader2 className="animate-spin w-5 h-5 text-muted-foreground m-auto" />;
-
 
   const copiarCodigo = () => {
     navigator.clipboard.writeText(unidadeId);
     setCopiado(true);
+    toast.success("Código da unidade copiado!");
     setTimeout(() => setCopiado(false), 2000);
   };
 
+  if (loading) return (
+    <div className="flex items-center justify-center p-12">
+      <Loader2 className="animate-spin w-8 h-8 text-slate-200" />
+    </div>
+  );
+
   return (
-    <div className="mb-8 space-y-4">
-      <Card className="border-none shadow-sm rounded-[24px] bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-lg font-medium text-blue-900 flex items-center gap-2">
-            <Share2 className="w-5 h-5 text-blue-600" />
-            Convidar Membros
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col md:flex-row gap-6 md:items-start justify-between">
-            <div className="space-y-1">
-              <p className="text-sm text-blue-800/80">Compartilhe o código abaixo para que outras pessoas entrem na unidade.</p>
-              <div className="flex items-center gap-2 mt-2">
-                <code className="px-3 py-1.5 bg-white rounded-lg border border-blue-200 text-blue-900 font-mono text-sm font-semibold tracking-wide shadow-sm">
-                  {unidadeId}
-                </code>
-                <Button size="sm" variant="outline" className={`h-8 rounded-lg ${copiado ? 'bg-green-50 text-green-700 border-green-200' : 'bg-white hover:bg-blue-50'}`} onClick={copiarCodigo}>
-                  {copiado ? <Check className="w-4 h-4 mr-1.5" /> : <Copy className="w-4 h-4 mr-1.5" />}
-                  {copiado ? "Copiado!" : "Copiar"}
-                </Button>
-              </div>
+    <div className="space-y-10">
+      {/* SEÇÃO: CONVITE */}
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-blue-50 rounded-2xl">
+              <Share2 className="w-6 h-6 text-blue-500" />
+            </div>
+            <div>
+              <h3 className="text-slate-900 font-black text-xl leading-none mb-1">Convidar Membros</h3>
+              <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">{unidadeNome || 'Acesso à Unidade'}</p>
             </div>
           </div>
-        </CardContent>
-      </Card>
+          <Badge variant="secondary" className="bg-slate-100 text-slate-500 border-none px-4 py-1.5 rounded-full text-[10px] font-black">
+            ATIVA
+          </Badge>
+        </div>
 
-      {/* SEÇÃO 2: PENDENTES (Só mostra se tiver) */}
+        <div className="bg-slate-50/50 border border-slate-100 rounded-[32px] p-8">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 ml-1">
+            Código Único de Identificação
+          </p>
+          <div className="flex items-center gap-4">
+            <div className="flex-1 px-6 py-5 bg-white rounded-2xl border border-slate-200 text-slate-700 font-mono text-sm font-bold tracking-tight shadow-sm overflow-hidden truncate">
+              {unidadeId}
+            </div>
+            <Button 
+              onClick={copiarCodigo}
+              size="icon"
+              className={`h-16 w-16 rounded-2xl transition-all shadow-xl active:scale-95 ${
+                copiado ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-100' : 'bg-slate-900 hover:bg-slate-800 text-white shadow-slate-200'
+              }`}
+            >
+              {copiado ? <Check className="w-7 h-7" /> : <Copy className="w-6 h-6" />}
+            </Button>
+          </div>
+
+          <div className="mt-6 flex items-center gap-4 bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100/50">
+            <div className="p-2 bg-white rounded-lg shadow-sm">
+              <ShieldCheck className="w-4 h-4 text-emerald-500" />
+            </div>
+            <p className="text-xs text-emerald-700/80 leading-relaxed font-bold">
+              Segurança ativada: novos membros dependem da sua aprovação manual no painel abaixo.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* SEÇÃO: PENDENTES */}
       {pendentes.length > 0 && (
-        <Card className="border-orange-200 bg-orange-50/50 shadow-sm rounded-[24px]">
-          <CardHeader className="pb-4">
-            <CardTitle className="text-lg font-semibold flex items-center gap-2 text-orange-800">
-              <Users className="w-5 h-5" />
-              Aprovações Pendentes
-            </CardTitle>
-            <CardDescription className="text-orange-700/70">
-              {pendentes.length} visitante(s) solicitando permissão para acessar esta unidade.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
+        <div className="space-y-6">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-amber-50 rounded-2xl">
+              <Users className="w-6 h-6 text-amber-500" />
+            </div>
+            <div>
+              <h3 className="text-slate-900 font-black text-xl leading-none mb-1">Solicitações</h3>
+              <p className="text-amber-500 text-xs font-bold uppercase tracking-widest">Aprovações Pendentes</p>
+            </div>
+            <Badge className="bg-amber-500 text-white border-none font-black text-[10px] ml-auto">
+              {pendentes.length}
+            </Badge>
+          </div>
+
+          <div className="space-y-3">
             {pendentes.map(convite => (
-              <div key={convite.user_id} className="bg-white p-4 rounded-xl border border-orange-100 flex items-center justify-between shadow-sm">
-                <div className="flex flex-col">
-                  <span className="font-semibold text-sm">ID Solicitante:</span>
-                  <code className="text-xs text-muted-foreground bg-gray-50 px-2 py-1 flex max-w-xs overflow-hidden text-ellipsis">{convite.user_id}</code>
-                  <div className="mt-1 flex gap-2">
-                    <Badge variant="outline" className="text-[10px] bg-gray-50">Solicitado em {new Date(convite.adicionado_em).toLocaleDateString()}</Badge>
+              <div 
+                key={convite.user_id} 
+                className="bg-white border border-slate-100 p-6 rounded-[28px] flex items-center justify-between group hover:border-amber-200 hover:shadow-lg hover:shadow-amber-500/5 transition-all"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100 text-slate-300">
+                    <Users className="w-7 h-7" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">ID do Solicitante</span>
+                    <span className="font-mono text-xs text-slate-600 font-bold">{convite.user_id.slice(0, 18)}...</span>
+                    <span className="text-[10px] font-bold text-slate-400 mt-1">
+                      Enviado em {new Date(convite.adicionado_em).toLocaleDateString()}
+                    </span>
                   </div>
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  <Button size="sm" variant="ghost" onClick={() => rejeitarConvidado(convite.user_id)} className="text-red-600 hover:text-red-700 hover:bg-red-50">
-                    <UserX className="w-4 h-4 mr-1" /> Rejeitar
+                  <Button 
+                    variant="ghost" 
+                    onClick={() => rejeitarConvidado(convite.user_id)} 
+                    className="h-12 w-12 p-0 rounded-2xl text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all"
+                    title="Rejeitar"
+                  >
+                    <UserMinus className="w-5 h-5" />
                   </Button>
-                  <Button size="sm" onClick={() => aprovarConvidado(convite.user_id)} className="bg-orange-600 hover:bg-orange-700">
-                    <CheckCircle2 className="w-4 h-4 mr-1" /> Aprovar
+                  <Button 
+                    onClick={() => aprovarConvidado(convite.user_id)} 
+                    className="h-12 px-6 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-black text-xs shadow-lg shadow-amber-200 transition-all active:scale-95"
+                  >
+                    <span className="flex items-center gap-2">
+                      <UserCheck className="w-4 h-4" />
+                      APROVAR
+                    </span>
                   </Button>
                 </div>
               </div>
             ))}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
     </div>
   );

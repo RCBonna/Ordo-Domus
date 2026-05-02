@@ -10,6 +10,7 @@ export interface ExtractedItem {
   caixa: string;
   validade: string;
   quantidade: number;
+  tipo?: 'entrada' | 'consumo';
 }
 
 

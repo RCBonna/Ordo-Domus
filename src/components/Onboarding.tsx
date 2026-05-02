@@ -41,7 +41,7 @@ export default function Onboarding({ onSuccess }: OnboardingProps) {
 
       // 2. Adicionar o membro como admin
       const { error: errMembro } = await supabase
-        .from('membros_unidade')
+        .from('membros_unidades')
         .insert({
           unidade_id: novaUnidade.id,
           user_id: userData.user.id,
@@ -74,7 +74,7 @@ export default function Onboarding({ onSuccess }: OnboardingProps) {
 
       // Adicionar o membro como convidado pendente
       const { error: errMembro } = await supabase
-        .from('membros_unidade')
+        .from('membros_unidades')
         .insert({
           unidade_id: codigoLimpo,
           user_id: userData.user.id,
