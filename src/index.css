@@ -134,3 +134,31 @@
     @apply font-sans;
     }
 }
+
+/* Premium Animations & Utilities */
+@keyframes sound-wave {
+  0%, 100% { transform: scaleY(0.4); opacity: 0.5; }
+  50% { transform: scaleY(1.2); opacity: 1; }
+}
+
+.animate-sound-wave {
+  animation: sound-wave 0.6s ease-in-out infinite;
+}
+
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.animate-spin-slow {
+  animation: spin-slow 3s linear infinite;
+}
+
+.bg-mesh {
+  background-color: #f8f9fa;
+  background-image: 
+    radial-gradient(at 0% 0%, hsla(210, 100%, 95%, 1) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, hsla(190, 100%, 95%, 1) 0px, transparent 50%),
+    radial-gradient(at 100% 100%, hsla(220, 100%, 96%, 1) 0px, transparent 50%),
+    radial-gradient(at 0% 100%, hsla(200, 100%, 97%, 1) 0px, transparent 50%);
+}
