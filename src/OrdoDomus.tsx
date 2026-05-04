@@ -73,20 +73,20 @@ export default function OrdoDomus() {
     addHistoryItem
   } = useExtraction(unidadeAtiva?.id);
 
-  // Receipt Import logic
-  const {
-    isImporting,
-    fileInputRef,
-    handleImportReceipt,
-    triggerImport
-  } = useReceiptImport(unidadeAtiva?.id);
-
   // Triage logic
   const {
     pendingItems,
     discardItem,
     fetchPendingItems
   } = useTriage(unidadeAtiva?.id);
+
+  // Receipt Import logic
+  const {
+    isImporting,
+    fileInputRef,
+    handleImportReceipt,
+    triggerImport
+  } = useReceiptImport(unidadeAtiva?.id, fetchPendingItems);
 
   // Inventory logic
 

@@ -4,7 +4,7 @@ import { extractInventoryDataFromReceipt } from '../services/geminiService';
 import { compressImage } from '../lib/utils';
 import { toast } from 'sonner';
 
-export function useReceiptImport(unidadeId: string | undefined) {
+export function useReceiptImport(unidadeId: string | undefined, onImportSuccess?: () => void) {
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -45,21 +45,39 @@ export function useReceiptImport(unidadeId: string | undefined) {
         processado: false
       }));
 
-      console.log("[useReceiptImport] Tentando inserir linhas:", rowsToInsert);
+      console.log("[useReceiptImport] Tentando inserir linhas:", JSON.stringify(rowsToInsert, null, 2));
 
-      const { data, error } = await supabase
+      // Primeiro verificar se temos sessão ativa
+      const { data: session } = await supabase.auth.getSession();
+      console.log("[useReceiptImport] Sessão ativa?", !!session?.session, "User ID:", session?.session?.user?.id);
+
+      const { data, error, status, statusText } = await supabase
         .from('importacoes_pendentes')
         .insert(rowsToInsert)
         .select();
         
-      console.log("[useReceiptImport] Resposta do insert:", { data, error });
+      console.log("[useReceiptImport] Resposta completa:", { 
+        data, 
+        error, 
+        status, 
+        statusText,
+        dataLength: data?.length,
+        errorMessage: error?.message,
+        errorCode: error?.code,
+        errorDetails: error?.details,
+        errorHint: error?.hint
+      });
 
       if (error) {
-        console.error("[useReceiptImport] Erro ao inserir importações pendentes", error);
-        toast.error('Erro ao salvar os itens extraídos.', { id: 'import-receipt' });
+        console.error("[useReceiptImport] Erro ao inserir importações pendentes:", JSON.stringify(error, null, 2));
+        toast.error(`Erro: ${error.message || 'Falha ao salvar'}`, { id: 'import-receipt' });
+      } else if (!data || data.length === 0) {
+        console.warn("[useReceiptImport] INSERT retornou sem dados — possível bloqueio RLS silencioso");
+        toast.warning('Os itens podem não ter sido salvos. Verifique as permissões.', { id: 'import-receipt' });
       } else {
-        console.log("[useReceiptImport] Sucesso! Inseridos:", data);
-        toast.success('Cupom importado com sucesso! Aguardando Triagem.', { id: 'import-receipt' });
+        console.log("[useReceiptImport] Sucesso! Inseridos:", data.length, "itens");
+        toast.success(`Cupom importado! ${data.length} itens aguardando triagem.`, { id: 'import-receipt' });
+        onImportSuccess?.();
       }
     } catch (error: any) {
       console.error("[useReceiptImport] Exceção capturada:", error);
