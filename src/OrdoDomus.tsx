@@ -120,10 +120,13 @@ export default function OrdoDomus() {
   const handleReviewTriageItem = (item: any) => {
     setIsTriageModalOpen(false);
     setActiveTab('entrada');
+
+    // Se houver Smart Match, preencher com dados do dicionário
+    const match = item.dictMatch;
     setCurrentResult({
-      item: item.nome_bruto,
-      categoria: '',
-      comodo: '',
+      item: match?.nome_oficial_inventario || item.nome_bruto,
+      categoria: match?.categoria || '',
+      comodo: match?.comodo || '',
       armario: '',
       caixa: '',
       validade: '',

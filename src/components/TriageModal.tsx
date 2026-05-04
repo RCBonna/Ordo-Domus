@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Check, Trash2, Edit2, Loader2, Package } from 'lucide-react';
+import { X, Check, Trash2, Edit2, Loader2, Package, Sparkles, ArrowRight } from 'lucide-react';
 import { Button } from './ui/button';
+import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
 import { useTriage, TriageItem } from '../hooks/useTriage';
 
@@ -23,6 +24,8 @@ export function TriageModal({ isOpen, onClose, unidadeId, onReviewItem }: Triage
 
   if (!isOpen) return null;
 
+  const matchedCount = pendingItems.filter(i => i.dictMatch).length;
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
       <motion.div
@@ -39,6 +42,12 @@ export function TriageModal({ isOpen, onClose, unidadeId, onReviewItem }: Triage
             </h2>
             <p className="text-sm text-gray-500 mt-1">
               Revise os itens extraídos antes de adicioná-los ao inventário.
+              {matchedCount > 0 && (
+                <span className="ml-2 inline-flex items-center gap-1 text-emerald-600 font-semibold">
+                  <Sparkles className="w-3.5 h-3.5" />
+                  {matchedCount} {matchedCount === 1 ? 'item reconhecido' : 'itens reconhecidos'} automaticamente
+                </span>
+              )}
             </p>
           </div>
           <button
@@ -62,9 +71,44 @@ export function TriageModal({ isOpen, onClose, unidadeId, onReviewItem }: Triage
           ) : (
             <div className="space-y-4">
               {pendingItems.map(item => (
-                <div key={item.id} className="bg-white border border-gray-200 rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-4 shadow-sm hover:shadow-md transition-shadow">
+                <div 
+                  key={item.id} 
+                  className={`bg-white border rounded-xl p-4 flex flex-col sm:flex-row sm:items-center gap-4 shadow-sm hover:shadow-md transition-shadow ${
+                    item.dictMatch 
+                      ? 'border-emerald-200 ring-1 ring-emerald-100' 
+                      : 'border-gray-200'
+                  }`}
+                >
                   <div className="flex-1">
-                    <h3 className="font-semibold text-gray-900">{item.nome_bruto}</h3>
+                    <div className="flex items-start gap-2">
+                      <h3 className="font-semibold text-gray-900">{item.nome_bruto}</h3>
+                      {item.dictMatch && (
+                        <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] px-1.5 py-0 font-bold shrink-0">
+                          <Sparkles className="w-3 h-3 mr-0.5" />
+                          Smart Match
+                        </Badge>
+                      )}
+                    </div>
+
+                    {/* Smart Match Preview */}
+                    {item.dictMatch && (
+                      <div className="mt-2 flex items-center gap-2 text-xs bg-emerald-50/60 rounded-lg px-3 py-1.5">
+                        <span className="text-gray-400 line-through truncate max-w-[120px]">{item.nome_bruto}</span>
+                        <ArrowRight className="w-3 h-3 text-emerald-500 shrink-0" />
+                        <span className="font-bold text-emerald-700 truncate">{item.dictMatch.nome_oficial_inventario}</span>
+                        {item.dictMatch.categoria && (
+                          <Badge variant="secondary" className="text-[9px] px-1.5 py-0 bg-emerald-100 text-emerald-600 border-none font-bold">
+                            {item.dictMatch.categoria}
+                          </Badge>
+                        )}
+                        {item.dictMatch.comodo && (
+                          <Badge variant="secondary" className="text-[9px] px-1.5 py-0 bg-indigo-50 text-indigo-500 border-none font-bold">
+                            {item.dictMatch.comodo}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+
                     <div className="flex items-center gap-4 mt-2 text-sm text-gray-500">
                       <span className="flex items-center gap-1">
                         Qtd: <strong className="text-gray-700">{item.quantidade}</strong>
@@ -82,9 +126,23 @@ export function TriageModal({ isOpen, onClose, unidadeId, onReviewItem }: Triage
                       <Trash2 className="w-4 h-4" />
                       Descartar
                     </Button>
-                    <Button variant="default" size="sm" className="flex-1 sm:flex-none gap-2" onClick={() => onReviewItem(item)}>
-                      <Check className="w-4 h-4" />
-                      Revisar & Salvar
+                    <Button 
+                      variant="default" 
+                      size="sm" 
+                      className={`flex-1 sm:flex-none gap-2 ${item.dictMatch ? 'bg-emerald-600 hover:bg-emerald-700' : ''}`} 
+                      onClick={() => onReviewItem(item)}
+                    >
+                      {item.dictMatch ? (
+                        <>
+                          <Sparkles className="w-4 h-4" />
+                          Salvar Direto
+                        </>
+                      ) : (
+                        <>
+                          <Check className="w-4 h-4" />
+                          Revisar & Salvar
+                        </>
+                      )}
                     </Button>
                   </div>
                 </div>
