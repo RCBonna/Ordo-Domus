@@ -81,7 +81,8 @@ export function useInventory(unidadeId: string | undefined, onActionRecorded?: (
           categoria: editingItemData.categoria,
           comodo: editingItemData.comodo,
           quantidade: qtdMudou ? Math.abs(diff) : 0,
-          tipo: qtdMudou ? (diff > 0 ? 'entrada' : 'consumo') : 'ajuste'
+          tipo: qtdMudou ? (diff > 0 ? 'entrada' : 'consumo') : 'ajuste',
+          data: new Date().toISOString()
         });
       }
 
@@ -118,7 +119,8 @@ export function useInventory(unidadeId: string | undefined, onActionRecorded?: (
           categoria: item.categoria,
           comodo: item.comodo,
           quantidade: item.quantidade,
-          tipo: 'exclusao'
+          tipo: 'exclusao',
+          data: new Date().toISOString()
         });
       }
 
@@ -165,7 +167,8 @@ export function useInventory(unidadeId: string | undefined, onActionRecorded?: (
           categoria: item.categoria,
           comodo: item.comodo,
           quantidade: 1,
-          tipo: 'consumo'
+          tipo: 'consumo',
+          data: new Date().toISOString()
         });
       }
 
@@ -210,7 +213,8 @@ export function useInventory(unidadeId: string | undefined, onActionRecorded?: (
           categoria: item.categoria,
           comodo: item.comodo,
           quantidade: 1,
-          tipo: 'entrada'
+          tipo: 'entrada',
+          data: new Date().toISOString()
         });
       }
 

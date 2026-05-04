@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
 import { 
   Mic, MicOff, Box, Loader2, Tag, MapPin, 
   RefreshCw, PlusCircle, History, Trash2, Plus, Edit3, TrendingUp 
@@ -20,6 +21,11 @@ interface EntrySectionProps {
   error: string | null;
   handleExtract: () => void;
   currentResult: any | null;
+  setCurrentResult: (val: any) => void;
+  isPendingConfirmation: boolean;
+  isSaving: boolean;
+  confirmAndSave: (data: any) => void;
+  cancelConfirmation: () => void;
   mergeStatus: { action: 'MERGE' | 'ADD', message: string } | null;
   history: any[];
   handleClearHistory: () => void;
@@ -35,6 +41,11 @@ export function EntrySection({
   error,
   handleExtract,
   currentResult,
+  setCurrentResult,
+  isPendingConfirmation,
+  isSaving,
+  confirmAndSave,
+  cancelConfirmation,
   mergeStatus,
   history,
   handleClearHistory
@@ -61,11 +72,17 @@ export function EntrySection({
                   variant={isRecording ? "destructive" : "secondary"}
                   size="sm"
                   onClick={toggleRecording}
-                  disabled={isExtracting || !isSistemaLiberado}
+                  disabled={isExtracting || isPendingConfirmation || !isSistemaLiberado}
                   className={`gap-2 rounded-xl transition-all h-10 px-5 ${isRecording ? "animate-pulse" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
                 >
-                  {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-                  {isRecording ? "Parar" : "Falar"}
+                  {isExtracting ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : isRecording ? (
+                    <MicOff className="w-4 h-4" />
+                  ) : (
+                    <Mic className="w-4 h-4" />
+                  )}
+                  {isExtracting ? "Processando..." : isRecording ? "Parar" : "Falar"}
                 </Button>
               </div>
               <Textarea
@@ -73,12 +90,12 @@ export function EntrySection({
                 className="min-h-[140px] resize-none rounded-[20px] bg-slate-50/50 border-slate-100 focus-visible:ring-primary/20 text-base p-5"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                disabled={isExtracting || !isSistemaLiberado}
+                disabled={isExtracting || isPendingConfirmation || !isSistemaLiberado}
               />
             </div>
             {error && <p className="text-sm text-destructive font-medium bg-destructive/5 p-3 rounded-xl border border-destructive/10">{error}</p>}
-            <Button className="w-full rounded-[20px] h-14 text-lg font-bold shadow-lg shadow-primary/20" onClick={handleExtract} disabled={isExtracting || !input.trim() || !isSistemaLiberado}>
-              {isExtracting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Processando...</> : <><Box className="mr-2 h-5 w-5" /> Extrair e Salvar</>}
+            <Button className="w-full rounded-[20px] h-14 text-lg font-bold shadow-lg shadow-primary/20" onClick={handleExtract} disabled={isExtracting || isPendingConfirmation || !input.trim() || !isSistemaLiberado}>
+              {isExtracting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Processando...</> : <><Box className="mr-2 h-5 w-5" /> Extrair Dados</>}
             </Button>
           </CardContent>
         </Card>
@@ -90,26 +107,82 @@ export function EntrySection({
                 <h3 className="font-bold text-primary flex items-center gap-2">
                   <Tag className="w-4 h-4" /> Item Identificado
                 </h3>
-                <Badge className="rounded-full px-3 py-1 bg-primary/10 text-primary hover:bg-primary/20 border-none">
-                  {currentResult.categoria || 'Geral'}
-                </Badge>
+                {isPendingConfirmation ? (
+                  <Input 
+                    className="h-7 text-xs px-2 py-0 m-0 w-32 text-center bg-primary/10 border-primary/20 text-primary font-bold rounded-full"
+                    value={currentResult.categoria || ''} 
+                    onChange={e => setCurrentResult({...currentResult, categoria: e.target.value})} 
+                    placeholder="Geral"
+                  />
+                ) : (
+                  <Badge className="rounded-full px-3 py-1 bg-primary/10 text-primary border-none">
+                    {currentResult.categoria || 'Geral'}
+                  </Badge>
+                )}
               </div>
               <CardContent className="p-6 space-y-6">
                 <div className="grid grid-cols-2 gap-6">
+                  {currentResult.transcricao && (
+                    <div className="col-span-2 p-3 bg-slate-50 rounded-xl mb-2">
+                      <p className="text-xs text-slate-500 italic">"{currentResult.transcricao}"</p>
+                    </div>
+                  )}
                   <div className="space-y-1">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Produto</p>
-                    <p className="font-bold text-slate-900 text-lg">{currentResult.item}</p>
+                    {isPendingConfirmation ? (
+                      <Input 
+                        value={currentResult.item || ''} 
+                        onChange={e => setCurrentResult({...currentResult, item: e.target.value})}
+                        className="font-bold text-slate-900 text-lg h-9 px-2"
+                      />
+                    ) : (
+                      <p className="font-bold text-slate-900 text-lg px-2 py-1">{currentResult.item}</p>
+                    )}
                   </div>
                   <div className="space-y-1">
                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Quantidade</p>
-                    <p className="font-bold text-slate-900 text-lg">{currentResult.quantidade}</p>
+                    {isPendingConfirmation ? (
+                      <Input 
+                        type="number"
+                        value={currentResult.quantidade || ''} 
+                        onChange={e => setCurrentResult({...currentResult, quantidade: e.target.value})}
+                        className="font-bold text-slate-900 text-lg h-9 px-2"
+                      />
+                    ) : (
+                      <p className="font-bold text-slate-900 text-lg px-2 py-1">{currentResult.quantidade}</p>
+                    )}
                   </div>
                   <div className="col-span-2 p-4 bg-slate-50 rounded-2xl space-y-3">
-                    <div className="flex items-center gap-3">
-                      <MapPin className="w-4 h-4 text-primary opacity-60" />
-                      <div>
+                    <div className="flex items-start sm:items-center gap-3 w-full">
+                      <MapPin className="w-4 h-4 text-primary opacity-60 mt-2 sm:mt-0 shrink-0" />
+                      <div className="flex-1 w-full">
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1">Localização</p>
-                        <p className="text-sm font-bold text-slate-700">{currentResult.comodo} {currentResult.armario && `• ${currentResult.armario}`} {currentResult.caixa && `• ${currentResult.caixa}`}</p>
+                        {isPendingConfirmation ? (
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 mt-2 w-full">
+                            <Input 
+                              placeholder="Cômodo"
+                              value={currentResult.comodo || ''} 
+                              onChange={e => setCurrentResult({...currentResult, comodo: e.target.value})}
+                              className="h-8 text-sm font-bold text-slate-700 bg-white"
+                            />
+                            <Input 
+                              placeholder="Armário"
+                              value={currentResult.armario || ''} 
+                              onChange={e => setCurrentResult({...currentResult, armario: e.target.value})}
+                              className="h-8 text-sm font-bold text-slate-700 bg-white"
+                            />
+                            <Input 
+                              placeholder="Caixa"
+                              value={currentResult.caixa || ''} 
+                              onChange={e => setCurrentResult({...currentResult, caixa: e.target.value})}
+                              className="h-8 text-sm font-bold text-slate-700 bg-white"
+                            />
+                          </div>
+                        ) : (
+                          <p className="text-sm font-bold text-slate-700">
+                            {currentResult.comodo} {currentResult.armario && `• ${currentResult.armario}`} {currentResult.caixa && `• ${currentResult.caixa}`}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -120,6 +193,30 @@ export function EntrySection({
                       {mergeStatus.action === 'MERGE' ? <RefreshCw className="w-4 h-4" /> : <PlusCircle className="w-4 h-4" />}
                     </div>
                     {mergeStatus.message}
+                  </div>
+                )}
+                {isPendingConfirmation && (
+                  <div className="flex gap-3 pt-4 pb-4 w-full">
+                    <Button 
+                      variant="outline" 
+                      className="flex-1 border-rose-200 text-rose-500 hover:bg-rose-50 hover:text-rose-600 rounded-xl"
+                      onClick={cancelConfirmation}
+                      disabled={isSaving}
+                    >
+                      <Trash2 className="w-4 h-4 mr-2" />
+                      Descartar
+                    </Button>
+                    <Button 
+                      className="flex-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded-xl shadow-lg shadow-emerald-500/20"
+                      onClick={() => confirmAndSave(currentResult)}
+                      disabled={isSaving}
+                    >
+                      {isSaving ? (
+                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Salvando...</>
+                      ) : (
+                        <><PlusCircle className="w-4 h-4 mr-2" /> Confirmar</>
+                      )}
+                    </Button>
                   </div>
                 )}
               </CardContent>

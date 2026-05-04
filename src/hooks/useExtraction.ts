@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { extractInventoryData, type ExtractedItem } from '../services/geminiService';
+import { extractInventoryData, extractInventoryDataFromAudio, type ExtractedItem } from '../services/geminiService';
 import { formatarTexto, formatarData } from '../lib/utils';
 
 export function useExtraction(unidadeId: string | undefined) {
@@ -11,47 +11,206 @@ export function useExtraction(unidadeId: string | undefined) {
   const [mergeStatus, setMergeStatus] = useState<{ action: 'MERGE' | 'ADD', message: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<ExtractedItem[]>([]);
-  const recognitionRef = useRef<any>(null);
+  
+  const [isPendingConfirmation, setIsPendingConfirmation] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
-  const toggleRecording = () => {
-    // @ts-ignore
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-       setError("Seu navegador não suporta gravação de áudio.");
-       return;
+  const toggleRecording = async () => {
+    if (isRecording) {
+      if (mediaRecorderRef.current) {
+        mediaRecorderRef.current.stop();
+      }
+      return;
     }
-    if (isRecording && recognitionRef.current) {
-      recognitionRef.current.stop();
-      recognitionRef.current = null;
-      setIsRecording(false);
-      return; 
-    }
+
     try {
-        const recognition = new SpeechRecognition();
-        recognition.continuous = true;
-        recognition.lang = 'pt-BR';
-        recognition.interimResults = false;
-        recognition.onstart = () => setIsRecording(true);
-        recognition.onresult = (event: any) => {
-            const lastResult = event.results[event.results.length - 1];
-            const transcript = lastResult[0].transcript;
-            setInput(prev => prev ? prev + " " + transcript : transcript);
-        };
-        recognition.onerror = (event: any) => {
-            console.error("[Mic]", event.error);
-            setIsRecording(false);
-            recognitionRef.current = null;
-        };
-        recognition.onend = () => {
-            setIsRecording(false);
-            recognitionRef.current = null;
-        };
-        recognitionRef.current = recognition;
-        recognition.start();
-    } catch(e) {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
+        ? 'audio/webm;codecs=opus' 
+        : MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')
+        ? 'audio/ogg;codecs=opus'
+        : 'audio/webm';
+        
+      console.log("[Mic] Iniciando gravação com MIME:", mimeType);
+      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          audioChunksRef.current.push(event.data);
+          console.log("[Mic] Chunk recebido:", event.data.size);
+        }
+      };
+
+      mediaRecorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        console.log("[Mic] Gravação finalizada. Tamanho total:", audioBlob.size);
+        stream.getTracks().forEach(track => track.stop());
         setIsRecording(false);
-        recognitionRef.current = null;
+        
+        if (audioBlob.size < 1000) {
+          setError("O áudio gravado está vazio. Verifique seu microfone.");
+          return;
+        }
+
+        // Processar o áudio automaticamente após parar
+        await handleAudioExtraction(audioBlob, mimeType);
+      };
+
+      mediaRecorder.start(1000); // Enviar dados a cada 1 segundo
+      setIsRecording(true);
+      setError(null);
+    } catch (err) {
+      console.error("[Mic Error]", err);
+      setError("Não foi possível acessar o microfone.");
+      setIsRecording(false);
     }
+  };
+
+  const handleAudioExtraction = async (blob: Blob, mimeType: string) => {
+    if (!unidadeId) return;
+    setIsExtracting(true);
+    setError(null);
+    
+    try {
+      // Converter blob para base64
+      const reader = new FileReader();
+      const base64Promise = new Promise<string>((resolve) => {
+        reader.onloadend = () => {
+          const base64String = reader.result as string;
+          resolve(base64String.split(',')[1]);
+        };
+      });
+      reader.readAsDataURL(blob);
+      const base64Data = await base64Promise;
+
+      const dataRaw = await extractInventoryDataFromAudio(base64Data, mimeType);
+      await processExtractionResult(dataRaw);
+    } catch (err: any) {
+      console.error("[Audio Extraction Error]", err);
+      setError("Erro ao processar áudio. Tente falar de forma mais clara ou usar texto.");
+    } finally {
+      setIsExtracting(false);
+    }
+  };
+
+  const processExtractionResult = async (dataRaw: ExtractedItem) => {
+    if (!unidadeId) return;
+
+    const data: ExtractedItem = {
+      item: formatarTexto(dataRaw.item) || 'Item sem nome',
+      categoria: formatarTexto(dataRaw.categoria) || 'Geral',
+      comodo: formatarTexto(dataRaw.comodo) || 'Não informado',
+      armario: formatarTexto(dataRaw.armario) || '',
+      caixa: formatarTexto(dataRaw.caixa) || '',
+      validade: formatarData(dataRaw.validade) || '',
+      quantidade: Number(dataRaw.quantidade) || 1,
+      transcricao: dataRaw.transcricao
+    };
+    
+    setCurrentResult(data);
+    setIsPendingConfirmation(true);
+    setMergeStatus(null);
+    setError(null);
+    
+    if (data.transcricao) {
+      setInput(data.transcricao);
+    }
+  };
+
+  const confirmAndSave = async (editedData: ExtractedItem) => {
+    if (!unidadeId) return;
+    setIsSaving(true);
+    setError(null);
+
+    try {
+      console.log("[Extraction] Iniciando gravação no Supabase (upsert_inventario)...", editedData);
+
+      const dbPromise = (async () => {
+        console.log("[Extraction] Iniciando chamada RPC upsert_inventario...");
+        const { data: resultado, error: erroUpsert } = await supabase.rpc('upsert_inventario', {
+          p_unidade_id: unidadeId,
+          p_nome: editedData.item,
+          p_categoria: editedData.categoria,
+          p_comodo: editedData.comodo,
+          p_armario: editedData.armario,
+          p_caixa: editedData.caixa,
+          p_quantidade: editedData.quantidade,
+          p_validade: editedData.validade
+        });
+        console.log("[Extraction] Retorno da chamada RPC upsert_inventario:", resultado, erroUpsert);
+
+        if (erroUpsert) throw erroUpsert;
+        
+        const acaoFinal = resultado?.acao as 'MERGE' | 'ADD' || 'ADD';
+        const mensagem = acaoFinal === 'MERGE'
+          ? 'A quantidade foi somada a um item existente!'
+          : 'Item gravado com sucesso no inventário!';
+        
+        const itemNaTela: ExtractedItem = {
+          item: resultado?.nome || editedData.item,
+          categoria: resultado?.categoria || editedData.categoria,
+          comodo: resultado?.comodo || editedData.comodo,
+          armario: resultado?.armario || editedData.armario,
+          caixa: resultado?.caixa || editedData.caixa,
+          validade: resultado?.validade || editedData.validade || '',
+          quantidade: Number(editedData.quantidade),
+          tipo: 'entrada',
+          transcricao: editedData.transcricao,
+          data: new Date().toISOString()
+        };
+
+        // Gravar no histórico do banco
+        console.log("[Extraction] Iniciando inserção em movimentacoes_inventario...");
+        const { error: erroHist } = await supabase
+          .from('movimentacoes_inventario')
+          .insert({
+            unidade_id: unidadeId,
+            item_nome: itemNaTela.item,
+            categoria: itemNaTela.categoria,
+            comodo: itemNaTela.comodo,
+            quantidade: itemNaTela.quantidade,
+            tipo: 'entrada'
+          });
+        console.log("[Extraction] Retorno da inserção em movimentacoes_inventario:", erroHist);
+
+        if (erroHist) console.warn("Erro ao gravar histórico:", erroHist);
+
+        return { itemNaTela, acaoFinal, mensagem };
+      })();
+
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Timeout: O banco de dados demorou muito para responder.')), 10000)
+      );
+
+      const dbResult: any = await Promise.race([dbPromise, timeoutPromise]);
+
+      setHistory(prev => [dbResult.itemNaTela, ...prev]);
+      setMergeStatus({ action: dbResult.acaoFinal, message: dbResult.mensagem });
+      
+      setCurrentResult(dbResult.itemNaTela);
+      setIsPendingConfirmation(false);
+      
+      if (!editedData.transcricao) {
+         setInput('');
+      }
+    } catch (err: any) {
+      console.error("[Confirm And Save Error]", err);
+      setError(`Erro ao salvar no BD: ${err.message || 'Desconhecido'}`);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const cancelConfirmation = () => {
+    setIsPendingConfirmation(false);
+    setCurrentResult(null);
+    setMergeStatus(null);
+    setError(null);
   };
 
   const handleExtract = async () => {
@@ -60,65 +219,13 @@ export function useExtraction(unidadeId: string | undefined) {
     setError(null);
     setCurrentResult(null);
     setMergeStatus(null);
+    setIsPendingConfirmation(false);
     try {
       const dataRaw = await extractInventoryData(input);
-      const data: ExtractedItem = {
-        item: formatarTexto(dataRaw.item) || 'Item sem nome',
-        categoria: formatarTexto(dataRaw.categoria) || '',
-        comodo: formatarTexto(dataRaw.comodo) || 'Não informado',
-        armario: formatarTexto(dataRaw.armario) || '',
-        caixa: formatarTexto(dataRaw.caixa) || '',
-        validade: formatarData(dataRaw.validade) || '',
-        quantidade: Number(dataRaw.quantidade) || 1
-      };
-      setCurrentResult(data);
-
-      const { data: resultado, error: erroUpsert } = await supabase.rpc('upsert_inventario', {
-        p_unidade_id: unidadeId,
-        p_nome: data.item,
-        p_categoria: data.categoria,
-        p_comodo: data.comodo,
-        p_armario: data.armario,
-        p_caixa: data.caixa,
-        p_quantidade: data.quantidade,
-        p_validade: data.validade
-      });
-
-      if (erroUpsert) throw new Error('Falha ao gravar no banco de dados.');
-      
-      const acaoFinal = resultado.acao as 'MERGE' | 'ADD';
-      const mensagem = acaoFinal === 'MERGE'
-        ? 'A quantidade foi somada a um item existente!'
-        : 'Item gravado com sucesso no inventário!';
-      
-      const itemNaTela: ExtractedItem = {
-        item: resultado.nome,
-        categoria: resultado.categoria,
-        comodo: resultado.comodo,
-        armario: resultado.armario,
-        caixa: resultado.caixa,
-        validade: resultado.validade || '',
-        quantidade: Number(data.quantidade), // Quantidade que foi adicionada agora
-        tipo: 'entrada'
-      };
-
-      // Gravar no histórico do banco
-      await supabase
-        .from('movimentacoes_inventario')
-        .insert({
-          unidade_id: unidadeId,
-          item_nome: itemNaTela.item,
-          categoria: itemNaTela.categoria,
-          comodo: itemNaTela.comodo,
-          quantidade: itemNaTela.quantidade,
-          tipo: 'entrada'
-        });
-
-      setHistory(prev => [itemNaTela, ...prev]);
-      setMergeStatus({ action: acaoFinal, message: mensagem });
-      setInput('');
+      await processExtractionResult(dataRaw);
+      // Removed setInput('') from here because processExtractionResult now handles it.
     } catch (err: any) {
-      console.error("[useExtraction] Erro:", err);
+      console.error("[handleExtract] Erro:", err);
       setError(err.message && err.message.includes('503') ? 'IA ocupada. Tente novamente em instantes.' : 'Erro ao processar. Verifique a conexão.');
     } finally {
       setIsExtracting(false);
@@ -141,7 +248,10 @@ export function useExtraction(unidadeId: string | undefined) {
         comodo: m.comodo,
         quantidade: m.quantidade,
         tipo: m.tipo as any,
-        data: m.criado_em
+        data: m.criado_em,
+        armario: '',
+        caixa: '',
+        validade: ''
       }));
       setHistory(historyItems);
     }
@@ -155,6 +265,7 @@ export function useExtraction(unidadeId: string | undefined) {
     setHistory([]);
     setCurrentResult(null);
     setMergeStatus(null);
+    setIsPendingConfirmation(false);
   };
 
   const addHistoryItem = (item: any) => {
@@ -163,9 +274,8 @@ export function useExtraction(unidadeId: string | undefined) {
 
   useEffect(() => {
     return () => {
-      if (recognitionRef.current) {
-        recognitionRef.current.stop();
-        recognitionRef.current = null;
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.stop();
       }
     };
   }, []);
@@ -174,7 +284,9 @@ export function useExtraction(unidadeId: string | undefined) {
     input, setInput,
     isRecording, toggleRecording,
     isExtracting, handleExtract,
-    currentResult, mergeStatus, error,
+    currentResult, setCurrentResult,
+    isPendingConfirmation, isSaving, confirmAndSave, cancelConfirmation,
+    mergeStatus, error,
     history, setHistory, handleClearHistory,
     addHistoryItem,
     carregarHistorico

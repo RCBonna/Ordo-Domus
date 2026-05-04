@@ -1,13 +1,11 @@
 import { motion } from 'motion/react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { 
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
-} from '@/components/ui/table';
-import { 
   Box, AlertTriangle, Clock, TrendingUp, MapPin, 
-  PieChart as PieChartIcon, Plus, History, Tag, Trash2, Edit3
+  PieChart as PieChartIcon, Plus, History, Tag, Trash2, Edit3,
+  Calendar, ArrowRight, Package, ShoppingCart, Zap
 } from 'lucide-react';
 import { 
   ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, 
@@ -19,9 +17,10 @@ interface InventoryDashboardProps {
   history: any[];
   isConsumivel: (categoria?: string) => boolean;
   formatarTexto: (texto?: any) => string;
+  onNavigateToItem?: (itemName: string) => void;
 }
 
-// Custom Label for Pie Chart
+// Custom Label for Pie Chart with better visibility
 const renderPieLabel = (props: any) => {
   const { cx, cy, midAngle, innerRadius, outerRadius, percent, value } = props;
   const RADIAN = Math.PI / 180;
@@ -30,18 +29,18 @@ const renderPieLabel = (props: any) => {
   const ix = cx + radiusInner * Math.cos(-midAngle * RADIAN);
   const iy = cy + radiusInner * Math.sin(-midAngle * RADIAN);
   
-  const radiusOuter = outerRadius + 30;
+  const radiusOuter = outerRadius + 25;
   const ex = cx + radiusOuter * Math.cos(-midAngle * RADIAN);
   const ey = cy + radiusOuter * Math.sin(-midAngle * RADIAN);
   
   return (
     <g>
       {percent > 0.05 && (
-        <text x={ix} y={iy} fill="white" textAnchor="middle" dominantBaseline="central" fontSize="10" fontWeight="900">
+        <text x={ix} y={iy} fill="white" stroke="rgba(0,0,0,0.4)" strokeWidth={3} paintOrder="stroke" textAnchor="middle" dominantBaseline="central" fontSize="12" fontWeight="900">
           {`${(percent * 100).toFixed(0)}%`}
         </text>
       )}
-      <text x={ex} y={ey} fill="#64748b" textAnchor={ex > cx ? 'start' : 'end'} dominantBaseline="central" fontSize="12" fontWeight="800">
+      <text x={ex} y={ey} fill="#64748b" textAnchor={ex > cx ? 'start' : 'end'} dominantBaseline="central" fontSize="12" fontWeight="700">
         {value}
       </text>
     </g>
@@ -52,271 +51,375 @@ export function InventoryDashboard({
   fullInventory, 
   history, 
   isConsumivel, 
-  formatarTexto 
+  formatarTexto,
+  onNavigateToItem
 }: InventoryDashboardProps) {
+  
+  // Helpers for Expiry
+  const getDaysUntilExpiry = (dateStr: string) => {
+    if (!dateStr) return null;
+    const parts = dateStr.split('/');
+    let expiryDate;
+    if (parts.length === 3) {
+      expiryDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+    } else if (parts.length === 2) {
+      expiryDate = new Date(parseInt(parts[1]), parseInt(parts[0]) - 1, 1);
+    } else {
+      return null;
+    }
+    const diffTime = expiryDate.getTime() - new Date().getTime();
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
+
+  const expiringSoon = fullInventory
+    .filter(item => {
+      const days = getDaysUntilExpiry(item.validade);
+      return days !== null && days >= 0 && days <= 30;
+    })
+    .sort((a, b) => (getDaysUntilExpiry(a.validade) || 999) - (getDaysUntilExpiry(b.validade) || 999));
+
+  const criticalStock = fullInventory
+    .filter(i => (i.quantidade || 0) <= 1 && isConsumivel(i.categoria))
+    .slice(0, 8);
+
+  const totalItemsCount = fullInventory.reduce((acc, i) => acc + (i.quantidade || 0), 0);
+  
+  const chartColors = ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f59e0b', '#10b981', '#06b6d4'];
+
   return (
     <motion.div 
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -20 }}
-      transition={{ duration: 0.3 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      className="space-y-8 pb-10"
     >
-      <div className="space-y-12">
-        {/* KPI Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="border-none shadow-sm rounded-[28px] bg-white p-6 border border-slate-100">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center text-primary">
-                <Box className="w-6 h-6" />
-              </div>
+      {/* KPI Section */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { 
+            label: 'Total de Itens', 
+            value: totalItemsCount, 
+            icon: Package, 
+            color: 'from-indigo-500 to-blue-600',
+            sub: `${fullInventory.length} SKUs cadastrados`
+          },
+          { 
+            label: 'Estoque Crítico', 
+            value: fullInventory.filter(i => (i.quantidade || 0) <= 1 && isConsumivel(i.categoria)).length, 
+            icon: AlertTriangle, 
+            color: 'from-rose-500 to-pink-600',
+            sub: 'Abaixo da reserva'
+          },
+          { 
+            label: 'A Vencer (30d)', 
+            value: expiringSoon.length, 
+            icon: Clock, 
+            color: 'from-amber-500 to-orange-600',
+            sub: 'Radar de validade'
+          },
+          { 
+            label: 'Atividade Hoje', 
+            value: history.filter(h => {
+              if (!h.data) return true; // Items added locally have today's date implicitly
+              const d = new Date(h.data);
+              const today = new Date();
+              return d.getDate() === today.getDate() && 
+                     d.getMonth() === today.getMonth() && 
+                     d.getFullYear() === today.getFullYear();
+            }).length, 
+            icon: Zap, 
+            color: 'from-emerald-500 to-teal-600',
+            sub: 'Movimentações recentes'
+          }
+        ].map((kpi, idx) => (
+          <motion.div
+            key={idx}
+            whileHover={{ y: -4 }}
+            className="relative overflow-hidden rounded-[24px] bg-white p-5 shadow-sm border border-slate-100"
+          >
+            <div className="flex items-start justify-between">
               <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Total de Itens</p>
-                <h3 className="text-2xl font-black text-slate-900">{fullInventory.reduce((acc, i) => acc + (i.quantidade || 0), 0)}</h3>
+                <p className="text-xs font-black text-slate-400 uppercase tracking-[0.1em] mb-1">{kpi.label}</p>
+                <h3 className="text-3xl font-black text-slate-900 tracking-tight">{kpi.value}</h3>
+                <p className="text-xs font-bold text-slate-400 mt-1">{kpi.sub}</p>
+              </div>
+              <div className={`p-3 rounded-2xl bg-gradient-to-br ${kpi.color} text-white shadow-lg shadow-indigo-100`}>
+                <kpi.icon className="w-5 h-5" />
               </div>
             </div>
-          </Card>
+            <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r opacity-10 from-transparent via-current to-transparent" />
+          </motion.div>
+        ))}
+      </div>
 
-          <Card className="border-none shadow-sm rounded-[28px] bg-white p-6 border border-slate-100">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-rose-50 rounded-2xl flex items-center justify-center text-rose-500">
-                <AlertTriangle className="w-6 h-6" />
+      {/* Main Grid */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+        
+        {/* Left Column: Charts & Analysis */}
+        <div className="xl:col-span-2 space-y-8">
+          
+          {/* Charts Row */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card className="border-none shadow-sm rounded-[32px] bg-white overflow-hidden border border-slate-100">
+              <div className="p-6 pb-0 flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">Cômodos</h3>
+                  <p className="text-xs text-slate-400 font-bold">Distribuição por ambiente</p>
+                </div>
+                <div className="p-2 bg-slate-50 rounded-xl">
+                  <MapPin className="w-4 h-4 text-slate-400" />
+                </div>
               </div>
-              <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Estoque Crítico</p>
-                <h3 className="text-2xl font-black text-slate-900">{fullInventory.filter(i => (i.quantidade || 0) <= 1 && isConsumivel(i.categoria)).length}</h3>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="border-none shadow-sm rounded-[28px] bg-white p-6 border border-slate-100">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-amber-50 rounded-2xl flex items-center justify-center text-amber-500">
-                <Clock className="w-6 h-6" />
-              </div>
-              <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">A Vencer (30d)</p>
-                <h3 className="text-2xl font-black text-slate-900">
-                  {fullInventory.filter(item => {
-                    if (!item.validade) return false;
-                    const parts = item.validade.split('/');
-                    let expiryDate;
-                    if (parts.length === 3) expiryDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
-                    else if (parts.length === 2) expiryDate = new Date(parseInt(parts[1]), parseInt(parts[0]) - 1, 1);
-                    else return false;
-                    const diffDays = Math.ceil((expiryDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-                    return diffDays >= 0 && diffDays <= 30;
-                  }).length}
-                </h3>
-              </div>
-            </div>
-          </Card>
-
-          <Card className="border-none shadow-sm rounded-[28px] bg-white p-6 border border-slate-100">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-500">
-                <TrendingUp className="w-6 h-6" />
-              </div>
-              <div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Valor Estimado</p>
-                <h3 className="text-2xl font-black text-slate-900">R$ 0,00</h3>
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        {/* Charts Row */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <Card className="border-none shadow-sm rounded-[32px] bg-white p-8 border border-slate-100">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h3 className="text-lg font-black text-slate-800 tracking-tight">Distribuição por Cômodo</h3>
-                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Volume total por ambiente</p>
-              </div>
-              <div className="p-2 bg-slate-50 rounded-xl">
-                <MapPin className="w-5 h-5 text-slate-300" />
-              </div>
-            </div>
-            
-            <div className="h-[300px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart 
-                  data={Object.entries(
-                    fullInventory.reduce((acc: any, item: any) => {
-                      const comodo = item.comodo || 'Outros';
-                      acc[comodo] = (acc[comodo] || 0) + (item.quantidade || 0);
-                      return acc;
-                    }, {})
-                  ).map(([name, total]) => ({ name, total }))}
-                  layout="vertical"
-                  margin={{ left: 20, right: 40, top: 0, bottom: 0 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
-                  <XAxis type="number" hide />
-                  <YAxis 
-                    dataKey="name" 
-                    type="category" 
-                    width={100} 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{ fill: '#64748b', fontSize: 12, fontWeight: 700 }} 
-                  />
-                  <Tooltip 
-                    cursor={{ fill: '#f8fafc' }}
-                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                  />
-                  <Bar dataKey="total" radius={[0, 8, 8, 0]} barSize={24}>
-                    {Object.entries(
+              <div className="h-[280px] w-full p-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart 
+                    data={Object.entries(
                       fullInventory.reduce((acc: any, item: any) => {
-                        const comodo = formatarTexto(item.comodo) || 'Outros';
+                        const comodo = item.comodo || 'Outros';
                         acc[comodo] = (acc[comodo] || 0) + (item.quantidade || 0);
                         return acc;
                       }, {})
-                    ).map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={['#6366f1', '#f43f5e', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4', '#ec4899'][index % 7]} />
-                    ))}
-                    <LabelList dataKey="total" position="right" style={{ fill: '#64748b', fontSize: 12, fontWeight: 800 }} offset={10} />
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </Card>
-
-          <Card className="border-none shadow-sm rounded-[32px] bg-white p-8 border border-slate-100">
-            <div className="flex items-center justify-between mb-8">
-              <div>
-                <h3 className="text-lg font-black text-slate-800 tracking-tight">Categorias de Produtos</h3>
-                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Mix de produtos por tipo</p>
-              </div>
-              <div className="p-2 bg-slate-50 rounded-xl">
-                <PieChartIcon className="w-5 h-5 text-slate-300" />
-              </div>
-            </div>
-
-            <div className="h-[300px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={Object.entries(
-                      fullInventory.reduce((acc: any, item: any) => {
-                        const cat = item.categoria || 'Geral';
-                        acc[cat] = (acc[cat] || 0) + (item.quantidade || 0);
-                        return acc;
-                      }, {})
-                    ).map(([name, value]) => ({ name, value }))}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={90}
-                    paddingAngle={8}
-                    dataKey="value"
-                    label={renderPieLabel}
-                    labelLine={false}
+                    ).map(([name, total]) => ({ name, total: total as number })).sort((a, b) => b.total - a.total).slice(0, 6)}
+                    layout="vertical"
+                    margin={{ left: -20, right: 30, top: 0, bottom: 0 }}
                   >
-                    {['#6366f1', '#f43f5e', '#10b981', '#f59e0b', '#8b5cf6', '#06b6d4'].map((color, index) => (
-                      <Cell key={`cell-${index}`} fill={color} />
-                    ))}
-                  </Pie>
-                  <Tooltip 
-                    contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-                  />
-                  <Legend verticalAlign="bottom" height={36}/>
-                </PieChart>
-              </ResponsiveContainer>
+                    <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f8fafc" />
+                    <XAxis type="number" hide />
+                    <YAxis 
+                      dataKey="name" 
+                      type="category" 
+                      width={100} 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fill: '#64748b', fontSize: 12, fontWeight: 800 }} 
+                    />
+                    <Tooltip 
+                      cursor={{ fill: '#f1f5f9', radius: 4 }}
+                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '12px' }}
+                    />
+                    <Bar dataKey="total" radius={[0, 6, 6, 0]} barSize={18}>
+                      {chartColors.map((color, index) => (
+                        <Cell key={`cell-${index}`} fill={color} fillOpacity={0.8} />
+                      ))}
+                      <LabelList dataKey="total" position="right" style={{ fill: '#94a3b8', fontSize: 12, fontWeight: 900 }} offset={8} />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+            <Card className="border-none shadow-sm rounded-[32px] bg-white overflow-hidden border border-slate-100">
+              <div className="p-6 pb-0 flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">Mix de Categorias</h3>
+                  <p className="text-xs text-slate-400 font-bold">Variedade do inventário</p>
+                </div>
+                <div className="p-2 bg-slate-50 rounded-xl">
+                  <PieChartIcon className="w-4 h-4 text-slate-400" />
+                </div>
+              </div>
+              <div className="h-[280px] w-full p-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={Object.entries(
+                        fullInventory.reduce((acc: any, item: any) => {
+                          const cat = item.categoria || 'Geral';
+                          acc[cat] = (acc[cat] || 0) + (item.quantidade || 0);
+                          return acc;
+                        }, {})
+                      ).map(([name, value]) => ({ name, value: value as number })).sort((a, b) => b.value - a.value).slice(0, 5)}
+                      cx="50%"
+                      cy="45%"
+                      innerRadius={55}
+                      outerRadius={80}
+                      paddingAngle={6}
+                      dataKey="value"
+                      label={renderPieLabel}
+                      labelLine={false}
+                    >
+                      {chartColors.map((color, index) => (
+                        <Cell key={`cell-${index}`} fill={color} />
+                      ))}
+                    </Pie>
+                    <Tooltip 
+                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)', fontSize: '11px' }}
+                    />
+                    <Legend verticalAlign="bottom" height={36} iconType="circle" wrapperStyle={{ fontSize: '12px', fontWeight: 'bold', paddingTop: '20px' }}/>
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          </div>
+
+          {/* Expiry Radar (Radar de Validade) */}
+          <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
+                  <Calendar className="w-5 h-5 text-amber-500" />
+                  Próximos Vencimentos
+                </h3>
+                <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Itens que precisam de atenção</p>
+              </div>
+              <Badge variant="outline" className="rounded-full px-3 py-1 text-xs font-black border-amber-100 text-amber-600 bg-amber-50">
+                {expiringSoon.length} alertas
+              </Badge>
             </div>
-          </Card>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {expiringSoon.slice(0, 6).map((item, idx) => {
+                const days = getDaysUntilExpiry(item.validade);
+                const isUrgent = days !== null && days <= 7;
+                
+                return (
+                  <div 
+                    key={idx} 
+                    onClick={() => onNavigateToItem?.(item.nome)}
+                    className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 group hover:border-amber-200 hover:bg-amber-50/30 transition-all cursor-pointer"
+                  >
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isUrgent ? 'bg-rose-100 text-rose-500' : 'bg-amber-100 text-amber-500'}`}>
+                      <Clock className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-slate-700 text-sm truncate group-hover:text-amber-700 transition-colors">{item.nome}</p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-slate-400 font-bold uppercase">{item.comodo}</span>
+                        <span className="text-xs text-slate-300">•</span>
+                        <span className={`text-xs font-black ${isUrgent ? 'text-rose-500' : 'text-amber-500'}`}>
+                          {days === 0 ? 'Vence HOJE' : `Em ${days} dias`}
+                        </span>
+                      </div>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-amber-300 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
+                  </div>
+                );
+              })}
+              {expiringSoon.length === 0 && (
+                <div className="col-span-full py-10 flex flex-col items-center justify-center text-slate-300">
+                  <Clock className="w-12 h-12 mb-2 opacity-20" />
+                  <p className="italic text-sm font-bold">Nenhum item vencendo em breve.</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
-        {/* Itens em Destaque */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm">
-            <h3 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-rose-500" />
+        {/* Right Column: Alerts & Actions */}
+        <div className="space-y-8">
+          
+          {/* Suggested Replenishment */}
+          <div className="bg-white border border-indigo-100 rounded-[32px] p-8 shadow-sm">
+            <h3 className="text-lg font-black mb-6 flex items-center gap-2 text-indigo-900">
+              <ShoppingCart className="w-5 h-5 text-indigo-500" />
               Reposição Sugerida
             </h3>
-            <div className="space-y-4">
-              {fullInventory.filter(i => (i.quantidade || 0) <= 1 && isConsumivel(i.categoria)).slice(0, 5).map(item => (
-                <div key={item.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl hover:bg-slate-100 transition-colors">
+            <div className="space-y-3">
+              {criticalStock.map((item, idx) => (
+                <div 
+                  key={idx} 
+                  onClick={() => onNavigateToItem?.(item.nome)}
+                  className="flex items-center justify-between p-3 bg-indigo-50/50 rounded-2xl border border-indigo-100/50 group hover:bg-indigo-50 hover:border-indigo-200 transition-all cursor-pointer"
+                >
                   <div className="flex flex-col">
-                    <span className="font-bold text-slate-700">{item.nome}</span>
-                    <span className="text-[10px] text-slate-400 font-bold uppercase">{item.comodo}</span>
+                    <span className="font-bold text-sm leading-tight text-slate-700 group-hover:text-indigo-700 transition-colors">{item.nome}</span>
+                    <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">{item.comodo}</span>
                   </div>
-                  <div className="px-3 py-1 bg-rose-100 text-rose-600 rounded-full text-xs font-black">
-                    {item.quantidade} un
+                  <div className="flex items-center gap-3">
+                    <div className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded-lg text-xs font-black">
+                      {item.quantidade} un
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-indigo-300 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
                   </div>
                 </div>
               ))}
-              {fullInventory.filter(i => (i.quantidade || 0) <= 1 && isConsumivel(i.categoria)).length === 0 && (
-                <p className="text-slate-400 text-center py-4 italic text-sm font-medium">Estoque saudável!</p>
+              {criticalStock.length === 0 && (
+                <div className="text-center py-8 opacity-50 text-indigo-900">
+                  <Package className="w-8 h-8 mx-auto mb-2" />
+                  <p className="text-xs font-bold">Tudo em ordem!</p>
+                </div>
+              )}
+              {fullInventory.filter(i => (i.quantidade || 0) <= 1 && isConsumivel(i.categoria)).length > 8 && (
+                <p className="text-xs text-center text-slate-400 font-bold uppercase mt-2">
+                  + {fullInventory.filter(i => (i.quantidade || 0) <= 1 && isConsumivel(i.categoria)).length - 8} itens críticos
+                </p>
               )}
             </div>
           </div>
 
-          <div className="bg-slate-900 rounded-[32px] p-8 text-white shadow-xl shadow-slate-200">
-            <h3 className="text-lg font-black mb-6 flex items-center gap-2">
-              <Clock className="w-5 h-5 text-primary" />
-              Ações Recentes
+          {/* Activity Feed */}
+          <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm flex flex-col h-[520px]">
+            <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-6 flex items-center gap-2 shrink-0">
+              <History className="w-4 h-4 text-slate-400" />
+              Linha do Tempo
             </h3>
-            <ScrollArea className="h-[350px] pr-4">
+            <div className="flex-1 overflow-y-auto -mr-2 pr-2">
               <div className="space-y-4">
-                {history.slice(0, 15).map((item, idx) => {
+                {history.slice(0, 30).map((item, idx) => {
                   const isConsumo = item.tipo === 'consumo';
                   const isExclusao = item.tipo === 'exclusao';
                   const isAjuste = item.tipo === 'ajuste';
+                  const isEntrada = item.tipo === 'entrada';
 
-                  const dataFormatada = item.data ? new Date(item.data).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '';
+                  let dataFormatada = 'Agora';
+                  if (item.data) {
+                    const d = new Date(item.data);
+                    const today = new Date();
+                    const isToday = d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
+                    dataFormatada = isToday 
+                      ? d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                      : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) + ' ' + d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                  }
                   
-                  let icon = <Plus className="w-4 h-4 text-emerald-500" />;
-                  let bgColor = 'bg-emerald-500/20';
+                  let colorClass = 'bg-emerald-50 text-emerald-600 border-emerald-100';
+                  let icon = <Plus className="w-3.5 h-3.5" />;
                   let label = `Entrada em ${item.comodo}`;
                   let sign = '+';
-                  let textColor = 'text-emerald-500';
 
                   if (isConsumo) {
-                    icon = <TrendingUp className="w-4 h-4 text-rose-500 rotate-180" />;
-                    bgColor = 'bg-rose-500/20';
+                    colorClass = 'bg-rose-50 text-rose-600 border-rose-100';
+                    icon = <ArrowRight className="w-3.5 h-3.5 rotate-45" />;
                     label = `Saída de ${item.comodo}`;
                     sign = '-';
-                    textColor = 'text-rose-500';
                   } else if (isExclusao) {
-                    icon = <Trash2 className="w-4 h-4 text-slate-400" />;
-                    bgColor = 'bg-slate-500/20';
-                    label = `Excluído de ${item.comodo}`;
+                    colorClass = 'bg-slate-50 text-slate-500 border-slate-200';
+                    icon = <Trash2 className="w-3.5 h-3.5" />;
+                    label = `Removido`;
                     sign = '';
-                    textColor = 'text-slate-400';
                   } else if (isAjuste) {
-                    icon = <Edit3 className="w-4 h-4 text-amber-500" />;
-                    bgColor = 'bg-amber-500/20';
-                    label = `Editado em ${item.comodo}`;
+                    colorClass = 'bg-amber-50 text-amber-600 border-amber-100';
+                    icon = <Edit3 className="w-3.5 h-3.5" />;
+                    label = `Atualizado`;
                     sign = '';
-                    textColor = 'text-amber-500';
                   }
 
                   return (
-                    <div key={idx} className="flex items-center gap-4 p-4 bg-white/5 rounded-2xl border border-white/5 hover:bg-white/10 transition-colors">
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${bgColor}`}>
-                        {icon}
+                    <div key={idx} className="relative pl-6 pb-4 border-l border-slate-100 last:pb-0">
+                      <div className={`absolute -left-[7px] top-1 w-3.5 h-3.5 rounded-full border-2 border-white flex items-center justify-center ${colorClass.split(' ')[0]}`}>
+                        <div className={`w-1 h-1 rounded-full ${colorClass.split(' ')[1].replace('text-', 'bg-')}`} />
                       </div>
-                      <div className="flex flex-col flex-1">
+                      <div className="flex flex-col gap-1">
                         <div className="flex items-center justify-between">
-                          <span className="font-bold text-white text-sm leading-tight">{item.item}</span>
-                          <span className="text-[9px] text-white/30 font-bold">{dataFormatada}</span>
+                          <span className="font-bold text-slate-700 text-xs truncate max-w-[120px]">{item.item}</span>
+                          <span className="text-xs text-slate-300 font-black">{dataFormatada}</span>
                         </div>
-                        <span className="text-[10px] text-white/40 font-bold uppercase tracking-widest">
-                          {label}
-                        </span>
-                      </div>
-                      <div className={`${textColor} font-black text-sm`}>
-                        {sign}{item.quantidade}
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-slate-400 font-bold uppercase tracking-tight">{label}</span>
+                          <span className={`text-xs font-black ${colorClass.split(' ')[1]}`}>
+                            {sign}{item.quantidade}
+                          </span>
+                        </div>
                       </div>
                     </div>
                   );
                 })}
                 {history.length === 0 && (
-                  <p className="text-white/40 text-center py-4 italic text-sm font-medium">Nenhuma atividade recente.</p>
+                  <p className="text-slate-300 text-center py-10 italic text-sm font-bold">Sem atividades registradas.</p>
                 )}
               </div>
-            </ScrollArea>
+            </div>
           </div>
+
         </div>
       </div>
     </motion.div>

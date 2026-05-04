@@ -33,31 +33,44 @@ export default function Auth() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    console.log("[Auth] Iniciando tentativa de login/cadastro...", { email, isLogin })
     setLoading(true)
     setMessage(null)
 
-    if (isLogin) {
-      const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
-      if (error) setMessage({ type: 'error', text: traduzirErro(error.message) })
-    } else {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-      })
-      if (error) {
-        setMessage({ type: 'error', text: traduzirErro(error.message) })
-      } else if (data?.user?.identities?.length === 0) {
-        // Supabase retorna "sucesso" mas sem identities quando o e-mail já existe
-        setMessage({ type: 'error', text: 'Este e-mail já está cadastrado. Faça o login.' })
+    try {
+      if (isLogin) {
+        const { error } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        })
+        if (error) {
+          console.error("[Auth] Erro no login:", error.message)
+          setMessage({ type: 'error', text: traduzirErro(error.message) })
+        } else {
+          console.log("[Auth] Login bem-sucedido!")
+        }
       } else {
-        setMessage({ type: 'success', text: 'Conta criada com sucesso! Você já foi logado automaticamente.' })
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+        })
+        if (error) {
+          console.error("[Auth] Erro no cadastro:", error.message)
+          setMessage({ type: 'error', text: traduzirErro(error.message) })
+        } else if (data?.user?.identities?.length === 0) {
+          setMessage({ type: 'error', text: 'Este e-mail já está cadastrado. Faça o login.' })
+        } else {
+          console.log("[Auth] Cadastro bem-sucedido!")
+          setMessage({ type: 'success', text: 'Conta criada com sucesso! Você já foi logado automaticamente.' })
+        }
       }
+    } catch (err: any) {
+      console.error("[Auth] Erro inesperado:", err)
+      setMessage({ type: 'error', text: 'Ocorreu um erro inesperado. Tente novamente.' })
+    } finally {
+      setLoading(false)
+      console.log("[Auth] Processo finalizado.")
     }
-    
-    setLoading(false)
   }
 
   return (

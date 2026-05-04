@@ -111,24 +111,32 @@ alter table movimentacoes_inventario enable row level security;
 alter table membros_unidades_view enable row level security;
 
 -- POLICIES PARA unidades
-create policy "Ver próprias unidades"
-  on unidades for select
-  using (id in (select unidade_id from membros_unidades where user_id = auth.uid() and status = 'aprovado'));
-
-create policy "Criar novas unidades"
+drop policy if exists "Permitir inserção de unidades para usuários autenticados" on unidades;
+create policy "Permitir inserção de unidades para usuários autenticados"
   on unidades for insert
-  with check (auth.uid() is not null);
+  to authenticated
+  with check (true);
+
+drop policy if exists "Permitir leitura de unidades que o usuário é membro" on unidades;
+create policy "Permitir leitura de unidades que o usuário é membro"
+  on unidades for select
+  using (
+    id in (select unidade_id from membros_unidades where user_id = auth.uid())
+  );
 
 -- POLICIES PARA membros_unidades
+drop policy if exists "Ver membros da unidade" on membros_unidades;
 create policy "Ver membros da unidade"
   on membros_unidades for select
   using (user_id = auth.uid());
 
+drop policy if exists "Inserir membros" on membros_unidades;
 create policy "Inserir membros"
   on membros_unidades for insert
   with check (auth.uid() = user_id);
 
 -- POLICIES PARA itens_inventario
+drop policy if exists "Leitura para membros aprovados" on itens_inventario;
 create policy "Leitura para membros aprovados"
   on itens_inventario for select
   using (
@@ -136,6 +144,7 @@ create policy "Leitura para membros aprovados"
     unidade_id in (select unidade_id from membros_unidades where user_id = auth.uid() and status = 'aprovado')
   );
 
+drop policy if exists "Qualquer membro aprovado insere" on itens_inventario;
 create policy "Qualquer membro aprovado insere"
   on itens_inventario for insert
   with check (
@@ -143,13 +152,19 @@ create policy "Qualquer membro aprovado insere"
   );
 
 -- POLICIES PARA movimentacoes_inventario
-create policy "Membros aprovados veem historico"
+drop policy if exists "Leitura para membros aprovados mov" on movimentacoes_inventario;
+create policy "Leitura para membros aprovados mov"
   on movimentacoes_inventario for select
-  using (unidade_id in (select unidade_id from membros_unidades where user_id = auth.uid() and status = 'aprovado'));
+  using (
+    unidade_id in (select unidade_id from membros_unidades where user_id = auth.uid() and status = 'aprovado')
+  );
 
-create policy "Membros aprovados inserem historico"
+drop policy if exists "Inserir movimentacoes" on movimentacoes_inventario;
+create policy "Inserir movimentacoes"
   on movimentacoes_inventario for insert
-  with check (unidade_id in (select unidade_id from membros_unidades where user_id = auth.uid() and status = 'aprovado'));
+  with check (
+    unidade_id in (select unidade_id from membros_unidades where user_id = auth.uid() and status = 'aprovado')
+  );
 
 -- ==========================================
 -- 4. FUNÇÕES RPC (LÓGICA DE NEGÓCIO)
@@ -212,5 +227,80 @@ BEGIN
   END IF;
 
   RETURN json_build_object('acao', v_acao, 'id', v_result.id, 'nome', v_result.nome, 'quantidade', v_result.quantidade);
+END;
+$$;
+
+-- Função para admin listar pendentes
+CREATE OR REPLACE FUNCTION listar_pendentes(p_unidade_id UUID)
+RETURNS TABLE (
+  unidade_id UUID,
+  user_id UUID,
+  papel TEXT,
+  status TEXT,
+  adicionado_em TIMESTAMPTZ
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM membros_unidades m
+    WHERE m.unidade_id = p_unidade_id
+    AND m.user_id = auth.uid()
+    AND m.papel = 'admin'
+  ) THEN
+    RAISE EXCEPTION 'Acesso negado: somente administradores podem listar pendentes.';
+  END IF;
+
+  RETURN QUERY
+    SELECT m.unidade_id, m.user_id, m.papel, m.status, m.adicionado_em
+    FROM membros_unidades m
+    WHERE m.unidade_id = p_unidade_id
+    AND m.status = 'pendente';
+END;
+$$;
+
+-- Função para admin aprovar membro
+CREATE OR REPLACE FUNCTION aprovar_membro(p_unidade_id UUID, p_user_id UUID)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM membros_unidades m
+    WHERE m.unidade_id = p_unidade_id
+    AND m.user_id = auth.uid()
+    AND m.papel = 'admin'
+  ) THEN
+    RAISE EXCEPTION 'Acesso negado.';
+  END IF;
+
+  UPDATE membros_unidades
+  SET status = 'aprovado'
+  WHERE unidade_id = p_unidade_id
+  AND user_id = p_user_id;
+END;
+$$;
+
+-- Função para admin rejeitar membro
+CREATE OR REPLACE FUNCTION rejeitar_membro(p_unidade_id UUID, p_user_id UUID)
+RETURNS VOID
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM membros_unidades m
+    WHERE m.unidade_id = p_unidade_id
+    AND m.user_id = auth.uid()
+    AND m.papel = 'admin'
+  ) THEN
+    RAISE EXCEPTION 'Acesso negado.';
+  END IF;
+
+  DELETE FROM membros_unidades
+  WHERE unidade_id = p_unidade_id
+  AND user_id = p_user_id;
 END;
 $$;

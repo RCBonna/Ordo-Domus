@@ -63,6 +63,7 @@ export function useAuth() {
     try {
       const { data, error } = await supabase.rpc('listar_pendentes', { p_unidade_id: unidadeAtiva.id });
       if (!error && data) setPendentesCount(data.length);
+      else if (error) console.warn("[useAuth] RPC listar_pendentes ignorado (pode não existir):", error.message);
     } catch (err) {
       console.error("[useAuth] Erro pendentes:", err);
     }
@@ -85,29 +86,75 @@ export function useAuth() {
 
   useEffect(() => {
     let cancelled = false;
+    let fallbackTimer: NodeJS.Timeout;
+
     const processarSessao = async (userId: string, email: string | undefined) => {
       if (cancelled || isLoggingOut.current) return;
-      setIsAuthLoading(true);
-      const lista = await carregarUnidades(userId);
-      if (cancelled || isLoggingOut.current) return;
+      
       setCurrentUserId(userId);
       setCurrentUserEmail(email || null);
-      setUnidades(lista);
-      if (lista.length === 1) setUnidadeAtiva(lista[0]);
-      setIsAuthLoading(false);
+      setIsAuthLoading(true);
+
+      // Reinicia o timer a cada tentativa para garantir que não ficaremos presos
+      clearTimeout(fallbackTimer);
+      fallbackTimer = setTimeout(() => {
+        if (!cancelled && !isLoggingOut.current) {
+          console.warn("[useAuth] processarSessao demorou muito, liberando a tela.");
+          setIsAuthLoading(false);
+        }
+      }, 5000);
+
+      try {
+        const lista = await carregarUnidades(userId);
+        if (cancelled || isLoggingOut.current) return;
+        setUnidades(lista);
+        if (lista.length === 1) setUnidadeAtiva(lista[0]);
+      } catch (err) {
+        console.error("[useAuth] Erro processando sessão:", err);
+      } finally {
+        if (!cancelled) {
+          setIsAuthLoading(false);
+          clearTimeout(fallbackTimer);
+        }
+      }
     };
 
     const inicializar = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user) await processarSessao(session.user.id, session.user.email);
-      else setIsAuthLoading(false);
+      fallbackTimer = setTimeout(() => {
+        if (!cancelled) {
+          console.warn("[useAuth] Inicialização travou, liberando a tela...");
+          setIsAuthLoading(false);
+        }
+      }, 5000);
+
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        if (error) throw error;
+        
+        console.log("[useAuth] Sessão inicial:", session?.user?.email || "Nenhuma");
+        
+        if (session?.user) {
+          await processarSessao(session.user.id, session.user.email);
+        } else {
+          setIsAuthLoading(false);
+          clearTimeout(fallbackTimer);
+        }
+      } catch (err) {
+        console.error("[useAuth] Erro na inicialização:", err);
+        setIsAuthLoading(false);
+        clearTimeout(fallbackTimer);
+      }
     };
 
     inicializar();
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (isLoggingOut.current) return;
-      if (event === 'SIGNED_IN' && session?.user) await processarSessao(session.user.id, session.user.email);
-      else if (event === 'SIGNED_OUT') {
+      console.log("[useAuth] Mudança de estado de auth:", event);
+      if (isLoggingOut.current || cancelled) return;
+      
+      if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {
+        await processarSessao(session.user.id, session.user.email);
+      } else if (event === 'SIGNED_OUT') {
         setCurrentUserEmail(null);
         setCurrentUserId(null);
         setUnidades([]);
@@ -118,6 +165,7 @@ export function useAuth() {
 
     return () => {
       cancelled = true;
+      clearTimeout(fallbackTimer);
       subscription.unsubscribe();
     };
   }, []);

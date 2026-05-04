@@ -30,20 +30,20 @@ export default function Onboarding({ onSuccess }: OnboardingProps) {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error("Usuário não logado");
 
-      // 1. Criar a Unidade
-      const { data: novaUnidade, error: errUnidade } = await supabase
-        .from('unidades')
-        .insert({ nome: nomeUnidade.trim() })
-        .select()
-        .single();
+      const newUnitId = crypto.randomUUID();
 
-      if (errUnidade || !novaUnidade) throw errUnidade || new Error("Erro ao criar unidade");
+      // 1. Criar a Unidade (sem .select() para evitar erro de RLS ao tentar ler a linha antes de ser membro)
+      const { error: errUnidade } = await supabase
+        .from('unidades')
+        .insert({ id: newUnitId, nome: nomeUnidade.trim() });
+
+      if (errUnidade) throw errUnidade;
 
       // 2. Adicionar o membro como admin
       const { error: errMembro } = await supabase
         .from('membros_unidades')
         .insert({
-          unidade_id: novaUnidade.id,
+          unidade_id: newUnitId,
           user_id: userData.user.id,
           papel: 'admin',
           status: 'aprovado'

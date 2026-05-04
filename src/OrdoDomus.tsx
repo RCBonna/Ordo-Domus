@@ -62,7 +62,9 @@ export default function OrdoDomus() {
     input, setInput,
     isRecording, toggleRecording,
     isExtracting, handleExtract,
-    currentResult, mergeStatus, error,
+    currentResult, setCurrentResult,
+    isPendingConfirmation, isSaving, confirmAndSave, cancelConfirmation,
+    mergeStatus, error,
     history, handleClearHistory,
     addHistoryItem
   } = useExtraction(unidadeAtiva?.id);
@@ -155,7 +157,8 @@ export default function OrdoDomus() {
         )}
 
         {/* CONTEÚDO PRINCIPAL */}
-        <div className={`transition-all duration-500 ${!currentUserEmail || isAuthLoading ? 'opacity-0 scale-95 pointer-events-none hidden' : 'opacity-100 scale-100'}`}>
+        {currentUserEmail && !isAuthLoading && (
+          <div className="transition-all duration-500 opacity-100 scale-100">
           {!unidadeAtiva ? (
             unidades.length > 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
@@ -201,6 +204,11 @@ export default function OrdoDomus() {
                       error={error}
                       handleExtract={handleExtract}
                       currentResult={currentResult}
+                      setCurrentResult={setCurrentResult}
+                      isPendingConfirmation={isPendingConfirmation}
+                      isSaving={isSaving}
+                      confirmAndSave={confirmAndSave}
+                      cancelConfirmation={cancelConfirmation}
                       mergeStatus={mergeStatus}
                       history={history}
                       handleClearHistory={handleClearHistory}
@@ -232,6 +240,10 @@ export default function OrdoDomus() {
                       history={history}
                       isConsumivel={isConsumivel}
                       formatarTexto={formatarTexto}
+                      onNavigateToItem={(nome) => {
+                        setSearchTerm(nome);
+                        setActiveTab('inventário');
+                      }}
                     />
                   )}
                 </AnimatePresence>
@@ -239,6 +251,7 @@ export default function OrdoDomus() {
             </>
           )}
         </div>
+        )}
       </main>
 
       {/* MODAL ADMIN */}
