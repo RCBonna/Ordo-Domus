@@ -304,3 +304,68 @@ BEGIN
   AND user_id = p_user_id;
 END;
 $$;
+
+-- ==========================================
+-- 5. IMPORTAÇÃO DE CUPOM FISCAL (OCR)
+-- ==========================================
+
+-- TABELA: Importações Pendentes (Triagem)
+create table if not exists importacoes_pendentes (
+  id uuid default gen_random_uuid() primary key,
+  unidade_id uuid references unidades(id) on delete cascade not null,
+  nome_bruto text not null,
+  quantidade numeric default 1,
+  valor_unitario numeric,
+  match_id uuid references itens_inventario(id) on delete set null, -- Preenchido se a IA / sistema fizer match automático
+  processado boolean default false,
+  criado_em timestamp with time zone default timezone('utc'::text, now()) not null,
+  expires_at timestamp with time zone default timezone('utc'::text, now() + interval '24 hours') not null
+);
+
+-- Índices Importações Pendentes
+create index if not exists idx_importacoes_pendentes_unidade_id on importacoes_pendentes(unidade_id);
+create index if not exists idx_importacoes_pendentes_expires_at on importacoes_pendentes(expires_at);
+
+-- TABELA: Dicionário de Produtos (Smart Match)
+create table if not exists dicionario_produtos (
+  id uuid default gen_random_uuid() primary key,
+  unidade_id uuid references unidades(id) on delete cascade not null,
+  nome_bruto_cupom text not null,
+  nome_oficial_inventario text not null, -- Como o usuário gosta de chamar
+  categoria text,
+  comodo text,
+  criado_em timestamp with time zone default timezone('utc'::text, now()) not null,
+  unique(unidade_id, nome_bruto_cupom)
+);
+
+-- Índices Dicionário
+create index if not exists idx_dicionario_unidade_nome on dicionario_produtos(unidade_id, lower(trim(nome_bruto_cupom)));
+
+-- ==========================================
+-- RLS POLICIES (Importação e Dicionário)
+-- ==========================================
+
+alter table importacoes_pendentes enable row level security;
+alter table dicionario_produtos enable row level security;
+
+-- POLICIES PARA importacoes_pendentes
+drop policy if exists "Membros aprovados gerenciam importacoes" on importacoes_pendentes;
+create policy "Membros aprovados gerenciam importacoes"
+  on importacoes_pendentes for all
+  using (
+    unidade_id in (select unidade_id from membros_unidades where user_id = auth.uid() and status = 'aprovado')
+  )
+  with check (
+    unidade_id in (select unidade_id from membros_unidades where user_id = auth.uid() and status = 'aprovado')
+  );
+
+-- POLICIES PARA dicionario_produtos
+drop policy if exists "Membros aprovados gerenciam dicionario" on dicionario_produtos;
+create policy "Membros aprovados gerenciam dicionario"
+  on dicionario_produtos for all
+  using (
+    unidade_id in (select unidade_id from membros_unidades where user_id = auth.uid() and status = 'aprovado')
+  )
+  with check (
+    unidade_id in (select unidade_id from membros_unidades where user_id = auth.uid() and status = 'aprovado')
+  );
