@@ -16,6 +16,7 @@ export interface ExtractedItem {
   tipo?: 'entrada' | 'consumo';
   data?: string;
   transcricao?: string;
+  triage_id?: string;
 }
 
 const SYSTEM_INSTRUCTION = "Você é um organizador de inventário profissional. Extraia as informações e retorne JSON. REGRA DE CLASSIFICAÇÃO VITAL: O campo 'armario' deve conter APENAS o Móvel ou Eletrodoméstico principal (ex: Geladeira, Freezer, Armário, Despensa). O campo 'caixa' deve conter as subdivisões internas, como Prateleiras, Gavetas, Caixas organizadoras ou Potes (ex: Prateleira 2, Gaveta de legumes, Pote azul). Exemplo: 'na prateleira 2 do freezer' -> armario: 'freezer', caixa: 'prateleira 2'. Se faltar dado, retorne string vazia ou null. Além disso, no campo 'transcricao', coloque o texto exato ou aproximado que foi dito/escrito. IMPORTANTE: Se o ano não for mencionado, use o ano da data de hoje fornecida.";
@@ -36,6 +37,19 @@ const RESPONSE_SCHEMA = {
     },
   },
   required: ["item", "categoria", "comodo", "armario", "caixa", "validade", "quantidade", "transcricao"],
+};
+
+const RECEIPT_RESPONSE_SCHEMA = {
+  type: Type.ARRAY,
+  items: {
+    type: Type.OBJECT,
+    properties: {
+      item: { type: Type.STRING, description: "Nome original bruto do produto no cupom" },
+      quantidade: { type: Type.NUMBER },
+      valor: { type: Type.NUMBER, description: "Valor total ou unitário do item (opcional)" }
+    },
+    required: ["item", "quantidade"]
+  }
 };
 
 
@@ -149,4 +163,63 @@ export async function extractInventoryDataFromAudio(audioBase64: string, mimeTyp
 
   console.error("[Gemini AUDIO] Todas as tentativas de fallback falharam. Último erro:", ultimoErro);
   throw ultimoErro || new Error("Falha ao extrair áudio após tentar múltiplos modelos.");
+}
+
+export async function extractInventoryDataFromReceipt(imageBase64: string, mimeType: string): Promise<any[]> {
+  const cleanMimeType = mimeType.split(';')[0];
+  
+  const modelosParaTentar = [
+    "gemini-2.5-flash",
+    "gemini-flash-latest"
+  ];
+
+  let ultimoErro = null;
+
+  for (const modelo of modelosParaTentar) {
+    try {
+      console.log(`[Gemini RECEIPT] Tentando extração com o modelo: ${modelo}`);
+      
+      const timeoutPromise = new Promise<never>((_, reject) => 
+        setTimeout(() => reject(new Error(`Timeout de 20s atingido no modelo ${modelo}.`)), 20000)
+      );
+
+      const responsePromise = ai.models.generateContent({
+        model: modelo,
+        contents: [
+          {
+            role: "user",
+            parts: [
+              { text: `Extraia todos os itens deste cupom fiscal ou nota fiscal. Retorne um JSON com a lista de itens, contendo "item" (nome original bruto do produto no papel), "quantidade" (número) e "valor" (número, valor total do item, se houver). Não invente ou limpe muito os nomes, use a transcrição o mais fiel possível ao papel.` },
+              {
+                inlineData: {
+                  mimeType: cleanMimeType,
+                  data: imageBase64
+                }
+              }
+            ]
+          }
+        ],
+        config: {
+          responseMimeType: "application/json",
+          responseSchema: RECEIPT_RESPONSE_SCHEMA,
+        },
+      });
+
+      const response: any = await Promise.race([responsePromise, timeoutPromise]);
+
+      const jsonStr = response.text;
+      if (!jsonStr) {
+        throw new Error(`Resposta vazia da IA usando o modelo ${modelo}.`);
+      }
+
+      console.log(`[Gemini RECEIPT] Extração bem-sucedida usando o modelo: ${modelo}`);
+      return JSON.parse(jsonStr);
+    } catch (error: any) {
+      console.warn(`[Gemini RECEIPT] Falha ao usar o modelo ${modelo}:`, error.message || error);
+      ultimoErro = error;
+    }
+  }
+
+  console.error("[Gemini RECEIPT] Todas as tentativas de fallback falharam. Último erro:", ultimoErro);
+  throw ultimoErro || new Error("Falha ao processar o cupom fiscal após tentar múltiplos modelos.");
 }

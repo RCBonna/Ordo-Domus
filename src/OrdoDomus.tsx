@@ -13,11 +13,14 @@ import { InventoryList } from './components/InventoryList';
 import { EntrySection } from './components/EntrySection';
 import { MainHeader } from './components/MainHeader';
 import { ConfirmModal } from './components/ConfirmModal';
+import { TriageModal } from './components/TriageModal';
 
 // Hooks
 import { useAuth } from './hooks/useAuth';
 import { useInventory } from './hooks/useInventory';
 import { useExtraction } from './hooks/useExtraction';
+import { useReceiptImport } from './hooks/useReceiptImport';
+import { useTriage } from './hooks/useTriage';
 
 // Utils
 import { isConsumivel, formatarTexto } from './lib/utils';
@@ -43,6 +46,7 @@ export default function OrdoDomus() {
   const [activeTab, setActiveTab] = useState<'entrada' | 'inventário' | 'consumo' | 'dashboard'>('entrada');
   const [isConsumoMode, setIsConsumoMode] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
+  const [isTriageModalOpen, setIsTriageModalOpen] = useState(false);
   
   // Confirmation State
   const [confirmConfig, setConfirmConfig] = useState<{
@@ -63,13 +67,29 @@ export default function OrdoDomus() {
     isRecording, toggleRecording,
     isExtracting, handleExtract,
     currentResult, setCurrentResult,
-    isPendingConfirmation, isSaving, confirmAndSave, cancelConfirmation,
+    isPendingConfirmation, setIsPendingConfirmation, isSaving, confirmAndSave, cancelConfirmation,
     mergeStatus, error,
     history, handleClearHistory,
     addHistoryItem
   } = useExtraction(unidadeAtiva?.id);
 
+  // Receipt Import logic
+  const {
+    isImporting,
+    fileInputRef,
+    handleImportReceipt,
+    triggerImport
+  } = useReceiptImport(unidadeAtiva?.id);
+
+  // Triage logic
+  const {
+    pendingItems,
+    discardItem,
+    fetchPendingItems
+  } = useTriage(unidadeAtiva?.id);
+
   // Inventory logic
+
   const {
     fullInventory,
     isInventoryLoading,
@@ -95,6 +115,23 @@ export default function OrdoDomus() {
       message: `Tem certeza que deseja excluir "${item.nome}"? Esta ação será registrada no histórico de auditoria.`,
       onConfirm: () => rawHandleDelete(id)
     });
+  };
+
+  const handleReviewTriageItem = (item: any) => {
+    setIsTriageModalOpen(false);
+    setActiveTab('entrada');
+    setCurrentResult({
+      item: item.nome_bruto,
+      categoria: '',
+      comodo: '',
+      armario: '',
+      caixa: '',
+      validade: '',
+      quantidade: Number(item.quantidade),
+      transcricao: item.nome_bruto,
+      triage_id: item.id
+    });
+    setIsPendingConfirmation(true);
   };
 
   const isSistemaLiberado = !!(!isAuthLoading && unidadeAtiva);
@@ -212,6 +249,12 @@ export default function OrdoDomus() {
                       mergeStatus={mergeStatus}
                       history={history}
                       handleClearHistory={handleClearHistory}
+                      isImporting={isImporting}
+                      fileInputRef={fileInputRef}
+                      handleImportReceipt={handleImportReceipt}
+                      triggerImport={triggerImport}
+                      pendingTriageCount={pendingItems.length}
+                      openTriageModal={() => setIsTriageModalOpen(true)}
                     />
                   )}
 
@@ -290,6 +333,13 @@ export default function OrdoDomus() {
           </div>
         )}
       </AnimatePresence>
+
+      <TriageModal 
+        isOpen={isTriageModalOpen}
+        onClose={() => setIsTriageModalOpen(false)}
+        unidadeId={unidadeAtiva?.id}
+        onReviewItem={handleReviewTriageItem}
+      />
 
       <ConfirmModal 
         isOpen={confirmConfig.isOpen}

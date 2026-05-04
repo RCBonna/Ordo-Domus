@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { 
   Mic, MicOff, Box, Loader2, Tag, MapPin, 
-  RefreshCw, PlusCircle, History, Trash2, Plus, Edit3, TrendingUp 
+  RefreshCw, PlusCircle, History, Trash2, Plus, Edit3, TrendingUp, Receipt, Package
 } from 'lucide-react';
 
 interface EntrySectionProps {
@@ -29,6 +29,12 @@ interface EntrySectionProps {
   mergeStatus: { action: 'MERGE' | 'ADD', message: string } | null;
   history: any[];
   handleClearHistory: () => void;
+  isImporting: boolean;
+  fileInputRef: React.RefObject<HTMLInputElement>;
+  handleImportReceipt: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  triggerImport: () => void;
+  pendingTriageCount: number;
+  openTriageModal: () => void;
 }
 
 export function EntrySection({
@@ -48,7 +54,13 @@ export function EntrySection({
   cancelConfirmation,
   mergeStatus,
   history,
-  handleClearHistory
+  handleClearHistory,
+  isImporting,
+  fileInputRef,
+  handleImportReceipt,
+  triggerImport,
+  pendingTriageCount,
+  openTriageModal
 }: EntrySectionProps) {
   return (
     <motion.div 
@@ -67,7 +79,39 @@ export function EntrySection({
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-3">
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-2">
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  capture="environment" 
+                  className="hidden" 
+                  ref={fileInputRef} 
+                  onChange={handleImportReceipt} 
+                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={triggerImport}
+                  disabled={isExtracting || isPendingConfirmation || !isSistemaLiberado || isImporting}
+                  className="gap-2 rounded-xl transition-all h-10 px-5 text-slate-700 hover:bg-slate-50"
+                >
+                  {isImporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4" />}
+                  {isImporting ? "Importando..." : "Importar Cupom"}
+                </Button>
+                {pendingTriageCount > 0 && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={openTriageModal}
+                    className="gap-2 rounded-xl transition-all h-10 px-5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
+                  >
+                    <Package className="w-4 h-4" />
+                    Triagem Pendente
+                    <Badge variant="secondary" className="ml-1 bg-white/20 hover:bg-white/30 text-white border-none px-1.5 min-w-[20px] text-xs">
+                      {pendingTriageCount}
+                    </Badge>
+                  </Button>
+                )}
                 <Button 
                   variant={isRecording ? "destructive" : "secondary"}
                   size="sm"
@@ -94,7 +138,7 @@ export function EntrySection({
               />
             </div>
             {error && <p className="text-sm text-destructive font-medium bg-destructive/5 p-3 rounded-xl border border-destructive/10">{error}</p>}
-            <Button className="w-full rounded-[20px] h-14 text-lg font-bold shadow-lg shadow-primary/20" onClick={handleExtract} disabled={isExtracting || isPendingConfirmation || !input.trim() || !isSistemaLiberado}>
+            <Button className="w-full rounded-[20px] h-14 text-lg font-bold shadow-lg shadow-primary/20" onClick={handleExtract} disabled={isExtracting || isPendingConfirmation || !input.trim() || !isSistemaLiberado || isImporting}>
               {isExtracting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Processando...</> : <><Box className="mr-2 h-5 w-5" /> Extrair Dados</>}
             </Button>
           </CardContent>

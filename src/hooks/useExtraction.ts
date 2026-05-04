@@ -180,6 +180,30 @@ export function useExtraction(unidadeId: string | undefined) {
 
         if (erroHist) console.warn("Erro ao gravar histórico:", erroHist);
 
+        if (editedData.triage_id) {
+          console.log("[Extraction] Removendo item da triagem e atualizando dicionário...");
+          const { error: errTriage } = await supabase
+            .from('importacoes_pendentes')
+            .delete()
+            .eq('id', editedData.triage_id);
+            
+          if (errTriage) console.warn("Erro ao remover da triagem:", errTriage);
+
+          if (editedData.transcricao) {
+            const { error: errDict } = await supabase
+              .from('dicionario_produtos')
+              .upsert({
+                unidade_id: unidadeId,
+                nome_bruto_cupom: editedData.transcricao,
+                nome_oficial_inventario: editedData.item,
+                categoria: editedData.categoria,
+                comodo: editedData.comodo
+              }, { onConflict: 'unidade_id, nome_bruto_cupom' });
+              
+            if (errDict) console.warn("Erro ao atualizar dicionário:", errDict);
+          }
+        }
+
         return { itemNaTela, acaoFinal, mensagem };
       })();
 
@@ -285,7 +309,7 @@ export function useExtraction(unidadeId: string | undefined) {
     isRecording, toggleRecording,
     isExtracting, handleExtract,
     currentResult, setCurrentResult,
-    isPendingConfirmation, isSaving, confirmAndSave, cancelConfirmation,
+    isPendingConfirmation, setIsPendingConfirmation, isSaving, confirmAndSave, cancelConfirmation,
     mergeStatus, error,
     history, setHistory, handleClearHistory,
     addHistoryItem,
