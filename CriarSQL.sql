@@ -260,6 +260,35 @@ BEGIN
 END;
 $$;
 
+-- Função para admin listar todos os membros da unidade (aprovados e pendentes)
+CREATE OR REPLACE FUNCTION listar_membros(p_unidade_id UUID)
+RETURNS TABLE (
+  unidade_id UUID,
+  user_id UUID,
+  papel TEXT,
+  status TEXT,
+  adicionado_em TIMESTAMPTZ
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM membros_unidades m
+    WHERE m.unidade_id = p_unidade_id
+    AND m.user_id = auth.uid()
+    AND m.papel = 'admin'
+  ) THEN
+    RAISE EXCEPTION 'Acesso negado: somente administradores podem listar membros.';
+  END IF;
+
+  RETURN QUERY
+    SELECT m.unidade_id, m.user_id, m.papel, m.status, m.adicionado_em
+    FROM membros_unidades m
+    WHERE m.unidade_id = p_unidade_id;
+END;
+$$;
+
 -- Função para admin aprovar membro
 CREATE OR REPLACE FUNCTION aprovar_membro(p_unidade_id UUID, p_user_id UUID)
 RETURNS VOID
@@ -369,3 +398,62 @@ create policy "Membros aprovados gerenciam dicionario"
   with check (
     unidade_id in (select unidade_id from membros_unidades where user_id = auth.uid() and status = 'aprovado')
   );
+
+-- ==========================================
+-- SAAS ADMIN (Issue #12)
+-- ==========================================
+
+-- TABELA: Administradores do Sistema (Super-Admins)
+create table if not exists system_admins (
+  user_id uuid references auth.users primary key,
+  adicionado_em timestamp with time zone default timezone('utc'::text, now()) not null
+);
+
+-- RLS para system_admins
+alter table system_admins enable row level security;
+
+drop policy if exists "System admins can read their own status" on system_admins;
+create policy "System admins can read their own status"
+  on system_admins for select
+  using (user_id = auth.uid());
+
+-- Função utilitária para checar se é super admin
+CREATE OR REPLACE FUNCTION is_system_admin()
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM system_admins WHERE user_id = auth.uid()
+  );
+$$;
+
+-- Função para obter métricas globais do SaaS
+CREATE OR REPLACE FUNCTION get_saas_metrics()
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_total_unidades INT;
+  v_total_usuarios_distintos INT;
+  v_total_itens INT;
+  v_total_convites_pendentes INT;
+BEGIN
+  IF NOT is_system_admin() THEN
+    RAISE EXCEPTION 'Acesso negado: apenas administradores do sistema podem ver métricas globais.';
+  END IF;
+
+  SELECT count(*) INTO v_total_unidades FROM unidades;
+  SELECT count(distinct user_id) INTO v_total_usuarios_distintos FROM membros_unidades;
+  SELECT count(*) INTO v_total_itens FROM itens_inventario;
+  SELECT count(*) INTO v_total_convites_pendentes FROM membros_unidades WHERE status = 'pendente';
+
+  RETURN json_build_object(
+    'total_unidades', v_total_unidades,
+    'total_usuarios', v_total_usuarios_distintos,
+    'total_itens', v_total_itens,
+    'total_convites_pendentes', v_total_convites_pendentes
+  );
+END;
+$$;

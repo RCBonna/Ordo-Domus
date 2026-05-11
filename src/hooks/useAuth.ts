@@ -11,6 +11,7 @@ export interface Unidade {
 export function useAuth() {
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isSystemAdmin, setIsSystemAdmin] = useState<boolean>(false);
   const [unidades, setUnidades] = useState<Unidade[]>([]);
   const [unidadeAtiva, setUnidadeAtivaState] = useState<Unidade | null>(() => {
     const saved = localStorage.getItem('ordo_domus_unidade_ativa');
@@ -73,6 +74,7 @@ export function useAuth() {
     isLoggingOut.current = true;
     setCurrentUserEmail(null);
     setCurrentUserId(null);
+    setIsSystemAdmin(false);
     setUnidades([]);
     setUnidadeAtiva(null);
     setIsAuthLoading(false);
@@ -105,6 +107,9 @@ export function useAuth() {
       }, 5000);
 
       try {
+        const { data: sysAdmin } = await supabase.rpc('is_system_admin');
+        setIsSystemAdmin(!!sysAdmin);
+
         const lista = await carregarUnidades(userId);
         if (cancelled || isLoggingOut.current) return;
         setUnidades(lista);
@@ -157,6 +162,7 @@ export function useAuth() {
       } else if (event === 'SIGNED_OUT') {
         setCurrentUserEmail(null);
         setCurrentUserId(null);
+        setIsSystemAdmin(false);
         setUnidades([]);
         setUnidadeAtiva(null);
         setIsAuthLoading(false);
@@ -186,6 +192,7 @@ export function useAuth() {
     handleLogout,
     pendentesCount,
     setUnidades,
-    carregarUnidades
+    carregarUnidades,
+    isSystemAdmin
   };
 }

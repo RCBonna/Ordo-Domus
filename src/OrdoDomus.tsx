@@ -14,6 +14,7 @@ import { EntrySection } from './components/EntrySection';
 import { MainHeader } from './components/MainHeader';
 import { ConfirmModal } from './components/ConfirmModal';
 import { TriageModal } from './components/TriageModal';
+import { SaasAdminDashboard } from './components/SaasAdminDashboard';
 
 // Hooks
 import { useAuth } from './hooks/useAuth';
@@ -39,11 +40,12 @@ export default function OrdoDomus() {
     handleLogout,
     pendentesCount,
     setUnidades,
-    carregarUnidades
+    carregarUnidades,
+    isSystemAdmin
   } = useAuth();
 
   // Navigation state
-  const [activeTab, setActiveTab] = useState<'entrada' | 'inventário' | 'consumo' | 'dashboard'>('entrada');
+  const [activeTab, setActiveTab] = useState<'entrada' | 'inventário' | 'consumo' | 'dashboard' | 'saas-admin'>('entrada');
   const [isConsumoMode, setIsConsumoMode] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [isTriageModalOpen, setIsTriageModalOpen] = useState(false);
@@ -161,6 +163,7 @@ export default function OrdoDomus() {
         isConsumoMode={isConsumoMode}
         setIsConsumoMode={setIsConsumoMode}
         isSistemaLiberado={isSistemaLiberado}
+        isSystemAdmin={isSystemAdmin}
       />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-8 py-8">
@@ -291,6 +294,10 @@ export default function OrdoDomus() {
                         setActiveTab('inventário');
                       }}
                     />
+                  )}
+
+                  {activeTab === 'saas-admin' && isSystemAdmin && (
+                    <SaasAdminDashboard key="tab-saas-admin" />
                   )}
                 </AnimatePresence>
               )}

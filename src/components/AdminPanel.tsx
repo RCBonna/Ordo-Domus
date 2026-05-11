@@ -12,28 +12,33 @@ interface Props {
 }
 
 export default function AdminPanel({ unidadeId, papel, unidadeNome }: Props) {
-  const [pendentes, setPendentes] = useState<any[]>([]);
+  const [membros, setMembros] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiado, setCopiado] = useState(false);
 
-  const carregarPendentes = async () => {
+  const carregarMembros = async () => {
     if (papel !== 'admin') {
       setLoading(false);
       return;
     }
     
     setLoading(true);
+    // Tenta usar a nova função listar_membros, faz fallback se não existir
     const { data, error } = await supabase
-      .rpc('listar_pendentes', { p_unidade_id: unidadeId });
+      .rpc('listar_membros', { p_unidade_id: unidadeId });
       
     if (!error && data) {
-      setPendentes(data);
+      setMembros(data);
+    } else {
+      const { data: dataOld } = await supabase
+        .rpc('listar_pendentes', { p_unidade_id: unidadeId });
+      if (dataOld) setMembros(dataOld);
     }
     setLoading(false);
   };
 
   useEffect(() => {
-    if (unidadeId) carregarPendentes();
+    if (unidadeId) carregarMembros();
   }, [unidadeId, papel]);
 
   const aprovarConvidado = async (userId: string) => {
@@ -41,20 +46,20 @@ export default function AdminPanel({ unidadeId, papel, unidadeNome }: Props) {
       .rpc('aprovar_membro', { p_unidade_id: unidadeId, p_user_id: userId });
 
     if (!error) {
-      setPendentes(prev => prev.filter(p => p.user_id !== userId));
+      setMembros(prev => prev.map(m => m.user_id === userId ? { ...m, status: 'aprovado' } : m));
       toast.success("Membro aprovado com sucesso!");
     } else {
       toast.error("Erro ao aprovar membro.");
     }
   };
 
-  const rejeitarConvidado = async (userId: string) => {
+  const rejeitarOuRemover = async (userId: string, isRejeicao: boolean) => {
     const { error } = await supabase
       .rpc('rejeitar_membro', { p_unidade_id: unidadeId, p_user_id: userId });
 
     if (!error) {
-      setPendentes(prev => prev.filter(p => p.user_id !== userId));
-      toast.error("Solicitação rejeitada.");
+      setMembros(prev => prev.filter(m => m.user_id !== userId));
+      toast.success(isRejeicao ? "Solicitação rejeitada." : "Acesso revogado.");
     } else {
       toast.error("Erro ao processar ação.");
     }
@@ -73,6 +78,9 @@ export default function AdminPanel({ unidadeId, papel, unidadeNome }: Props) {
     </div>
   );
 
+  const pendentes = membros.filter(m => m.status === 'pendente');
+  const aprovados = membros.filter(m => m.status === 'aprovado');
+
   return (
     <div className="space-y-10">
       {/* SEÇÃO: CONVITE */}
@@ -83,8 +91,8 @@ export default function AdminPanel({ unidadeId, papel, unidadeNome }: Props) {
               <Share2 className="w-6 h-6 text-blue-500" />
             </div>
             <div>
-              <h3 className="text-slate-900 font-black text-xl leading-none mb-1">Convidar Membros</h3>
-              <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">{unidadeNome || 'Acesso à Unidade'}</p>
+              <h3 className="text-slate-900 font-black text-xl leading-none mb-1">Acesso à Unidade</h3>
+              <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">{unidadeNome || 'Equipe'}</p>
             </div>
           </div>
           <Badge variant="secondary" className="bg-slate-100 text-slate-500 border-none px-4 py-1.5 rounded-full text-[10px] font-black">
@@ -116,7 +124,7 @@ export default function AdminPanel({ unidadeId, papel, unidadeNome }: Props) {
               <ShieldCheck className="w-4 h-4 text-emerald-500" />
             </div>
             <p className="text-xs text-emerald-700/80 leading-relaxed font-bold">
-              Segurança ativada: novos membros dependem da sua aprovação manual no painel abaixo.
+              Segurança ativada: Compartilhe o código acima com os membros que deseja convidar para esta unidade. Novos acessos precisam da sua aprovação manual.
             </p>
           </div>
         </div>
@@ -160,7 +168,7 @@ export default function AdminPanel({ unidadeId, papel, unidadeNome }: Props) {
                 <div className="flex items-center gap-2">
                   <Button 
                     variant="ghost" 
-                    onClick={() => rejeitarConvidado(convite.user_id)} 
+                    onClick={() => rejeitarOuRemover(convite.user_id, true)} 
                     className="h-12 w-12 p-0 rounded-2xl text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all"
                     title="Rejeitar"
                   >
@@ -176,6 +184,68 @@ export default function AdminPanel({ unidadeId, papel, unidadeNome }: Props) {
                     </span>
                   </Button>
                 </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* SEÇÃO: MEMBROS APROVADOS */}
+      {aprovados.length > 0 && (
+        <div className="space-y-6">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-slate-50 rounded-2xl">
+              <ShieldCheck className="w-6 h-6 text-slate-500" />
+            </div>
+            <div>
+              <h3 className="text-slate-900 font-black text-xl leading-none mb-1">Membros</h3>
+              <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Equipe Ativa</p>
+            </div>
+            <Badge className="bg-slate-200 text-slate-600 border-none font-black text-[10px] ml-auto">
+              {aprovados.length}
+            </Badge>
+          </div>
+
+          <div className="space-y-3">
+            {aprovados.map(membro => (
+              <div 
+                key={membro.user_id} 
+                className="bg-white border border-slate-100 p-6 rounded-[28px] flex items-center justify-between group hover:border-slate-200 transition-all"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100 text-slate-400">
+                    <UserCheck className="w-6 h-6" />
+                  </div>
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs text-slate-700 font-bold">{membro.user_id.slice(0, 18)}...</span>
+                      {membro.papel === 'admin' && (
+                        <Badge variant="secondary" className="bg-blue-50 text-blue-600 border-none text-[9px] px-2 py-0.5 font-black tracking-widest">
+                          ADMIN
+                        </Badge>
+                      )}
+                    </div>
+                    <span className="text-[10px] font-bold text-slate-400 mt-1">
+                      Membro desde {new Date(membro.adicionado_em).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+                
+                {membro.papel !== 'admin' && (
+                  <div className="flex items-center gap-2">
+                    <Button 
+                      variant="ghost" 
+                      onClick={() => {
+                        if (confirm('Tem certeza que deseja remover este membro da unidade?')) {
+                          rejeitarOuRemover(membro.user_id, false);
+                        }
+                      }} 
+                      className="h-10 px-4 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 text-xs font-bold transition-all"
+                    >
+                      Remover
+                    </Button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

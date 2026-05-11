@@ -6,7 +6,7 @@ interface MainHeaderProps {
   unidades: any[];
   unidadeAtiva: any | null;
   setUnidadeAtiva: (unidade: any) => void;
-  activeTab: 'entrada' | 'inventário' | 'consumo' | 'dashboard';
+  activeTab: 'entrada' | 'inventário' | 'consumo' | 'dashboard' | 'saas-admin';
   setActiveTab: (tab: any) => void;
   pendentesCount: number;
   onOpenAdminModal: () => void;
@@ -15,6 +15,7 @@ interface MainHeaderProps {
   isConsumoMode: boolean;
   setIsConsumoMode: (val: boolean) => void;
   isSistemaLiberado: boolean;
+  isSystemAdmin: boolean;
 }
 
 export function MainHeader({
@@ -29,7 +30,8 @@ export function MainHeader({
   currentUserEmail,
   isConsumoMode,
   setIsConsumoMode,
-  isSistemaLiberado
+  isSistemaLiberado,
+  isSystemAdmin
 }: MainHeaderProps) {
   return (
     <div className="sticky top-0 z-50 bg-slate-50/80 backdrop-blur-2xl border-b border-slate-200/50 px-4 py-3 sm:px-8 sm:py-4">
@@ -129,6 +131,18 @@ export function MainHeader({
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Usuário</p>
                 <p className="text-sm font-bold text-slate-700 max-w-[150px] truncate">{currentUserEmail}</p>
               </div>
+
+              {isSystemAdmin && (
+                <Button 
+                  variant="outline" 
+                  size="icon" 
+                  title="SaaS Admin (Métricas Globais)"
+                  className="relative w-11 h-11 rounded-2xl border-emerald-200 text-emerald-600 hover:border-emerald-400 hover:bg-emerald-50 transition-all group"
+                  onClick={() => setActiveTab('saas-admin')}
+                >
+                  <BarChart2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                </Button>
+              )}
 
               <Button 
                 variant="ghost" 
