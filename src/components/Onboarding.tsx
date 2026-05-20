@@ -5,6 +5,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, Plus, LogIn, AlertCircle, CheckCircle2 } from 'lucide-react';
+import { getErrorMessage } from '../lib/utils';
+import { logger } from '../lib/logger';
 
 interface OnboardingProps {
   onSuccess: () => void;
@@ -53,9 +55,9 @@ export default function Onboarding({ onSuccess }: OnboardingProps) {
 
       setMessage({ type: 'success', text: 'Unidade criada com sucesso!' });
       setTimeout(() => onSuccess(), 1500);
-    } catch (err: any) {
-      console.error(err);
-      setMessage({ type: 'error', text: err.message || 'Erro inesperado.' });
+    } catch (err: unknown) {
+      logger.warn('Falha ao criar unidade.');
+      setMessage({ type: 'error', text: getErrorMessage(err, 'Erro inesperado.') });
     } finally {
       setLoading(false);
     }
@@ -94,9 +96,9 @@ export default function Onboarding({ onSuccess }: OnboardingProps) {
 
       setMessage({ type: 'success', text: 'Solicitação enviada! O administrador da unidade precisa aprovar seu acesso.' });
       setTimeout(() => onSuccess(), 2000);
-    } catch (err: any) {
-      console.error(err);
-      setMessage({ type: 'error', text: err.message || 'Erro inesperado.' });
+    } catch (err: unknown) {
+      logger.warn('Falha ao solicitar acesso a unidade.');
+      setMessage({ type: 'error', text: getErrorMessage(err, 'Erro inesperado.') });
     } finally {
       setLoading(false);
     }

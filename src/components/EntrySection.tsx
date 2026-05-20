@@ -10,6 +10,8 @@ import {
   Mic, MicOff, Box, Loader2, Tag, MapPin, 
   RefreshCw, PlusCircle, History, Trash2, Plus, Edit3, TrendingUp, Receipt, Package
 } from 'lucide-react';
+import type { ExtractedItem } from '../services/geminiService';
+import type { HistoryItem } from '../types/domain';
 
 interface EntrySectionProps {
   input: string;
@@ -20,14 +22,14 @@ interface EntrySectionProps {
   isSistemaLiberado: boolean;
   error: string | null;
   handleExtract: () => void;
-  currentResult: any | null;
-  setCurrentResult: (val: any) => void;
+  currentResult: ExtractedItem | null;
+  setCurrentResult: (val: ExtractedItem | null) => void;
   isPendingConfirmation: boolean;
   isSaving: boolean;
-  confirmAndSave: (data: any) => void;
+  confirmAndSave: (data: ExtractedItem) => void;
   cancelConfirmation: () => void;
   mergeStatus: { action: 'MERGE' | 'ADD', message: string } | null;
-  history: any[];
+  history: HistoryItem[];
   handleClearHistory: () => void;
   isImporting: boolean;
   fileInputRef: React.RefObject<HTMLInputElement>;
@@ -189,7 +191,7 @@ export function EntrySection({
                       <Input 
                         type="number"
                         value={currentResult.quantidade || ''} 
-                        onChange={e => setCurrentResult({...currentResult, quantidade: e.target.value})}
+                        onChange={e => setCurrentResult({...currentResult, quantidade: Number(e.target.value) || 0})}
                         className="font-bold text-slate-900 text-lg h-9 px-2"
                       />
                     ) : (

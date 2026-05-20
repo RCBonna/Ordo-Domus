@@ -1,35 +1,87 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabaseClient';
-import { formatarTexto, formatarData } from '../lib/utils';
 import { toast } from 'sonner';
+import { logger } from '../lib/logger';
+import { fetchInventoryPage } from '../repositories/inventoryRepository';
+import {
+  consumeInventoryItemWithAudit,
+  deleteInventoryItemWithAudit,
+  undoConsumeInventoryItemWithAudit,
+  updateInventoryItemWithAudit,
+} from '../services/inventoryService';
+import type { EditableInventoryItem, HistoryItem, InventoryExpiryFilter, InventoryItem } from '../types/domain';
 
-export function useInventory(unidadeId: string | undefined, onActionRecorded?: (item: any) => void) {
-  const [fullInventory, setFullInventory] = useState<any[]>([]);
+export function useInventory(unidadeId: string | undefined, onActionRecorded?: (item: HistoryItem) => void) {
+  const [fullInventory, setFullInventory] = useState<InventoryItem[]>([]);
   const [isInventoryLoading, setIsInventoryLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [categoryFilter, setCategoryFilterState] = useState('');
+  const [roomFilter, setRoomFilterState] = useState('');
+  const [expiryFilter, setExpiryFilterState] = useState<InventoryExpiryFilter>('todos');
+  const [inventoryPage, setInventoryPage] = useState(1);
+  const [inventoryPageSize, setInventoryPageSize] = useState(24);
+  const [inventoryTotal, setInventoryTotal] = useState(0);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
-  const [editingItemData, setEditingItemData] = useState<any>(null);
+  const [editingItemData, setEditingItemData] = useState<EditableInventoryItem | null>(null);
+
+  const resetToFirstPage = () => setInventoryPage(1);
+
+  const updateSearchTerm = (term: string) => {
+    setSearchTerm(term);
+    resetToFirstPage();
+  };
+
+  const setCategoryFilter = (value: string) => {
+    setCategoryFilterState(value);
+    resetToFirstPage();
+  };
+
+  const setRoomFilter = (value: string) => {
+    setRoomFilterState(value);
+    resetToFirstPage();
+  };
+
+  const setExpiryFilter = (value: InventoryExpiryFilter) => {
+    setExpiryFilterState(value);
+    resetToFirstPage();
+  };
+
+  const updateInventoryPageSize = (value: number) => {
+    setInventoryPageSize(value);
+    resetToFirstPage();
+  };
+
+  const clearInventoryFilters = () => {
+    setSearchTerm('');
+    setCategoryFilterState('');
+    setRoomFilterState('');
+    setExpiryFilterState('todos');
+    resetToFirstPage();
+  };
 
   const carregarInventarioCompleto = async (silent = false) => {
     if (!unidadeId) return;
     if (!silent) setIsInventoryLoading(true);
     try {
-      const { data, error } = await supabase
-        .from('itens_inventario')
-        .select('*')
-        .eq('unidade_id', unidadeId)
-        .order('nome', { ascending: true });
+      const { items, total } = await fetchInventoryPage({
+        unidadeId,
+        searchTerm,
+        categoryFilter,
+        roomFilter,
+        expiryFilter,
+        page: inventoryPage,
+        pageSize: inventoryPageSize,
+      });
 
-      if (error) throw error;
-      setFullInventory(data || []);
-    } catch (err) {
-      console.error('Erro ao carregar inventário:', err);
+      setFullInventory(items);
+      setInventoryTotal(total);
+    } catch {
+      logger.warn('Falha ao carregar inventario.');
     } finally {
       if (!silent) setIsInventoryLoading(false);
     }
   };
 
-  const handleStartEdit = (item: any) => {
+  const handleStartEdit = (item: InventoryItem) => {
     setEditingItemId(item.id);
     setEditingItemData({ ...item });
   };
@@ -40,136 +92,68 @@ export function useInventory(unidadeId: string | undefined, onActionRecorded?: (
   };
 
   const handleUpdateItem = async () => {
-    if (!editingItemId || !editingItemData) return;
+    if (!editingItemId || !editingItemData || !unidadeId) return;
     
     // Buscar dados atuais para comparar se houve mudança de quantidade
     const originalItem = fullInventory.find(i => i.id === editingItemId);
-    const qtdMudou = originalItem && Number(originalItem.quantidade) !== Number(editingItemData.quantidade);
-    const diff = qtdMudou ? Number(editingItemData.quantidade) - Number(originalItem.quantidade) : 0;
 
     try {
-      const { error } = await supabase
-        .from('itens_inventario')
-        .update({
-          nome: formatarTexto(editingItemData.nome),
-          categoria: formatarTexto(editingItemData.categoria),
-          comodo: formatarTexto(editingItemData.comodo),
-          armario: formatarTexto(editingItemData.armario),
-          caixa: formatarTexto(editingItemData.caixa),
-          quantidade: editingItemData.quantidade,
-          validade: formatarData(editingItemData.validade)
-        })
-        .eq('id', editingItemId);
-      if (error) throw error;
-
-      // REGISTRO DE AUDITORIA: AJUSTE/EDIÇÃO
-      await supabase
-        .from('movimentacoes_inventario')
-        .insert({
-          unidade_id: unidadeId,
-          item_id: editingItemId,
-          item_nome: editingItemData.nome,
-          categoria: editingItemData.categoria,
-          comodo: editingItemData.comodo,
-          quantidade: qtdMudou ? Math.abs(diff) : 0,
-          tipo: qtdMudou ? (diff > 0 ? 'entrada' : 'consumo') : 'ajuste'
-        });
+      const historyItem = await updateInventoryItemWithAudit({
+        unidadeId,
+        itemId: editingItemId,
+        editingItemData,
+        originalItem,
+      });
 
       if (onActionRecorded) {
-        onActionRecorded({
-          item: editingItemData.nome,
-          categoria: editingItemData.categoria,
-          comodo: editingItemData.comodo,
-          quantidade: qtdMudou ? Math.abs(diff) : 0,
-          tipo: qtdMudou ? (diff > 0 ? 'entrada' : 'consumo') : 'ajuste',
-          data: new Date().toISOString()
-        });
+        onActionRecorded(historyItem);
       }
 
       await carregarInventarioCompleto(true);
       handleCancelEdit();
       toast.success("Item atualizado e registrado.");
-    } catch (err) {
-      console.error("Erro ao atualizar item:", err);
+    } catch {
+      logger.warn('Falha ao atualizar item de inventario.');
       toast.error("Erro ao salvar alterações.");
     }
   };
 
   const handleDeleteItem = async (id: string) => {
     const item = fullInventory.find(i => i.id === id);
-    if (!item) return;
+    if (!item || !unidadeId) return;
     
     try {
-      // 1. Logar a exclusão antes de deletar o item (pela integridade do histórico)
-      await supabase
-        .from('movimentacoes_inventario')
-        .insert({
-          unidade_id: unidadeId,
-          item_id: id,
-          item_nome: item.nome,
-          categoria: item.categoria,
-          comodo: item.comodo,
-          quantidade: item.quantidade,
-          tipo: 'exclusao'
-        });
+      const historyItem = await deleteInventoryItemWithAudit({
+        unidadeId,
+        item,
+      });
 
       if (onActionRecorded) {
-        onActionRecorded({
-          item: item.nome,
-          categoria: item.categoria,
-          comodo: item.comodo,
-          quantidade: item.quantidade,
-          tipo: 'exclusao',
-          data: new Date().toISOString()
-        });
+        onActionRecorded(historyItem);
       }
 
-      // 2. Deletar o item
-      const { error } = await supabase.from('itens_inventario').delete().eq('id', id);
-      if (error) throw error;
-      
       await carregarInventarioCompleto(true);
       toast.success("Item removido e exclusão registrada.");
-    } catch (err) {
-      console.error("Erro ao deletar item:", err);
+    } catch {
+      logger.warn('Falha ao excluir item de inventario.');
       toast.error("Erro ao excluir item.");
     }
   };
 
-  const handleConsumeItem = async (item: any) => {
+  const handleConsumeItem = async (item: InventoryItem) => {
     if (item.quantidade <= 0) {
       toast.error("Quantidade já está em zero.");
       return;
     }
-    const novaQtd = Number(item.quantidade) - 1;
     try {
-      const { error } = await supabase
-        .from('itens_inventario')
-        .update({ quantidade: novaQtd })
-        .eq('id', item.id);
-      if (error) throw error;
-
-      await supabase
-        .from('movimentacoes_inventario')
-        .insert({
-          unidade_id: unidadeId,
-          item_id: item.id,
-          item_nome: item.nome,
-          categoria: item.categoria,
-          comodo: item.comodo,
-          quantidade: 1,
-          tipo: 'consumo'
-        });
+      if (!unidadeId) return;
+      const historyItem = await consumeInventoryItemWithAudit({
+        unidadeId,
+        item,
+      });
 
       if (onActionRecorded) {
-        onActionRecorded({
-          item: item.nome,
-          categoria: item.categoria,
-          comodo: item.comodo,
-          quantidade: 1,
-          tipo: 'consumo',
-          data: new Date().toISOString()
-        });
+        onActionRecorded(historyItem);
       }
 
       toast.success(`Consumido 1 unid. de ${item.nome}`, {
@@ -179,49 +163,28 @@ export function useInventory(unidadeId: string | undefined, onActionRecorded?: (
         }
       });
       await carregarInventarioCompleto(true);
-    } catch (err) {
-      console.error("Erro ao consumir item:", err);
+    } catch {
+      logger.warn('Falha ao registrar consumo de item.');
       toast.error("Erro ao registrar consumo.");
     }
   };
 
-  const handleUndoConsume = async (item: any) => {
+  const handleUndoConsume = async (item: InventoryItem) => {
     try {
-      const novaQtd = Number(item.quantidade); // Volta para o valor original antes do consumo
-      const { error } = await supabase
-        .from('itens_inventario')
-        .update({ quantidade: novaQtd })
-        .eq('id', item.id);
-      if (error) throw error;
-
-      // Registrar o estorno
-      await supabase
-        .from('movimentacoes_inventario')
-        .insert({
-          unidade_id: unidadeId,
-          item_id: item.id,
-          item_nome: item.nome,
-          categoria: item.categoria,
-          comodo: item.comodo,
-          quantidade: 1,
-          tipo: 'entrada' // Estorno é uma entrada
-        });
+      if (!unidadeId) return;
+      const historyItem = await undoConsumeInventoryItemWithAudit({
+        unidadeId,
+        item,
+      });
 
       if (onActionRecorded) {
-        onActionRecorded({
-          item: item.nome,
-          categoria: item.categoria,
-          comodo: item.comodo,
-          quantidade: 1,
-          tipo: 'entrada',
-          data: new Date().toISOString()
-        });
+        onActionRecorded(historyItem);
       }
 
       toast.success("Consumo desfeito e registrado.");
       await carregarInventarioCompleto(true);
-    } catch (err) {
-      console.error("Erro ao desfazer consumo:", err);
+    } catch {
+      logger.warn('Falha ao desfazer consumo de item.');
       toast.error("Não foi possível desfazer.");
     }
   };
@@ -230,7 +193,19 @@ export function useInventory(unidadeId: string | undefined, onActionRecorded?: (
     fullInventory,
     isInventoryLoading,
     searchTerm,
-    setSearchTerm,
+    setSearchTerm: updateSearchTerm,
+    categoryFilter,
+    setCategoryFilter,
+    roomFilter,
+    setRoomFilter,
+    expiryFilter,
+    setExpiryFilter,
+    inventoryPage,
+    setInventoryPage,
+    inventoryPageSize,
+    setInventoryPageSize: updateInventoryPageSize,
+    inventoryTotal,
+    clearInventoryFilters,
     editingItemId,
     editingItemData,
     setEditingItemData,

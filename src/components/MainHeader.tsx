@@ -1,13 +1,16 @@
 import { motion } from 'motion/react';
 import { Package, Share2, LogOut, ArrowRight, BarChart2, Table as TableIcon, Box, ShoppingCart, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import type { UnitMembership } from '../types/domain';
+
+export type AppTab = 'entrada' | 'inventário' | 'consumo' | 'dashboard' | 'saas-admin';
 
 interface MainHeaderProps {
-  unidades: any[];
-  unidadeAtiva: any | null;
-  setUnidadeAtiva: (unidade: any) => void;
-  activeTab: 'entrada' | 'inventário' | 'consumo' | 'dashboard' | 'saas-admin';
-  setActiveTab: (tab: any) => void;
+  unidades: UnitMembership[];
+  unidadeAtiva: UnitMembership | null;
+  setUnidadeAtiva: (unidade: UnitMembership | null) => void;
+  activeTab: AppTab;
+  setActiveTab: (tab: AppTab) => void;
   pendentesCount: number;
   onOpenAdminModal: () => void;
   onSignOut: () => void;

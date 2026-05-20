@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { logger } from '../lib/logger';
 import { toast } from 'sonner';
 
 export interface DictionaryMatch {
@@ -67,10 +68,10 @@ export function useTriage(unidadeId: string | undefined) {
         return { ...item, dictMatch: match };
       });
 
-      console.log(`[SmartMatch] ${enriched.filter(i => i.dictMatch).length}/${enriched.length} itens com match no dicionário`);
+      logger.debug('Smart match da triagem concluido.');
       setPendingItems(enriched);
-    } catch (err) {
-      console.error("Erro ao buscar itens para triagem:", err);
+    } catch {
+      logger.warn('Falha ao buscar itens para triagem.');
       toast.error("Não foi possível carregar os itens pendentes.");
     } finally {
       setIsLoading(false);
@@ -91,8 +92,8 @@ export function useTriage(unidadeId: string | undefined) {
       if (error) throw error;
       setPendingItems(prev => prev.filter(item => item.id !== id));
       toast.success("Item descartado.");
-    } catch (err) {
-      console.error("Erro ao descartar item", err);
+    } catch {
+      logger.warn('Falha ao descartar item de triagem.');
       toast.error("Erro ao descartar item.");
     }
   };

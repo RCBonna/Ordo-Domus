@@ -11,8 +11,16 @@ interface Props {
   unidadeNome?: string;
 }
 
+interface UnitMember {
+  unidade_id: string;
+  user_id: string;
+  papel: string;
+  status: string;
+  adicionado_em: string;
+}
+
 export default function AdminPanel({ unidadeId, papel, unidadeNome }: Props) {
-  const [membros, setMembros] = useState<any[]>([]);
+  const [membros, setMembros] = useState<UnitMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [copiado, setCopiado] = useState(false);
 

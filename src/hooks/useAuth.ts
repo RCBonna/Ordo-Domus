@@ -1,12 +1,9 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { logger } from '../lib/logger';
+import type { UnitMembership } from '../types/domain';
 
-export interface Unidade {
-  id: string;
-  nome: string;
-  papel: string;
-  status: string;
-}
+export type Unidade = UnitMembership;
 
 export function useAuth() {
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
@@ -50,8 +47,8 @@ export function useAuth() {
         if (!unidade) return null;
         return { id: unidade.id, nome: unidade.nome, papel: m.papel, status: m.status };
       }).filter(Boolean) as Unidade[];
-    } catch (e) {
-      console.error("[useAuth] Erro ao carregar unidades:", e);
+    } catch {
+      logger.warn('Falha ao carregar unidades do usuario.');
       return [];
     }
   };
@@ -64,9 +61,9 @@ export function useAuth() {
     try {
       const { data, error } = await supabase.rpc('listar_pendentes', { p_unidade_id: unidadeAtiva.id });
       if (!error && data) setPendentesCount(data.length);
-      else if (error) console.warn("[useAuth] RPC listar_pendentes ignorado (pode não existir):", error.message);
-    } catch (err) {
-      console.error("[useAuth] Erro pendentes:", err);
+      else if (error) logger.warn('RPC de pendentes indisponivel.');
+    } catch {
+      logger.warn('Falha ao carregar contagem de pendentes.');
     }
   };
 
@@ -80,8 +77,8 @@ export function useAuth() {
     setIsAuthLoading(false);
     try {
       await supabase.auth.signOut({ scope: 'global' });
-    } catch (e) {
-      console.error("[useAuth] Erro no signOut:", e);
+    } catch {
+      logger.warn('Falha ao encerrar sessao.');
     }
     setTimeout(() => { isLoggingOut.current = false; }, 2000);
   };
@@ -101,7 +98,7 @@ export function useAuth() {
       clearTimeout(fallbackTimer);
       fallbackTimer = setTimeout(() => {
         if (!cancelled && !isLoggingOut.current) {
-          console.warn("[useAuth] processarSessao demorou muito, liberando a tela.");
+          logger.warn('Processamento de sessao demorou; liberando tela.');
           setIsAuthLoading(false);
         }
       }, 5000);
@@ -114,8 +111,8 @@ export function useAuth() {
         if (cancelled || isLoggingOut.current) return;
         setUnidades(lista);
         if (lista.length === 1) setUnidadeAtiva(lista[0]);
-      } catch (err) {
-        console.error("[useAuth] Erro processando sessão:", err);
+      } catch {
+        logger.warn('Falha ao processar sessao.');
       } finally {
         if (!cancelled) {
           setIsAuthLoading(false);
@@ -127,7 +124,7 @@ export function useAuth() {
     const inicializar = async () => {
       fallbackTimer = setTimeout(() => {
         if (!cancelled) {
-          console.warn("[useAuth] Inicialização travou, liberando a tela...");
+          logger.warn('Inicializacao demorou; liberando tela.');
           setIsAuthLoading(false);
         }
       }, 5000);
@@ -136,7 +133,7 @@ export function useAuth() {
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) throw error;
         
-        console.log("[useAuth] Sessão inicial:", session?.user?.email || "Nenhuma");
+        logger.debug(session?.user ? 'Sessao inicial encontrada.' : 'Sessao inicial ausente.');
         
         if (session?.user) {
           await processarSessao(session.user.id, session.user.email);
@@ -144,8 +141,8 @@ export function useAuth() {
           setIsAuthLoading(false);
           clearTimeout(fallbackTimer);
         }
-      } catch (err) {
-        console.error("[useAuth] Erro na inicialização:", err);
+      } catch {
+        logger.warn('Falha na inicializacao de autenticacao.');
         setIsAuthLoading(false);
         clearTimeout(fallbackTimer);
       }
@@ -154,7 +151,7 @@ export function useAuth() {
     inicializar();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("[useAuth] Mudança de estado de auth:", event);
+      logger.debug(`Evento de autenticacao: ${event}.`);
       if (isLoggingOut.current || cancelled) return;
       
       if ((event === 'SIGNED_IN' || event === 'INITIAL_SESSION') && session?.user) {

@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { motion } from 'motion/react';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -11,18 +12,39 @@ import {
   ResponsiveContainer, BarChart, CartesianGrid, XAxis, YAxis, 
   Tooltip, Bar, Cell, LabelList, PieChart, Pie, Legend 
 } from 'recharts';
+import type { DashboardMetrics, HistoryItem, InventoryItem } from '../types/domain';
 
 interface InventoryDashboardProps {
-  fullInventory: any[];
-  history: any[];
+  fullInventory: InventoryItem[];
+  history: HistoryItem[];
+  dashboardMetrics?: DashboardMetrics | null;
+  isDashboardMetricsLoading?: boolean;
   isConsumivel: (categoria?: string) => boolean;
-  formatarTexto: (texto?: any) => string;
+  formatarTexto: (texto?: unknown) => string;
   onNavigateToItem?: (itemName: string) => void;
 }
 
+interface PieLabelProps {
+  cx: number;
+  cy: number;
+  midAngle: number;
+  innerRadius: number;
+  outerRadius: number;
+  percent: number;
+  value: string | number;
+}
+
 // Custom Label for Pie Chart with better visibility
-const renderPieLabel = (props: any) => {
-  const { cx, cy, midAngle, innerRadius, outerRadius, percent, value } = props;
+const renderPieLabel = (props: Partial<PieLabelProps>) => {
+  const {
+    cx = 0,
+    cy = 0,
+    midAngle = 0,
+    innerRadius = 0,
+    outerRadius = 0,
+    percent = 0,
+    value = '',
+  } = props;
   const RADIAN = Math.PI / 180;
   
   const radiusInner = innerRadius + (outerRadius - innerRadius) * 0.5;
@@ -50,6 +72,8 @@ const renderPieLabel = (props: any) => {
 export function InventoryDashboard({ 
   fullInventory, 
   history, 
+  dashboardMetrics,
+  isDashboardMetricsLoading = false,
   isConsumivel, 
   formatarTexto,
   onNavigateToItem
@@ -71,18 +95,65 @@ export function InventoryDashboard({
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
 
-  const expiringSoon = fullInventory
-    .filter(item => {
-      const days = getDaysUntilExpiry(item.validade);
-      return days !== null && days >= 0 && days <= 30;
-    })
-    .sort((a, b) => (getDaysUntilExpiry(a.validade) || 999) - (getDaysUntilExpiry(b.validade) || 999));
+  const allExpiryItems = useMemo(() => fullInventory
+    .filter(item => getDaysUntilExpiry(item.validade || '') !== null)
+    .sort((a, b) => (getDaysUntilExpiry(a.validade || '') || 999) - (getDaysUntilExpiry(b.validade || '') || 999)), [fullInventory]);
 
-  const criticalStock = fullInventory
-    .filter(i => (i.quantidade || 0) <= 1 && isConsumivel(i.categoria))
-    .slice(0, 8);
+  const expiredItems = useMemo(() => allExpiryItems.filter(item => (getDaysUntilExpiry(item.validade || '') as number) < 0), [allExpiryItems]);
+  const visibleExpiredItems = dashboardMetrics?.expired_items ?? expiredItems;
 
-  const totalItemsCount = fullInventory.reduce((acc, i) => acc + (i.quantidade || 0), 0);
+  const urgentExpiryItems = useMemo(() => allExpiryItems.filter(item => {
+    const d = getDaysUntilExpiry(item.validade || '') as number;
+    return d >= 0 && d <= 7;
+  }), [allExpiryItems]);
+  const visibleUrgentExpiryItems = dashboardMetrics?.urgent_expiry_items ?? urgentExpiryItems;
+
+  const expiringSoon = useMemo(() => allExpiryItems.filter(item => {
+    const d = getDaysUntilExpiry(item.validade || '') as number;
+    return d > 7 && d <= 30;
+  }), [allExpiryItems]);
+  const visibleExpiringSoon = dashboardMetrics?.expiring_soon_items ?? expiringSoon;
+
+  const criticalStockAll = useMemo(() => fullInventory
+    .filter(i => (Number(i.quantidade) || 0) <= 1 && isConsumivel(i.categoria || undefined)), [fullInventory, isConsumivel]);
+
+  const criticalStock = useMemo(() => dashboardMetrics?.critical_stock_items ?? criticalStockAll.slice(0, 8), [criticalStockAll, dashboardMetrics]);
+
+  const totalItemsCount = useMemo(() => dashboardMetrics?.total_quantity ?? fullInventory.reduce((acc, i) => acc + (Number(i.quantidade) || 0), 0), [dashboardMetrics, fullInventory]);
+  const totalSkusCount = dashboardMetrics?.total_skus ?? fullInventory.length;
+  const criticalStockCount = dashboardMetrics?.critical_stock_count ?? criticalStockAll.length;
+  const expiringThirtyDaysCount = dashboardMetrics
+    ? dashboardMetrics.urgent_expiry_count + dashboardMetrics.expiring_soon_count
+    : expiringSoon.length + urgentExpiryItems.length;
+
+  const roomChartData = useMemo(() => Object.entries(
+    fullInventory.reduce<Record<string, number>>((acc, item) => {
+      const comodo = item.comodo || 'Outros';
+      acc[comodo] = (acc[comodo] || 0) + (Number(item.quantidade) || 0);
+      return acc;
+    }, {})
+  ).map(([name, total]) => ({ name, total })).sort((a, b) => b.total - a.total).slice(0, 6), [fullInventory]);
+  const visibleRoomChartData = dashboardMetrics?.room_chart ?? roomChartData;
+
+  const categoryChartData = useMemo(() => Object.entries(
+    fullInventory.reduce<Record<string, number>>((acc, item) => {
+      const cat = item.categoria || 'Geral';
+      acc[cat] = (acc[cat] || 0) + (Number(item.quantidade) || 0);
+      return acc;
+    }, {})
+  ).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 5), [fullInventory]);
+  const visibleCategoryChartData = dashboardMetrics?.category_chart ?? categoryChartData;
+
+  const todayActivityCount = useMemo(() => history.filter(h => {
+    if (!h.data) return true;
+    const d = new Date(h.data);
+    const today = new Date();
+    return d.getDate() === today.getDate() &&
+           d.getMonth() === today.getMonth() &&
+           d.getFullYear() === today.getFullYear();
+  }).length, [history]);
+  const visibleTodayActivityCount = dashboardMetrics?.today_activity_count ?? todayActivityCount;
+  const visibleHistory = dashboardMetrics?.recent_movements ?? history;
   
   const chartColors = ['#6366f1', '#8b5cf6', '#ec4899', '#f43f5e', '#f59e0b', '#10b981', '#06b6d4'];
 
@@ -93,6 +164,45 @@ export function InventoryDashboard({
       transition={{ duration: 0.4, ease: "easeOut" }}
       className="space-y-8 pb-10"
     >
+      {/* Critical Alert Board */}
+      {(visibleExpiredItems.length > 0 || visibleUrgentExpiryItems.length > 0) && (
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-gradient-to-r from-rose-500 to-rose-600 rounded-[24px] p-6 text-white shadow-lg shadow-rose-200 border border-rose-400"
+        >
+          <div className="flex items-center gap-4 mb-4">
+            <div className="p-3 bg-white/20 rounded-full">
+              <AlertTriangle className="w-8 h-8 text-white" />
+            </div>
+            <div>
+              <h2 className="text-xl font-black tracking-tight">Alerta Crítico de Validade</h2>
+              <p className="text-rose-100 font-bold text-sm">Ação imediata necessária para os seguintes itens</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            {visibleExpiredItems.map((item, idx) => (
+              <div key={`exp-${idx}`} onClick={() => onNavigateToItem?.(item.nome)} className="bg-white/10 hover:bg-white/20 transition-colors cursor-pointer rounded-xl p-3 flex items-center justify-between border border-white/10">
+                <div className="flex flex-col min-w-0">
+                  <span className="font-bold text-sm truncate">{item.nome}</span>
+                  <span className="text-[10px] font-black uppercase text-rose-200">Vencido</span>
+                </div>
+                <ArrowRight className="w-4 h-4 opacity-50" />
+              </div>
+            ))}
+            {visibleUrgentExpiryItems.map((item, idx) => (
+              <div key={`urg-${idx}`} onClick={() => onNavigateToItem?.(item.nome)} className="bg-white/10 hover:bg-white/20 transition-colors cursor-pointer rounded-xl p-3 flex items-center justify-between border border-white/10">
+                <div className="flex flex-col min-w-0">
+                  <span className="font-bold text-sm truncate">{item.nome}</span>
+                  <span className="text-[10px] font-black uppercase text-orange-200">Vence em {getDaysUntilExpiry(item.validade || '')}d</span>
+                </div>
+                <ArrowRight className="w-4 h-4 opacity-50" />
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
+
       {/* KPI Section */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
@@ -101,35 +211,28 @@ export function InventoryDashboard({
             value: totalItemsCount, 
             icon: Package, 
             color: 'from-indigo-500 to-blue-600',
-            sub: `${fullInventory.length} SKUs cadastrados`
+            sub: `${totalSkusCount} SKUs cadastrados`
           },
           { 
             label: 'Estoque Crítico', 
-            value: fullInventory.filter(i => (i.quantidade || 0) <= 1 && isConsumivel(i.categoria)).length, 
+            value: criticalStockCount, 
             icon: AlertTriangle, 
             color: 'from-rose-500 to-pink-600',
             sub: 'Abaixo da reserva'
           },
           { 
             label: 'A Vencer (30d)', 
-            value: expiringSoon.length, 
+            value: expiringThirtyDaysCount, 
             icon: Clock, 
             color: 'from-amber-500 to-orange-600',
             sub: 'Radar de validade'
           },
           { 
             label: 'Atividade Hoje', 
-            value: history.filter(h => {
-              if (!h.data) return true; // Items added locally have today's date implicitly
-              const d = new Date(h.data);
-              const today = new Date();
-              return d.getDate() === today.getDate() && 
-                     d.getMonth() === today.getMonth() && 
-                     d.getFullYear() === today.getFullYear();
-            }).length, 
+            value: visibleTodayActivityCount, 
             icon: Zap, 
             color: 'from-emerald-500 to-teal-600',
-            sub: 'Movimentações recentes'
+            sub: isDashboardMetricsLoading ? 'Atualizando...' : 'Movimentações recentes'
           }
         ].map((kpi, idx) => (
           <motion.div
@@ -173,13 +276,7 @@ export function InventoryDashboard({
               <div className="h-[280px] w-full p-4">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart 
-                    data={Object.entries(
-                      fullInventory.reduce((acc: any, item: any) => {
-                        const comodo = item.comodo || 'Outros';
-                        acc[comodo] = (acc[comodo] || 0) + (item.quantidade || 0);
-                        return acc;
-                      }, {})
-                    ).map(([name, total]) => ({ name, total: total as number })).sort((a, b) => b.total - a.total).slice(0, 6)}
+                    data={visibleRoomChartData}
                     layout="vertical"
                     margin={{ left: -20, right: 30, top: 0, bottom: 0 }}
                   >
@@ -222,13 +319,7 @@ export function InventoryDashboard({
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie
-                      data={Object.entries(
-                        fullInventory.reduce((acc: any, item: any) => {
-                          const cat = item.categoria || 'Geral';
-                          acc[cat] = (acc[cat] || 0) + (item.quantidade || 0);
-                          return acc;
-                        }, {})
-                      ).map(([name, value]) => ({ name, value: value as number })).sort((a, b) => b.value - a.value).slice(0, 5)}
+                      data={visibleCategoryChartData}
                       cx="50%"
                       cy="45%"
                       innerRadius={55}
@@ -263,13 +354,13 @@ export function InventoryDashboard({
                 <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Itens que precisam de atenção</p>
               </div>
               <Badge variant="outline" className="rounded-full px-3 py-1 text-xs font-black border-amber-100 text-amber-600 bg-amber-50">
-                {expiringSoon.length} alertas
+                {expiringThirtyDaysCount} alertas
               </Badge>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {expiringSoon.slice(0, 6).map((item, idx) => {
-                const days = getDaysUntilExpiry(item.validade);
+              {[...visibleUrgentExpiryItems, ...visibleExpiringSoon].slice(0, 6).map((item, idx) => {
+                const days = getDaysUntilExpiry(item.validade || '');
                 const isUrgent = days !== null && days <= 7;
                 
                 return (
@@ -278,7 +369,7 @@ export function InventoryDashboard({
                     onClick={() => onNavigateToItem?.(item.nome)}
                     className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 group hover:border-amber-200 hover:bg-amber-50/30 transition-all cursor-pointer"
                   >
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isUrgent ? 'bg-rose-100 text-rose-500' : 'bg-amber-100 text-amber-500'}`}>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isUrgent ? 'bg-orange-100 text-orange-500' : 'bg-amber-100 text-amber-500'}`}>
                       <Clock className="w-5 h-5" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -286,7 +377,7 @@ export function InventoryDashboard({
                       <div className="flex items-center gap-2">
                         <span className="text-xs text-slate-400 font-bold uppercase">{item.comodo}</span>
                         <span className="text-xs text-slate-300">•</span>
-                        <span className={`text-xs font-black ${isUrgent ? 'text-rose-500' : 'text-amber-500'}`}>
+                        <span className={`text-xs font-black ${isUrgent ? 'text-orange-500' : 'text-amber-500'}`}>
                           {days === 0 ? 'Vence HOJE' : `Em ${days} dias`}
                         </span>
                       </div>
@@ -295,7 +386,7 @@ export function InventoryDashboard({
                   </div>
                 );
               })}
-              {expiringSoon.length === 0 && (
+              {[...visibleUrgentExpiryItems, ...visibleExpiringSoon].length === 0 && (
                 <div className="col-span-full py-10 flex flex-col items-center justify-center text-slate-300">
                   <Clock className="w-12 h-12 mb-2 opacity-20" />
                   <p className="italic text-sm font-bold">Nenhum item vencendo em breve.</p>
@@ -339,9 +430,9 @@ export function InventoryDashboard({
                   <p className="text-xs font-bold">Tudo em ordem!</p>
                 </div>
               )}
-              {fullInventory.filter(i => (i.quantidade || 0) <= 1 && isConsumivel(i.categoria)).length > 8 && (
+              {criticalStockCount > 8 && (
                 <p className="text-xs text-center text-slate-400 font-bold uppercase mt-2">
-                  + {fullInventory.filter(i => (i.quantidade || 0) <= 1 && isConsumivel(i.categoria)).length - 8} itens críticos
+                  + {criticalStockCount - 8} itens críticos
                 </p>
               )}
             </div>
@@ -355,7 +446,7 @@ export function InventoryDashboard({
             </h3>
             <div className="flex-1 overflow-y-auto -mr-2 pr-2">
               <div className="space-y-4">
-                {history.slice(0, 30).map((item, idx) => {
+                {visibleHistory.slice(0, 30).map((item, idx) => {
                   const isConsumo = item.tipo === 'consumo';
                   const isExclusao = item.tipo === 'exclusao';
                   const isAjuste = item.tipo === 'ajuste';
@@ -413,7 +504,7 @@ export function InventoryDashboard({
                     </div>
                   );
                 })}
-                {history.length === 0 && (
+                {visibleHistory.length === 0 && (
                   <p className="text-slate-300 text-center py-10 italic text-sm font-bold">Sem atividades registradas.</p>
                 )}
               </div>

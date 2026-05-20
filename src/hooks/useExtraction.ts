@@ -1,7 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { extractInventoryData, extractInventoryDataFromAudio, type ExtractedItem } from '../services/geminiService';
-import { formatarTexto, formatarData } from '../lib/utils';
+import { formatarTexto, formatarData, getErrorMessage } from '../lib/utils';
+import { logger } from '../lib/logger';
+import { getCurrentUserId } from '../repositories/authRepository';
+import { upsertInventoryItem } from '../repositories/inventoryRepository';
+import { fetchRecentInventoryMovements, insertInventoryMovement } from '../repositories/movementRepository';
+import type { HistoryItem } from '../types/domain';
 
 export function useExtraction(unidadeId: string | undefined) {
   const [input, setInput] = useState('');
@@ -34,7 +39,6 @@ export function useExtraction(unidadeId: string | undefined) {
         ? 'audio/ogg;codecs=opus'
         : 'audio/webm';
         
-      console.log("[Mic] Iniciando gravação com MIME:", mimeType);
       const mediaRecorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = mediaRecorder;
       audioChunksRef.current = [];
@@ -42,13 +46,11 @@ export function useExtraction(unidadeId: string | undefined) {
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           audioChunksRef.current.push(event.data);
-          console.log("[Mic] Chunk recebido:", event.data.size);
         }
       };
 
       mediaRecorder.onstop = async () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
-        console.log("[Mic] Gravação finalizada. Tamanho total:", audioBlob.size);
         stream.getTracks().forEach(track => track.stop());
         setIsRecording(false);
         
@@ -64,8 +66,8 @@ export function useExtraction(unidadeId: string | undefined) {
       mediaRecorder.start(1000); // Enviar dados a cada 1 segundo
       setIsRecording(true);
       setError(null);
-    } catch (err) {
-      console.error("[Mic Error]", err);
+    } catch {
+      logger.warn('Falha ao acessar microfone.');
       setError("Não foi possível acessar o microfone.");
       setIsRecording(false);
     }
@@ -88,10 +90,10 @@ export function useExtraction(unidadeId: string | undefined) {
       reader.readAsDataURL(blob);
       const base64Data = await base64Promise;
 
-      const dataRaw = await extractInventoryDataFromAudio(base64Data, mimeType);
+      const dataRaw = await extractInventoryDataFromAudio(base64Data, mimeType, unidadeId);
       await processExtractionResult(dataRaw);
-    } catch (err: any) {
-      console.error("[Audio Extraction Error]", err);
+    } catch {
+      logger.warn('Falha ao processar extracao por audio.');
       setError("Erro ao processar áudio. Tente falar de forma mais clara ou usar texto.");
     } finally {
       setIsExtracting(false);
@@ -128,23 +130,21 @@ export function useExtraction(unidadeId: string | undefined) {
     setError(null);
 
     try {
-      console.log("[Extraction] Iniciando gravação no Supabase (upsert_inventario)...", editedData);
+      const userId = await getCurrentUserId();
+      logger.debug('Iniciando gravacao de extracao no inventario.');
 
       const dbPromise = (async () => {
-        console.log("[Extraction] Iniciando chamada RPC upsert_inventario...");
-        const { data: resultado, error: erroUpsert } = await supabase.rpc('upsert_inventario', {
-          p_unidade_id: unidadeId,
-          p_nome: editedData.item,
-          p_categoria: editedData.categoria,
-          p_comodo: editedData.comodo,
-          p_armario: editedData.armario,
-          p_caixa: editedData.caixa,
-          p_quantidade: editedData.quantidade,
-          p_validade: editedData.validade
+        const resultado = await upsertInventoryItem({
+          unidadeId,
+          nome: editedData.item,
+          categoria: editedData.categoria,
+          comodo: editedData.comodo,
+          armario: editedData.armario,
+          caixa: editedData.caixa,
+          quantidade: editedData.quantidade,
+          validade: editedData.validade
         });
-        console.log("[Extraction] Retorno da chamada RPC upsert_inventario:", resultado, erroUpsert);
-
-        if (erroUpsert) throw erroUpsert;
+        logger.debug('RPC de upsert do inventario concluida.');
         
         const acaoFinal = resultado?.acao as 'MERGE' | 'ADD' || 'ADD';
         const mensagem = acaoFinal === 'MERGE'
@@ -165,29 +165,28 @@ export function useExtraction(unidadeId: string | undefined) {
         };
 
         // Gravar no histórico do banco
-        console.log("[Extraction] Iniciando inserção em movimentacoes_inventario...");
-        const { error: erroHist } = await supabase
-          .from('movimentacoes_inventario')
-          .insert({
+        try {
+          await insertInventoryMovement({
             unidade_id: unidadeId,
             item_nome: itemNaTela.item,
             categoria: itemNaTela.categoria,
             comodo: itemNaTela.comodo,
             quantidade: itemNaTela.quantidade,
-            tipo: 'entrada'
+            tipo: 'entrada',
+            user_id: userId
           });
-        console.log("[Extraction] Retorno da inserção em movimentacoes_inventario:", erroHist);
-
-        if (erroHist) console.warn("Erro ao gravar histórico:", erroHist);
+          logger.debug('Historico de inventario gravado.');
+        } catch {
+          logger.warn('Falha ao gravar historico de inventario.');
+        }
 
         if (editedData.triage_id) {
-          console.log("[Extraction] Removendo item da triagem e atualizando dicionário...");
           const { error: errTriage } = await supabase
             .from('importacoes_pendentes')
             .delete()
             .eq('id', editedData.triage_id);
             
-          if (errTriage) console.warn("Erro ao remover da triagem:", errTriage);
+          if (errTriage) logger.warn('Falha ao remover item da triagem.');
 
           if (editedData.transcricao) {
             const { error: errDict } = await supabase
@@ -200,7 +199,7 @@ export function useExtraction(unidadeId: string | undefined) {
                 comodo: editedData.comodo
               }, { onConflict: 'unidade_id, nome_bruto_cupom' });
               
-            if (errDict) console.warn("Erro ao atualizar dicionário:", errDict);
+            if (errDict) logger.warn('Falha ao atualizar dicionario de produtos.');
           }
         }
 
@@ -211,7 +210,11 @@ export function useExtraction(unidadeId: string | undefined) {
         setTimeout(() => reject(new Error('Timeout: O banco de dados demorou muito para responder.')), 10000)
       );
 
-      const dbResult: any = await Promise.race([dbPromise, timeoutPromise]);
+      const dbResult = await Promise.race([dbPromise, timeoutPromise]) as {
+        itemNaTela: ExtractedItem;
+        acaoFinal: 'MERGE' | 'ADD';
+        mensagem: string;
+      };
 
       setHistory(prev => [dbResult.itemNaTela, ...prev]);
       setMergeStatus({ action: dbResult.acaoFinal, message: dbResult.mensagem });
@@ -222,9 +225,9 @@ export function useExtraction(unidadeId: string | undefined) {
       if (!editedData.transcricao) {
          setInput('');
       }
-    } catch (err: any) {
-      console.error("[Confirm And Save Error]", err);
-      setError(`Erro ao salvar no BD: ${err.message || 'Desconhecido'}`);
+    } catch (err: unknown) {
+      logger.warn('Falha ao salvar extracao no banco.');
+      setError(`Erro ao salvar no BD: ${getErrorMessage(err, 'Desconhecido')}`);
     } finally {
       setIsSaving(false);
     }
@@ -245,12 +248,13 @@ export function useExtraction(unidadeId: string | undefined) {
     setMergeStatus(null);
     setIsPendingConfirmation(false);
     try {
-      const dataRaw = await extractInventoryData(input);
+      const dataRaw = await extractInventoryData(input, unidadeId);
       await processExtractionResult(dataRaw);
       // Removed setInput('') from here because processExtractionResult now handles it.
-    } catch (err: any) {
-      console.error("[handleExtract] Erro:", err);
-      setError(err.message && err.message.includes('503') ? 'IA ocupada. Tente novamente em instantes.' : 'Erro ao processar. Verifique a conexão.');
+    } catch (err: unknown) {
+      logger.warn('Falha ao extrair dados de inventario.');
+      const message = getErrorMessage(err, '');
+      setError(message.includes('503') ? 'IA ocupada. Tente novamente em instantes.' : 'Erro ao processar. Verifique a conexão.');
     } finally {
       setIsExtracting(false);
     }
@@ -258,26 +262,21 @@ export function useExtraction(unidadeId: string | undefined) {
 
   const carregarHistorico = async () => {
     if (!unidadeId) return;
-    const { data, error } = await supabase
-      .from('movimentacoes_inventario')
-      .select('*')
-      .eq('unidade_id', unidadeId)
-      .order('criado_em', { ascending: false })
-      .limit(50);
-    
-    if (!error && data) {
-      const historyItems: ExtractedItem[] = data.map(m => ({
-        item: m.item_nome,
-        categoria: m.categoria,
-        comodo: m.comodo,
-        quantidade: m.quantidade,
-        tipo: m.tipo as any,
-        data: m.criado_em,
-        armario: '',
-        caixa: '',
-        validade: ''
-      }));
-      setHistory(historyItems);
+    try {
+      const historyItems = await fetchRecentInventoryMovements(unidadeId, 50);
+      setHistory(historyItems.map(item => ({
+        item: item.item,
+        categoria: item.categoria,
+        comodo: item.comodo,
+        quantidade: item.quantidade,
+        tipo: item.tipo,
+        data: item.data,
+        armario: item.armario || '',
+        caixa: item.caixa || '',
+        validade: item.validade || '',
+      })));
+    } catch {
+      logger.warn('Falha ao carregar historico de movimentacoes.');
     }
   };
 
@@ -292,8 +291,19 @@ export function useExtraction(unidadeId: string | undefined) {
     setIsPendingConfirmation(false);
   };
 
-  const addHistoryItem = (item: any) => {
-    setHistory(prev => [item, ...prev]);
+  const addHistoryItem = (item: HistoryItem) => {
+    setHistory(prev => [{
+      item: item.item,
+      categoria: item.categoria,
+      comodo: item.comodo,
+      quantidade: item.quantidade,
+      tipo: item.tipo,
+      data: item.data,
+      transcricao: item.transcricao,
+      armario: item.armario || '',
+      caixa: item.caixa || '',
+      validade: item.validade || ''
+    }, ...prev]);
   };
 
   useEffect(() => {

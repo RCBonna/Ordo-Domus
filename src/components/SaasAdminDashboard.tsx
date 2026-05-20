@@ -3,9 +3,17 @@ import { supabase } from '../lib/supabaseClient';
 import { motion } from 'motion/react';
 import { Loader2, Users, Building, Package, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { logger } from '../lib/logger';
+
+interface SaasMetrics {
+  total_unidades: number;
+  total_usuarios: number;
+  total_itens: number;
+  total_convites_pendentes: number;
+}
 
 export function SaasAdminDashboard() {
-  const [metrics, setMetrics] = useState<any>(null);
+  const [metrics, setMetrics] = useState<SaasMetrics | null>(null);
   const [loading, setLoading] = useState(true);
 
   const fetchMetrics = async () => {
@@ -14,7 +22,7 @@ export function SaasAdminDashboard() {
     if (!error && data) {
       setMetrics(data);
     } else {
-      console.error("[SaaS Admin] Erro ao buscar métricas:", error);
+      logger.warn('Falha ao buscar metricas SaaS.');
     }
     setLoading(false);
   };

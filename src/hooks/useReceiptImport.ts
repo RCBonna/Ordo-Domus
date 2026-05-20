@@ -1,7 +1,8 @@
 import { useState, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { extractInventoryDataFromReceipt } from '../services/geminiService';
-import { compressImage } from '../lib/utils';
+import { compressImage, getErrorMessage } from '../lib/utils';
+import { logger } from '../lib/logger';
 import { toast } from 'sonner';
 
 export function useReceiptImport(unidadeId: string | undefined, onImportSuccess?: () => void) {
@@ -26,7 +27,7 @@ export function useReceiptImport(unidadeId: string | undefined, onImportSuccess?
       
       // 2. OCR with Gemini
       toast.loading('Extraindo itens com IA...', { id: 'import-receipt' });
-      const extractedItems = await extractInventoryDataFromReceipt(base64Data, mimeType);
+      const extractedItems = await extractInventoryDataFromReceipt(base64Data, mimeType, unidadeId);
       
       if (!extractedItems || extractedItems.length === 0) {
         toast.error('Nenhum item encontrado no cupom.', { id: 'import-receipt' });
@@ -45,46 +46,31 @@ export function useReceiptImport(unidadeId: string | undefined, onImportSuccess?
         processado: false
       }));
 
-      console.log("[useReceiptImport] Tentando inserir linhas:", JSON.stringify(rowsToInsert, null, 2));
-
       // Primeiro verificar se temos sessão ativa
       const { data: session } = await supabase.auth.getSession();
-      console.log("[useReceiptImport] Sessão ativa?", !!session?.session, "User ID:", session?.session?.user?.id);
+      logger.debug(session?.session ? 'Sessao ativa para importacao de cupom.' : 'Sessao ausente na importacao de cupom.');
 
-      const { data, error, status, statusText } = await supabase
+      const { data, error } = await supabase
         .from('importacoes_pendentes')
         .insert(rowsToInsert)
         .select();
-        
-      console.log("[useReceiptImport] Resposta completa:", { 
-        data, 
-        error, 
-        status, 
-        statusText,
-        dataLength: data?.length,
-        errorMessage: error?.message,
-        errorCode: error?.code,
-        errorDetails: error?.details,
-        errorHint: error?.hint
-      });
 
       if (error) {
-        console.error("[useReceiptImport] Erro ao inserir importações pendentes:", JSON.stringify(error, null, 2));
+        logger.warn('Falha ao inserir importacoes pendentes.');
         toast.error(`Erro: ${error.message || 'Falha ao salvar'}`, { id: 'import-receipt' });
       } else if (!data || data.length === 0) {
-        console.warn("[useReceiptImport] INSERT retornou sem dados — possível bloqueio RLS silencioso");
+        logger.warn('Importacao de cupom retornou sem dados inseridos.');
         toast.warning('Os itens podem não ter sido salvos. Verifique as permissões.', { id: 'import-receipt' });
       } else {
-        console.log("[useReceiptImport] Sucesso! Inseridos:", data.length, "itens");
+        logger.info('Importacao de cupom concluida.');
         toast.success(`Cupom importado! ${data.length} itens aguardando triagem.`, { id: 'import-receipt' });
         onImportSuccess?.();
       }
-    } catch (error: any) {
-      console.error("[useReceiptImport] Exceção capturada:", error);
-      const msg = typeof error?.message === 'string' ? error.message : 'Erro desconhecido ao processar imagem.';
+    } catch (error: unknown) {
+      logger.warn('Falha inesperada ao importar cupom.');
+      const msg = getErrorMessage(error, 'Erro desconhecido ao processar imagem.');
       toast.error(msg, { id: 'import-receipt' });
     } finally {
-      console.log("[useReceiptImport] Finalizando processo de importação");
       setIsImporting(false);
     }
   };

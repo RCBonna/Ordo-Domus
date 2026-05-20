@@ -1,28 +1,56 @@
 import { motion, AnimatePresence } from 'motion/react';
-import { Search, ArrowRight, ChevronRight, Table as TableIcon } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight, Filter, Table as TableIcon, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { InventoryCard } from './InventoryCard';
 import { formatarTexto } from '@/src/lib/utils';
+import type { EditableInventoryItem, InventoryExpiryFilter, InventoryItem } from '../types/domain';
 
 interface InventoryListProps {
-  inventory: any[];
+  inventory: InventoryItem[];
   searchTerm: string;
   setSearchTerm: (term: string) => void;
+  categoryFilter: string;
+  setCategoryFilter: (term: string) => void;
+  roomFilter: string;
+  setRoomFilter: (term: string) => void;
+  expiryFilter: InventoryExpiryFilter;
+  setExpiryFilter: (filter: InventoryExpiryFilter) => void;
+  inventoryPage: number;
+  setInventoryPage: (page: number) => void;
+  inventoryPageSize: number;
+  setInventoryPageSize: (pageSize: number) => void;
+  inventoryTotal: number;
+  clearInventoryFilters: () => void;
+  isInventoryLoading: boolean;
   isConsumoMode: boolean;
   editingItemId: string | null;
-  editingItemData: any;
-  onEdit: (item: any) => void;
+  editingItemData: EditableInventoryItem | null;
+  onEdit: (item: InventoryItem) => void;
   onCancelEdit: () => void;
   onUpdate: () => void;
   onDelete: (id: string) => void;
-  onConsume: (item: any) => void;
-  setEditingItemData: (data: any) => void;
+  onConsume: (item: InventoryItem) => void;
+  setEditingItemData: (data: EditableInventoryItem) => void;
 }
 
 export function InventoryList({
   inventory,
   searchTerm,
   setSearchTerm,
+  categoryFilter,
+  setCategoryFilter,
+  roomFilter,
+  setRoomFilter,
+  expiryFilter,
+  setExpiryFilter,
+  inventoryPage,
+  setInventoryPage,
+  inventoryPageSize,
+  setInventoryPageSize,
+  inventoryTotal,
+  clearInventoryFilters,
+  isInventoryLoading,
   isConsumoMode,
   editingItemId,
   editingItemData,
@@ -33,15 +61,13 @@ export function InventoryList({
   onConsume,
   setEditingItemData
 }: InventoryListProps) {
-  
-  const filteredInventory = inventory.filter(item => 
-    item.nome?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.categoria?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    item.comodo?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const totalPages = Math.max(1, Math.ceil(inventoryTotal / inventoryPageSize));
+  const hasActiveFilters = Boolean(searchTerm || categoryFilter || roomFilter || expiryFilter !== 'todos');
+  const firstItem = inventoryTotal === 0 ? 0 : (inventoryPage - 1) * inventoryPageSize + 1;
+  const lastItem = Math.min(inventoryPage * inventoryPageSize, inventoryTotal);
 
   // Agrupar por cômodo
-  const groupedInventory = filteredInventory.reduce((acc: any, item: any) => {
+  const groupedInventory = inventory.reduce<Record<string, InventoryItem[]>>((acc, item) => {
     const comodo = formatarTexto(item.comodo) || 'Outros';
     if (!acc[comodo]) acc[comodo] = [];
     acc[comodo].push(item);
@@ -64,13 +90,58 @@ export function InventoryList({
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
-        <div className="flex items-center gap-2 text-slate-400 text-sm font-bold uppercase tracking-widest">
-          <TableIcon className="w-4 h-4" />
-          {filteredInventory.length} itens encontrados
+        <div className="flex items-center gap-3 text-slate-400 text-sm font-bold uppercase tracking-widest">
+          <TableIcon className="w-4 h-4 shrink-0" />
+          <span>
+            {inventoryTotal} itens encontrados
+          </span>
         </div>
       </div>
 
-      {filteredInventory.length === 0 ? (
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_220px_auto] gap-3 items-center bg-white rounded-[24px] border border-slate-100 shadow-sm p-4">
+        <div className="relative group">
+          <Filter className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-primary transition-colors" />
+          <Input
+            placeholder="Filtrar categoria exata..."
+            className="pl-11 h-12 rounded-[18px] bg-slate-50 border-slate-100 text-sm font-bold"
+            value={categoryFilter}
+            onChange={(e) => setCategoryFilter(e.target.value)}
+          />
+        </div>
+        <div className="relative group">
+          <Filter className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-300 group-focus-within:text-primary transition-colors" />
+          <Input
+            placeholder="Filtrar cômodo exato..."
+            className="pl-11 h-12 rounded-[18px] bg-slate-50 border-slate-100 text-sm font-bold"
+            value={roomFilter}
+            onChange={(e) => setRoomFilter(e.target.value)}
+          />
+        </div>
+        <select
+          value={expiryFilter}
+          onChange={(e) => setExpiryFilter(e.target.value as InventoryExpiryFilter)}
+          className="h-12 rounded-[18px] bg-slate-50 border border-slate-100 px-4 text-sm font-black text-slate-600 outline-none focus:ring-2 focus:ring-primary/20"
+        >
+          <option value="todos">Todas validades</option>
+          <option value="vencidos">Vencidos</option>
+          <option value="vence_7">Vence em 7 dias</option>
+          <option value="vence_30">Vence em 30 dias</option>
+          <option value="sem_validade">Sem validade</option>
+          <option value="estoque_critico">Estoque crítico</option>
+        </select>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={clearInventoryFilters}
+          disabled={!hasActiveFilters}
+          className="h-12 rounded-[18px] font-black"
+        >
+          <X className="w-4 h-4 mr-2" />
+          Limpar
+        </Button>
+      </div>
+
+      {inventory.length === 0 ? (
         <div className="bg-white rounded-[40px] p-20 text-center border border-dashed border-slate-200">
           <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center mx-auto mb-6">
             <Search className="w-10 h-10 text-slate-200" />
@@ -80,7 +151,7 @@ export function InventoryList({
         </div>
       ) : (
         <div className="space-y-12">
-          {Object.entries(groupedInventory).map(([comodo, itens]: [string, any]) => (
+          {Object.entries(groupedInventory).map(([comodo, itens]) => (
             <div key={comodo} className="space-y-6">
               <div className="flex items-center gap-3 ml-2">
                 <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
@@ -97,7 +168,7 @@ export function InventoryList({
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 <AnimatePresence mode="popLayout">
-                  {itens.map((item: any) => (
+                  {itens.map((item) => (
                     <InventoryCard 
                       key={item.id}
                       item={item}
@@ -118,6 +189,46 @@ export function InventoryList({
           ))}
         </div>
       )}
+
+      <div className="flex flex-col md:flex-row gap-4 items-center justify-between bg-white rounded-[24px] border border-slate-100 shadow-sm p-4">
+        <div className="text-xs font-black text-slate-400 uppercase tracking-widest">
+          {isInventoryLoading ? 'Carregando...' : `Mostrando ${firstItem}-${lastItem} de ${inventoryTotal}`}
+        </div>
+        <div className="flex items-center gap-3">
+          <select
+            value={inventoryPageSize}
+            onChange={(e) => setInventoryPageSize(Number(e.target.value))}
+            className="h-10 rounded-[14px] bg-slate-50 border border-slate-100 px-3 text-xs font-black text-slate-600 outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <option value={12}>12 por página</option>
+            <option value={24}>24 por página</option>
+            <option value={48}>48 por página</option>
+          </select>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="rounded-[14px]"
+            disabled={inventoryPage <= 1 || isInventoryLoading}
+            onClick={() => setInventoryPage(Math.max(1, inventoryPage - 1))}
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </Button>
+          <span className="text-xs font-black text-slate-500 min-w-20 text-center">
+            {inventoryPage} / {totalPages}
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="rounded-[14px]"
+            disabled={inventoryPage >= totalPages || isInventoryLoading}
+            onClick={() => setInventoryPage(Math.min(totalPages, inventoryPage + 1))}
+          >
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+        </div>
+      </div>
     </motion.div>
   );
 }

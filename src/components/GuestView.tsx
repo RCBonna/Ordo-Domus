@@ -6,13 +6,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Package, Search, MapPin, Loader2 } from 'lucide-react';
+import type { InventoryItem } from '../types/domain';
+import { logger } from '../lib/logger';
 
 interface Props {
   unidadeId: string;
 }
 
 export default function GuestView({ unidadeId }: Props) {
-  const [items, setItems] = useState<any[]>([]);
+  const [items, setItems] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
 
@@ -27,7 +29,7 @@ export default function GuestView({ unidadeId }: Props) {
         .order('categoria', { ascending: true });
         
       if (error) {
-        console.error("Erro ao carregar os itens:", error);
+        logger.warn('Falha ao carregar itens para convidado.');
       } else if (isMounted && data) {
         setItems(data);
       }

@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Loader2, Eye, EyeOff, AlertCircle, CheckCircle2 } from 'lucide-react'
+import { logger } from '../lib/logger'
 
 export default function Auth() {
   const [loading, setLoading] = useState(false)
@@ -33,7 +34,7 @@ export default function Auth() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    console.log("[Auth] Iniciando tentativa de login/cadastro...", { email, isLogin })
+    logger.debug(isLogin ? 'Tentativa de login iniciada.' : 'Tentativa de cadastro iniciada.')
     setLoading(true)
     setMessage(null)
 
@@ -44,10 +45,10 @@ export default function Auth() {
           password,
         })
         if (error) {
-          console.error("[Auth] Erro no login:", error.message)
+          logger.warn('Falha no login.')
           setMessage({ type: 'error', text: traduzirErro(error.message) })
         } else {
-          console.log("[Auth] Login bem-sucedido!")
+          logger.info('Login concluido.')
         }
       } else {
         const { data, error } = await supabase.auth.signUp({
@@ -55,21 +56,20 @@ export default function Auth() {
           password,
         })
         if (error) {
-          console.error("[Auth] Erro no cadastro:", error.message)
+          logger.warn('Falha no cadastro.')
           setMessage({ type: 'error', text: traduzirErro(error.message) })
         } else if (data?.user?.identities?.length === 0) {
           setMessage({ type: 'error', text: 'Este e-mail já está cadastrado. Faça o login.' })
         } else {
-          console.log("[Auth] Cadastro bem-sucedido!")
+          logger.info('Cadastro concluido.')
           setMessage({ type: 'success', text: 'Conta criada com sucesso! Você já foi logado automaticamente.' })
         }
       }
-    } catch (err: any) {
-      console.error("[Auth] Erro inesperado:", err)
+    } catch {
+      logger.warn('Falha inesperada na autenticacao.')
       setMessage({ type: 'error', text: 'Ocorreu um erro inesperado. Tente novamente.' })
     } finally {
       setLoading(false)
-      console.log("[Auth] Processo finalizado.")
     }
   }
 

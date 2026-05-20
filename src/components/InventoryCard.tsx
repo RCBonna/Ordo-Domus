@@ -4,18 +4,19 @@ import {
   Edit2, Trash2, X, Save, Box, MinusCircle, 
   Layers, Archive, AlertTriangle, Clock, Calendar 
 } from 'lucide-react';
+import type { EditableInventoryItem, InventoryItem } from '../types/domain';
 
 interface InventoryCardProps {
-  item: any;
+  item: InventoryItem;
   isEditing: boolean;
   isConsumoMode: boolean;
-  editingItemData: any;
-  onEdit: (item: any) => void;
+  editingItemData: EditableInventoryItem | null;
+  onEdit: (item: InventoryItem) => void;
   onCancelEdit: () => void;
   onUpdate: () => void;
   onDelete: (id: string) => void;
-  onConsume: (item: any) => void;
-  setEditingItemData: (data: any) => void;
+  onConsume: (item: InventoryItem) => void;
+  setEditingItemData: (data: EditableInventoryItem) => void;
 }
 
 export function InventoryCard({
@@ -30,12 +31,39 @@ export function InventoryCard({
   onConsume,
   setEditingItemData
 }: InventoryCardProps) {
+  let diffDays: number | null = null;
+  if (item.validade) {
+    const parts = item.validade.split('/');
+    let expiryDate;
+    if (parts.length === 3) expiryDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+    else if (parts.length === 2) expiryDate = new Date(parseInt(parts[1]), parseInt(parts[0]) - 1, 1);
+    
+    if (expiryDate) {
+      diffDays = Math.ceil((expiryDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+    }
+  }
+
+  const isExpired = diffDays !== null && diffDays < 0;
+  const isExpiringVerySoon = diffDays !== null && diffDays >= 0 && diffDays <= 7;
+  const isExpiringSoon = diffDays !== null && diffDays > 7 && diffDays <= 30;
+
+  let cardStyle = "border-slate-100";
+  if (isEditing) {
+    cardStyle = "ring-2 ring-primary ring-offset-4 border-slate-100";
+  } else if (isExpired) {
+    cardStyle = "border-rose-400 ring-4 ring-rose-50 shadow-md shadow-rose-100 bg-rose-50/10";
+  } else if (isExpiringVerySoon) {
+    cardStyle = "border-orange-400 ring-4 ring-orange-50 shadow-md shadow-orange-100 bg-orange-50/10";
+  } else if (isExpiringSoon) {
+    cardStyle = "border-amber-300 ring-2 ring-amber-50 bg-amber-50/10";
+  }
+
   return (
     <motion.div 
       layout
       key={item.id} 
       whileHover={isEditing ? {} : { y: -5 }}
-      className={`group relative bg-white p-6 rounded-[28px] shadow-sm hover:shadow-xl hover:shadow-slate-200/50 border border-slate-100 transition-all cursor-default ${isEditing ? 'ring-2 ring-primary ring-offset-4' : ''}`}
+      className={`group relative bg-white p-6 rounded-[28px] shadow-sm hover:shadow-xl hover:shadow-slate-200/50 border transition-all cursor-default ${cardStyle}`}
     >
       {/* Ações (Edit/Delete) - visíveis sempre no mobile, e no hover em telas maiores */}
       {!isEditing && !isConsumoMode && (

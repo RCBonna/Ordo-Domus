@@ -21,7 +21,8 @@ import { useAuth } from './hooks/useAuth';
 import { useInventory } from './hooks/useInventory';
 import { useExtraction } from './hooks/useExtraction';
 import { useReceiptImport } from './hooks/useReceiptImport';
-import { useTriage } from './hooks/useTriage';
+import { useTriage, type TriageItem } from './hooks/useTriage';
+import { useDashboardMetrics } from './hooks/useDashboardMetrics';
 
 // Utils
 import { isConsumivel, formatarTexto } from './lib/utils';
@@ -49,6 +50,7 @@ export default function OrdoDomus() {
   const [isConsumoMode, setIsConsumoMode] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [isTriageModalOpen, setIsTriageModalOpen] = useState(false);
+  const isDashboardTabActive = activeTab === 'dashboard';
   
   // Confirmation State
   const [confirmConfig, setConfirmConfig] = useState<{
@@ -96,6 +98,13 @@ export default function OrdoDomus() {
     fullInventory,
     isInventoryLoading,
     searchTerm, setSearchTerm,
+    categoryFilter, setCategoryFilter,
+    roomFilter, setRoomFilter,
+    expiryFilter, setExpiryFilter,
+    inventoryPage, setInventoryPage,
+    inventoryPageSize, setInventoryPageSize,
+    inventoryTotal,
+    clearInventoryFilters,
     editingItemId,
     editingItemData,
     setEditingItemData,
@@ -106,6 +115,11 @@ export default function OrdoDomus() {
     handleDeleteItem: rawHandleDelete,
     handleConsumeItem
   } = useInventory(unidadeAtiva?.id, addHistoryItem);
+
+  const {
+    dashboardMetrics,
+    isDashboardMetricsLoading
+  } = useDashboardMetrics(unidadeAtiva?.id, isDashboardTabActive);
 
   const handleDeleteItem = (id: string) => {
     const item = fullInventory.find(i => i.id === id);
@@ -119,7 +133,7 @@ export default function OrdoDomus() {
     });
   };
 
-  const handleReviewTriageItem = (item: any) => {
+  const handleReviewTriageItem = (item: TriageItem) => {
     setIsTriageModalOpen(false);
     setActiveTab('entrada');
 
@@ -146,7 +160,16 @@ export default function OrdoDomus() {
     if (unidadeAtiva && (activeTab === 'inventário' || activeTab === 'dashboard' || activeTab === 'consumo')) {
       carregarInventarioCompleto();
     }
-  }, [activeTab, unidadeAtiva]);
+  }, [
+    activeTab,
+    unidadeAtiva,
+    searchTerm,
+    categoryFilter,
+    roomFilter,
+    expiryFilter,
+    inventoryPage,
+    inventoryPageSize
+  ]);
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -268,9 +291,22 @@ export default function OrdoDomus() {
                     <InventoryList 
                       key="tab-inventario"
                       inventory={fullInventory}
+                      isInventoryLoading={isInventoryLoading}
                       isConsumoMode={isConsumoMode}
                       searchTerm={searchTerm}
                       setSearchTerm={setSearchTerm}
+                      categoryFilter={categoryFilter}
+                      setCategoryFilter={setCategoryFilter}
+                      roomFilter={roomFilter}
+                      setRoomFilter={setRoomFilter}
+                      expiryFilter={expiryFilter}
+                      setExpiryFilter={setExpiryFilter}
+                      inventoryPage={inventoryPage}
+                      setInventoryPage={setInventoryPage}
+                      inventoryPageSize={inventoryPageSize}
+                      setInventoryPageSize={setInventoryPageSize}
+                      inventoryTotal={inventoryTotal}
+                      clearInventoryFilters={clearInventoryFilters}
                       onConsume={handleConsumeItem}
                       onDelete={handleDeleteItem}
                       onUpdate={handleUpdateItem}
@@ -287,6 +323,8 @@ export default function OrdoDomus() {
                       key="tab-dashboard"
                       fullInventory={fullInventory}
                       history={history}
+                      dashboardMetrics={dashboardMetrics}
+                      isDashboardMetricsLoading={isDashboardMetricsLoading}
                       isConsumivel={isConsumivel}
                       formatarTexto={formatarTexto}
                       onNavigateToItem={(nome) => {
