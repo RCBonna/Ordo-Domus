@@ -1,0 +1,16 @@
+sequenceDiagram
+  participant U as Usuario
+  participant A as Auth.tsx
+  participant S as Supabase Auth
+  participant H as useAuth
+  participant DB as PostgreSQL/RLS
+  U->>A: Informa email e senha
+  A->>S: signInWithPassword ou signUp
+  S-->>A: Sessao/JWT
+  S-->>H: onAuthStateChange
+  H->>DB: membros_unidades por user_id/status aprovado
+  DB-->>H: unidades autorizadas
+  H->>DB: rpc is_system_admin
+  DB-->>H: boolean
+  H-->>U: App autenticado com unidade ativa ou onboarding
+

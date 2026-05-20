@@ -1,0 +1,27 @@
+sequenceDiagram
+  participant U as Usuario
+  participant UI as EntrySection
+  participant H as useExtraction
+  participant G as Gemini
+  participant R as RPC upsert_inventario
+  participant DB as PostgreSQL
+  U->>UI: Digita frase ou grava audio
+  UI->>H: handleExtract ou toggleRecording
+  H->>G: generateContent com schema JSON
+  G-->>H: ExtractedItem
+  H-->>UI: currentResult editavel
+  U->>UI: Confirma item
+  UI->>H: confirmAndSave
+  H->>R: p_unidade_id, nome, local, quantidade
+  R->>DB: Verifica membro aprovado
+  R->>DB: Busca item equivalente nao deletado
+  alt Item existe
+    R->>DB: UPDATE quantidade
+    R-->>H: acao MERGE
+  else Item novo
+    R->>DB: INSERT item
+    R-->>H: acao ADD
+  end
+  H->>DB: INSERT movimentacoes_inventario
+  H-->>UI: Historico e status atualizados
+

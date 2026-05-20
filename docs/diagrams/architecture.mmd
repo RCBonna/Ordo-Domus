@@ -1,0 +1,14 @@
+flowchart LR
+  User["Usuario"] --> Browser["Browser"]
+  Browser --> SPA["React SPA / Vite"]
+  SPA --> UI["Componentes UI"]
+  SPA --> Hooks["Hooks de dominio"]
+  Hooks --> Gemini["Gemini API"]
+  Hooks --> SupabaseClient["Supabase JS Client"]
+  SupabaseClient --> Auth["Supabase Auth"]
+  SupabaseClient --> PostgREST["PostgREST Tables"]
+  SupabaseClient --> RPC["RPC PL/pgSQL"]
+  PostgREST --> DB["PostgreSQL + RLS"]
+  RPC --> DB
+  DB --> Tables["unidades, membros_unidades, itens, movimentacoes, importacoes, dicionario"]
+

@@ -1,0 +1,16 @@
+flowchart TD
+  Start["Usuario autenticado"] --> Unit{"Tem unidade ativa?"}
+  Unit -- "Nao" --> Onboarding["Criar unidade ou solicitar acesso"]
+  Unit -- "Sim" --> Status{"Status aprovado?"}
+  Status -- "Nao" --> Pending["Aguardando aprovacao"]
+  Status -- "Sim" --> Role{"Papel"}
+  Role -- "convidado" --> Guest["GuestView leitura"]
+  Role -- "admin" --> Tabs["Entrada / Inventario / Dashboard"]
+  Tabs --> Entry["Entrada texto, voz ou cupom"]
+  Entry --> Confirm["Confirmacao humana"]
+  Confirm --> Upsert["RPC upsert_inventario"]
+  Upsert --> Movement["Insert movimentacoes_inventario"]
+  Tabs --> Inventory["Editar, consumir, excluir"]
+  Inventory --> Audit["Auditoria"]
+  Tabs --> Dashboard["KPIs, validade, estoque critico"]
+

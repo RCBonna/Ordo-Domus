@@ -1,0 +1,62 @@
+erDiagram
+  AUTH_USERS ||--o{ MEMBROS_UNIDADES : possui
+  UNIDADES ||--o{ MEMBROS_UNIDADES : contem
+  UNIDADES ||--o{ ITENS_INVENTARIO : possui
+  UNIDADES ||--o{ MOVIMENTACOES_INVENTARIO : registra
+  UNIDADES ||--o{ IMPORTACOES_PENDENTES : recebe
+  UNIDADES ||--o{ DICIONARIO_PRODUTOS : aprende
+  ITENS_INVENTARIO ||--o{ IMPORTACOES_PENDENTES : match_opcional
+  AUTH_USERS ||--o| SYSTEM_ADMINS : pode_ser
+
+  UNIDADES {
+    uuid id PK
+    text nome
+    text codigo_convite
+    timestamptz criado_em
+  }
+  MEMBROS_UNIDADES {
+    uuid unidade_id PK,FK
+    uuid user_id PK,FK
+    text papel
+    text status
+    timestamptz adicionado_em
+  }
+  ITENS_INVENTARIO {
+    uuid id PK
+    uuid unidade_id FK
+    text nome
+    text categoria
+    text comodo
+    text armario
+    text caixa
+    text validade
+    numeric quantidade
+    timestamptz deletado_em
+  }
+  MOVIMENTACOES_INVENTARIO {
+    uuid id PK
+    uuid unidade_id FK
+    uuid item_id
+    text item_nome
+    numeric quantidade
+    text tipo
+    timestamptz criado_em
+  }
+  IMPORTACOES_PENDENTES {
+    uuid id PK
+    uuid unidade_id FK
+    text nome_bruto
+    numeric quantidade
+    numeric valor_unitario
+    boolean processado
+    timestamptz expires_at
+  }
+  DICIONARIO_PRODUTOS {
+    uuid id PK
+    uuid unidade_id FK
+    text nome_bruto_cupom
+    text nome_oficial_inventario
+    text categoria
+    text comodo
+  }
+

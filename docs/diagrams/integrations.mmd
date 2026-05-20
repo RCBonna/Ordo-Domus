@@ -1,0 +1,14 @@
+flowchart LR
+  App["Ordo Domus SPA"] --> Supabase["Supabase"]
+  Supabase --> Auth["Auth"]
+  Supabase --> Postgres["PostgreSQL"]
+  Supabase --> RLS["RLS"]
+  Supabase --> RPC["RPC"]
+  App --> Gemini["Gemini API"]
+  App --> Browser["Browser APIs"]
+  Browser --> Mic["getUserMedia / MediaRecorder"]
+  Browser --> Canvas["Canvas compression"]
+  Browser --> Clipboard["Clipboard"]
+  Browser --> LocalStorage["localStorage"]
+  App --> Hosting["Vercel / AI Studio / Static Hosting"]
+
