@@ -15,3 +15,4 @@
 - Ajustada a RPC para paginar com `row_number()` em vez de `limit/offset` com valores de CTE, e adicionado `notify pgrst, 'reload schema'`.
 - SQL corrigido aplicado manualmente no Supabase. Validacao funcional confirmada no app: inventario voltou a listar dados e busca passou a funcionar independentemente de acentos.
 - Iniciado MVP da Lista de Compras/Faltas: nova aba `FALTAS`, sugestoes automaticas para itens com `quantidade <= 1`, separacao visual entre `Faltando` e `Estoque baixo`, e navegacao direta para o item no inventario.
+- Corrigida regra da Lista de Compras: sugestoes agora agregam registros pelo nome normalizado do produto, somam a quantidade total antes de marcar falta e consideram apenas categorias reponiveis, evitando falsos positivos como ferramentas/furadeira.

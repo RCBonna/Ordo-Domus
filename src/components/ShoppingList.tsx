@@ -50,13 +50,13 @@ export function ShoppingList({ items, isLoading, onRefresh, onNavigateToItem }: 
             <CheckCircle2 className="h-10 w-10 text-emerald-500" />
           </div>
           <h3 className="mb-2 text-xl font-black text-slate-800">Nada faltando agora</h3>
-          <p className="font-medium text-slate-400">Itens entram aqui automaticamente quando o estoque fica crítico.</p>
+          <p className="font-medium text-slate-400">Itens reponíveis entram aqui quando a soma total do produto fica crítica.</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <ShoppingGroup
             title="Faltando"
-            description="Quantidade zerada"
+            description="Soma total zerada"
             icon={<AlertTriangle className="h-5 w-5" />}
             tone="rose"
             items={missingItems}
@@ -64,7 +64,7 @@ export function ShoppingList({ items, isLoading, onRefresh, onNavigateToItem }: 
           />
           <ShoppingGroup
             title="Estoque baixo"
-            description="Quantidade igual a 1"
+            description="Soma total igual a 1"
             icon={<ShoppingCart className="h-5 w-5" />}
             tone="amber"
             items={lowStockItems}
@@ -123,11 +123,16 @@ function ShoppingGroup({ title, description, icon, tone, items, onNavigateToItem
               <div className="min-w-0">
                 <p className="truncate text-sm font-black text-slate-800">{formatarTexto(item.nome)}</p>
                 <p className="mt-1 truncate text-xs font-bold text-slate-400">
-                  {formatarTexto(item.categoria || 'Sem categoria')} - {formatarTexto(item.comodo)}
+                  {formatarTexto(item.categoria || 'Sem categoria')} - {formatarComodos(item.comodos)}
                 </p>
+                {item.totalRegistros > 1 && (
+                  <p className="mt-1 text-[11px] font-black uppercase tracking-widest text-slate-300">
+                    Soma de {item.totalRegistros} registros
+                  </p>
+                )}
               </div>
               <div className="shrink-0 rounded-xl bg-white px-3 py-2 text-xs font-black text-slate-500 shadow-sm">
-                Qtd. {item.quantidade}
+                Total {item.quantidade}
               </div>
             </button>
           ))}
@@ -135,4 +140,10 @@ function ShoppingGroup({ title, description, icon, tone, items, onNavigateToItem
       )}
     </section>
   );
+}
+
+function formatarComodos(comodos: string[]) {
+  if (comodos.length === 0) return 'Sem cômodo';
+  if (comodos.length <= 2) return comodos.map(formatarTexto).join(', ');
+  return `${comodos.slice(0, 2).map(formatarTexto).join(', ')} +${comodos.length - 2}`;
 }

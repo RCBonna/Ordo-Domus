@@ -92,9 +92,10 @@ export interface ShoppingListItem {
   id: string;
   nome: string;
   categoria: string | null;
-  comodo: string;
+  comodos: string[];
   quantidade: number;
   prioridade: ShoppingPriority;
+  totalRegistros: number;
 }
 
 export interface InventoryQueryParams {

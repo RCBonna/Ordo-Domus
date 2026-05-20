@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabaseClient';
 import { logger } from '../lib/logger';
+import { isReponivelParaCompras, normalizarBusca } from '../lib/utils';
 import type { InventoryItem, InventoryPageResult, InventoryQueryParams, ShoppingListItem, UpsertInventoryParams, UpsertInventoryResult } from '../types/domain';
 
 const escapeIlike = (value: string) => value.replace(/[%_]/g, char => `\\${char}`);
@@ -147,22 +148,48 @@ export async function fetchShoppingSuggestions(unidadeId: string): Promise<Shopp
     .select('id,nome,categoria,comodo,quantidade')
     .eq('unidade_id', unidadeId)
     .is('deletado_em', null)
-    .lte('quantidade', 1)
-    .order('quantidade', { ascending: true })
     .order('nome', { ascending: true });
 
   if (error) throw error;
 
-  return ((data || []) as Pick<InventoryItem, 'id' | 'nome' | 'categoria' | 'comodo' | 'quantidade'>[]).map((item) => {
-    const quantidade = Number(item.quantidade);
+  const groupedItems = ((data || []) as Pick<InventoryItem, 'id' | 'nome' | 'categoria' | 'comodo' | 'quantidade'>[])
+    .filter((item) => isReponivelParaCompras(item.categoria))
+    .reduce<Map<string, ShoppingListItem>>((acc, item) => {
+      const key = normalizarBusca(item.nome);
+      if (!key) return acc;
 
-    return {
-      id: item.id,
-      nome: item.nome,
-      categoria: item.categoria,
-      comodo: item.comodo,
-      quantidade,
-      prioridade: quantidade <= 0 ? 'faltando' : 'baixo',
-    };
+      const quantidade = Number(item.quantidade);
+      const current = acc.get(key);
+      if (!current) {
+        acc.set(key, {
+          id: key,
+          nome: item.nome,
+          categoria: item.categoria,
+          comodos: item.comodo ? [item.comodo] : [],
+          quantidade,
+          prioridade: quantidade <= 0 ? 'faltando' : 'baixo',
+          totalRegistros: 1,
+        });
+        return acc;
+      }
+
+      const comodos = item.comodo && !current.comodos.includes(item.comodo)
+        ? [...current.comodos, item.comodo]
+        : current.comodos;
+
+      const total = current.quantidade + quantidade;
+      acc.set(key, {
+        ...current,
+        comodos,
+        quantidade: total,
+        prioridade: total <= 0 ? 'faltando' : 'baixo',
+        totalRegistros: current.totalRegistros + 1,
+      });
+      return acc;
+    }, new Map<string, ShoppingListItem>());
+
+  return Array.from(groupedItems.values()).filter((item) => item.quantidade <= 1).sort((a, b) => {
+    if (a.quantidade !== b.quantidade) return a.quantidade - b.quantidade;
+    return a.nome.localeCompare(b.nome, 'pt-BR');
   });
 }

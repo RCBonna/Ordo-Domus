@@ -8,10 +8,41 @@ export function cn(...inputs: ClassValue[]) {
 
 // Categorias que NÃO devem ser validadas para reposição (itens duráveis)
 export const CATEGORIAS_DURAVEIS = ['ferramentas', 'ferramenta', 'utensílios', 'eletrodomésticos', 'móveis', 'eletrônicos', 'construção'];
+export const CATEGORIAS_REPONIVEIS = [
+  'alimentos',
+  'alimento',
+  'bebidas',
+  'bebida',
+  'limpeza',
+  'higiene',
+  'descartáveis',
+  'descartaveis',
+  'medicamentos',
+  'remédios',
+  'remedios',
+  'pet',
+  'consumíveis',
+  'consumiveis',
+];
 
 export const isConsumivel = (categoria?: string) => {
   if (!categoria) return true;
   return !CATEGORIAS_DURAVEIS.includes(categoria.toLowerCase().trim());
+};
+
+export const normalizarBusca = (texto?: string | null) => {
+  return (texto || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, ' ');
+};
+
+export const isReponivelParaCompras = (categoria?: string | null) => {
+  const categoriaNormalizada = normalizarBusca(categoria);
+  if (!categoriaNormalizada) return false;
+  return CATEGORIAS_REPONIVEIS.includes(categoriaNormalizada);
 };
 
 // Blindagem 1: Garante que o formatarTexto não quebre se receber números ou dados nulos
