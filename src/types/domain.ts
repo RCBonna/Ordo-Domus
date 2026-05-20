@@ -86,6 +86,16 @@ export interface DashboardMetrics {
 }
 
 export type InventoryExpiryFilter = 'todos' | 'vencidos' | 'vence_7' | 'vence_30' | 'sem_validade' | 'estoque_critico';
+export type ShoppingPriority = 'faltando' | 'baixo';
+
+export interface ShoppingListItem {
+  id: string;
+  nome: string;
+  categoria: string | null;
+  comodo: string;
+  quantidade: number;
+  prioridade: ShoppingPriority;
+}
 
 export interface InventoryQueryParams {
   unidadeId: string;

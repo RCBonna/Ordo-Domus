@@ -1,9 +1,9 @@
 import { motion } from 'motion/react';
-import { Package, Share2, LogOut, ArrowRight, BarChart2, Table as TableIcon, Box, ShoppingCart, MapPin } from 'lucide-react';
+import { Package, Share2, LogOut, ArrowRight, BarChart2, Table as TableIcon, Box, ShoppingCart, MapPin, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { UnitMembership } from '../types/domain';
 
-export type AppTab = 'entrada' | 'inventário' | 'consumo' | 'dashboard' | 'saas-admin';
+export type AppTab = 'entrada' | 'inventário' | 'compras' | 'consumo' | 'dashboard' | 'saas-admin';
 
 interface MainHeaderProps {
   unidades: UnitMembership[];
@@ -184,6 +184,16 @@ export function MainHeader({
               className={`flex items-center gap-2 px-4 sm:px-6 py-2.5 rounded-2xl text-xs sm:text-sm font-black transition-all whitespace-nowrap ${activeTab === 'inventário' && !isConsumoMode ? 'bg-white text-primary shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
             >
               <TableIcon className="w-4 h-4" /> INVENTÁRIO
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('compras');
+                setIsConsumoMode(false);
+              }}
+              title="Ver itens faltando e estoque baixo"
+              className={`flex items-center gap-2 px-4 sm:px-6 py-2.5 rounded-2xl text-xs sm:text-sm font-black transition-all whitespace-nowrap ${activeTab === 'compras' ? 'bg-white text-primary shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+            >
+              <ClipboardList className="w-4 h-4" /> FALTAS
             </button>
             <button 
               onClick={() => {

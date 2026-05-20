@@ -10,6 +10,7 @@ import AdminPanel from './components/AdminPanel';
 import Onboarding from './components/Onboarding';
 import { InventoryDashboard } from './components/InventoryDashboard';
 import { InventoryList } from './components/InventoryList';
+import { ShoppingList } from './components/ShoppingList';
 import { EntrySection } from './components/EntrySection';
 import { MainHeader } from './components/MainHeader';
 import { ConfirmModal } from './components/ConfirmModal';
@@ -23,6 +24,7 @@ import { useExtraction } from './hooks/useExtraction';
 import { useReceiptImport } from './hooks/useReceiptImport';
 import { useTriage, type TriageItem } from './hooks/useTriage';
 import { useDashboardMetrics } from './hooks/useDashboardMetrics';
+import { useShoppingList } from './hooks/useShoppingList';
 
 // Utils
 import { isConsumivel, formatarTexto } from './lib/utils';
@@ -46,11 +48,12 @@ export default function OrdoDomus() {
   } = useAuth();
 
   // Navigation state
-  const [activeTab, setActiveTab] = useState<'entrada' | 'inventário' | 'consumo' | 'dashboard' | 'saas-admin'>('entrada');
+  const [activeTab, setActiveTab] = useState<'entrada' | 'inventário' | 'compras' | 'consumo' | 'dashboard' | 'saas-admin'>('entrada');
   const [isConsumoMode, setIsConsumoMode] = useState(false);
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [isTriageModalOpen, setIsTriageModalOpen] = useState(false);
   const isDashboardTabActive = activeTab === 'dashboard';
+  const isShoppingTabActive = activeTab === 'compras';
   
   // Confirmation State
   const [confirmConfig, setConfirmConfig] = useState<{
@@ -120,6 +123,12 @@ export default function OrdoDomus() {
     dashboardMetrics,
     isDashboardMetricsLoading
   } = useDashboardMetrics(unidadeAtiva?.id, isDashboardTabActive);
+
+  const {
+    shoppingItems,
+    isShoppingListLoading,
+    carregarListaDeCompras
+  } = useShoppingList(unidadeAtiva?.id, isShoppingTabActive);
 
   const handleDeleteItem = (id: string) => {
     const item = fullInventory.find(i => i.id === id);
@@ -315,6 +324,20 @@ export default function OrdoDomus() {
                       setEditingItemData={setEditingItemData}
                       onEdit={handleStartEdit}
                       onCancelEdit={handleCancelEdit}
+                    />
+                  )}
+
+                  {activeTab === 'compras' && (
+                    <ShoppingList
+                      key="tab-compras"
+                      items={shoppingItems}
+                      isLoading={isShoppingListLoading}
+                      onRefresh={carregarListaDeCompras}
+                      onNavigateToItem={(nome) => {
+                        setSearchTerm(nome);
+                        setActiveTab('inventário');
+                        setIsConsumoMode(false);
+                      }}
                     />
                   )}
 

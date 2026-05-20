@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabaseClient';
 import { logger } from '../lib/logger';
-import type { InventoryPageResult, InventoryQueryParams, UpsertInventoryParams, UpsertInventoryResult } from '../types/domain';
+import type { InventoryItem, InventoryPageResult, InventoryQueryParams, ShoppingListItem, UpsertInventoryParams, UpsertInventoryResult } from '../types/domain';
 
 const escapeIlike = (value: string) => value.replace(/[%_]/g, char => `\\${char}`);
 
@@ -139,4 +139,30 @@ export async function upsertInventoryItem({
   if (error) throw error;
 
   return data;
+}
+
+export async function fetchShoppingSuggestions(unidadeId: string): Promise<ShoppingListItem[]> {
+  const { data, error } = await supabase
+    .from('itens_inventario')
+    .select('id,nome,categoria,comodo,quantidade')
+    .eq('unidade_id', unidadeId)
+    .is('deletado_em', null)
+    .lte('quantidade', 1)
+    .order('quantidade', { ascending: true })
+    .order('nome', { ascending: true });
+
+  if (error) throw error;
+
+  return ((data || []) as Pick<InventoryItem, 'id' | 'nome' | 'categoria' | 'comodo' | 'quantidade'>[]).map((item) => {
+    const quantidade = Number(item.quantidade);
+
+    return {
+      id: item.id,
+      nome: item.nome,
+      categoria: item.categoria,
+      comodo: item.comodo,
+      quantidade,
+      prioridade: quantidade <= 0 ? 'faltando' : 'baixo',
+    };
+  });
 }
