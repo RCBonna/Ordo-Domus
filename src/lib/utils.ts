@@ -15,11 +15,15 @@ export const isConsumivel = (categoria?: string) => {
 };
 
 // Blindagem 1: Garante que o formatarTexto não quebre se receber números ou dados nulos
-export const formatarTexto = (texto?: any) => {
+export const formatarTexto = (texto?: unknown) => {
   if (!texto || typeof texto !== 'string') return '';
   const limpo = texto.trim();
   if (limpo.length === 0) return '';
   return limpo.charAt(0).toUpperCase() + limpo.slice(1).toLowerCase();
+};
+
+export const getErrorMessage = (error: unknown, fallback = 'Erro desconhecido') => {
+  return error instanceof Error ? error.message : fallback;
 };
 
 // Blindagem de Datas: Valida rigorosamente no formato DD/MM/AAAA brasileiro
