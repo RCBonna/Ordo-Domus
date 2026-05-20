@@ -98,6 +98,20 @@ export interface ShoppingListItem {
   totalRegistros: number;
 }
 
+export interface ZeroStockLocation {
+  id: string;
+  nome: string;
+  categoria: string | null;
+  comodo: string;
+  armario: string | null;
+  caixa: string | null;
+}
+
+export interface ShoppingListResult {
+  items: ShoppingListItem[];
+  zeroStockLocations: ZeroStockLocation[];
+}
+
 export interface InventoryQueryParams {
   unidadeId: string;
   searchTerm?: string;

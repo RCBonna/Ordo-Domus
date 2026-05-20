@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
 import { logger } from '../lib/logger';
 import { fetchShoppingSuggestions } from '../repositories/inventoryRepository';
-import type { ShoppingListItem } from '../types/domain';
+import type { ShoppingListItem, ZeroStockLocation } from '../types/domain';
 
 export function useShoppingList(unidadeId: string | undefined, enabled: boolean) {
   const [shoppingItems, setShoppingItems] = useState<ShoppingListItem[]>([]);
+  const [zeroStockLocations, setZeroStockLocations] = useState<ZeroStockLocation[]>([]);
   const [isShoppingListLoading, setIsShoppingListLoading] = useState(false);
 
   const carregarListaDeCompras = async () => {
@@ -12,8 +13,9 @@ export function useShoppingList(unidadeId: string | undefined, enabled: boolean)
 
     setIsShoppingListLoading(true);
     try {
-      const items = await fetchShoppingSuggestions(unidadeId);
-      setShoppingItems(items);
+      const result = await fetchShoppingSuggestions(unidadeId);
+      setShoppingItems(result.items);
+      setZeroStockLocations(result.zeroStockLocations);
     } catch {
       logger.warn('Falha ao carregar lista de compras.');
     } finally {
@@ -29,6 +31,7 @@ export function useShoppingList(unidadeId: string | undefined, enabled: boolean)
 
   return {
     shoppingItems,
+    zeroStockLocations,
     isShoppingListLoading,
     carregarListaDeCompras,
   };

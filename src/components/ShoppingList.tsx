@@ -1,20 +1,22 @@
 import { motion } from 'motion/react';
 import type { ReactNode } from 'react';
-import { AlertTriangle, CheckCircle2, PackageSearch, ShoppingCart } from 'lucide-react';
+import { AlertTriangle, Archive, CheckCircle2, MapPin, PackageSearch, ShoppingCart } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatarTexto } from '@/src/lib/utils';
-import type { ShoppingListItem } from '../types/domain';
+import type { ShoppingListItem, ZeroStockLocation } from '../types/domain';
 
 interface ShoppingListProps {
   items: ShoppingListItem[];
+  zeroStockLocations: ZeroStockLocation[];
   isLoading: boolean;
   onRefresh: () => void;
   onNavigateToItem: (nome: string) => void;
 }
 
-export function ShoppingList({ items, isLoading, onRefresh, onNavigateToItem }: ShoppingListProps) {
+export function ShoppingList({ items, zeroStockLocations, isLoading, onRefresh, onNavigateToItem }: ShoppingListProps) {
   const missingItems = items.filter((item) => item.prioridade === 'faltando');
   const lowStockItems = items.filter((item) => item.prioridade === 'baixo');
+  const totalAlerts = items.length + zeroStockLocations.length;
 
   return (
     <motion.div
@@ -29,7 +31,7 @@ export function ShoppingList({ items, isLoading, onRefresh, onNavigateToItem }: 
         </div>
         <div className="flex items-center gap-3">
           <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3 text-sm font-black text-slate-500 shadow-sm">
-            {items.length} itens sugeridos
+            {items.length} compras sugeridas
           </div>
           <Button
             type="button"
@@ -44,7 +46,7 @@ export function ShoppingList({ items, isLoading, onRefresh, onNavigateToItem }: 
         </div>
       </div>
 
-      {items.length === 0 ? (
+      {totalAlerts === 0 ? (
         <div className="rounded-[32px] border border-dashed border-slate-200 bg-white p-16 text-center">
           <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-emerald-50">
             <CheckCircle2 className="h-10 w-10 text-emerald-500" />
@@ -53,26 +55,89 @@ export function ShoppingList({ items, isLoading, onRefresh, onNavigateToItem }: 
           <p className="font-medium text-slate-400">Itens reponíveis entram aqui quando a soma total do produto fica crítica.</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <ShoppingGroup
-            title="Faltando"
-            description="Soma total zerada"
-            icon={<AlertTriangle className="h-5 w-5" />}
-            tone="rose"
-            items={missingItems}
-            onNavigateToItem={onNavigateToItem}
-          />
-          <ShoppingGroup
-            title="Estoque baixo"
-            description="Soma total igual a 1"
-            icon={<ShoppingCart className="h-5 w-5" />}
-            tone="amber"
-            items={lowStockItems}
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+            <ShoppingGroup
+              title="Faltando"
+              description="Soma total zerada"
+              icon={<AlertTriangle className="h-5 w-5" />}
+              tone="rose"
+              items={missingItems}
+              onNavigateToItem={onNavigateToItem}
+            />
+            <ShoppingGroup
+              title="Estoque baixo"
+              description="Soma total igual a 1"
+              icon={<ShoppingCart className="h-5 w-5" />}
+              tone="amber"
+              items={lowStockItems}
+              onNavigateToItem={onNavigateToItem}
+            />
+          </div>
+          <ZeroStockLocationGroup
+            locations={zeroStockLocations}
             onNavigateToItem={onNavigateToItem}
           />
         </div>
       )}
     </motion.div>
+  );
+}
+
+interface ZeroStockLocationGroupProps {
+  locations: ZeroStockLocation[];
+  onNavigateToItem: (nome: string) => void;
+}
+
+function ZeroStockLocationGroup({ locations, onNavigateToItem }: ZeroStockLocationGroupProps) {
+  return (
+    <section className="rounded-[28px] border border-slate-100 bg-white p-5 shadow-sm">
+      <div className="mb-5 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-sky-100 bg-sky-50 text-sky-600">
+            <MapPin className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="text-lg font-black text-slate-900">Locais zerados</h3>
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Controle de posicoes sem saldo</p>
+          </div>
+        </div>
+        <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-black text-slate-400">
+          {locations.length}
+        </span>
+      </div>
+
+      {locations.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-slate-100 p-8 text-center text-sm font-bold text-slate-300">
+          Nenhum local zerado.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {locations.map((location) => (
+            <button
+              key={location.id}
+              type="button"
+              onClick={() => onNavigateToItem(location.nome)}
+              className="flex w-full items-start justify-between gap-4 rounded-2xl border border-slate-100 bg-slate-50/60 p-4 text-left transition-all hover:border-sky-200 hover:bg-sky-50"
+            >
+              <div className="min-w-0">
+                <p className="truncate text-sm font-black text-slate-800">{formatarTexto(location.nome)}</p>
+                <p className="mt-1 truncate text-xs font-bold text-slate-400">
+                  {formatarTexto(location.categoria || 'Sem categoria')} - {formatarTexto(location.comodo)}
+                </p>
+                <p className="mt-2 flex items-center gap-1 truncate text-[11px] font-bold text-slate-400">
+                  <Archive className="h-3 w-3 shrink-0" />
+                  {[location.armario, location.caixa].filter(Boolean).map(formatarTexto).join(' / ') || 'Local interno nao informado'}
+                </p>
+              </div>
+              <div className="shrink-0 rounded-xl bg-white px-3 py-2 text-xs font-black text-sky-600 shadow-sm">
+                Qtd. 0
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
+    </section>
   );
 }
 

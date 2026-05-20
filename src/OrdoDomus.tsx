@@ -126,6 +126,7 @@ export default function OrdoDomus() {
 
   const {
     shoppingItems,
+    zeroStockLocations,
     isShoppingListLoading,
     carregarListaDeCompras
   } = useShoppingList(unidadeAtiva?.id, isShoppingTabActive);
@@ -331,6 +332,7 @@ export default function OrdoDomus() {
                     <ShoppingList
                       key="tab-compras"
                       items={shoppingItems}
+                      zeroStockLocations={zeroStockLocations}
                       isLoading={isShoppingListLoading}
                       onRefresh={carregarListaDeCompras}
                       onNavigateToItem={(nome) => {

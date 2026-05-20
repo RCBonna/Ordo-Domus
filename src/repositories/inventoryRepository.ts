@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabaseClient';
 import { logger } from '../lib/logger';
 import { isReponivelParaCompras, normalizarBusca } from '../lib/utils';
-import type { InventoryItem, InventoryPageResult, InventoryQueryParams, ShoppingListItem, UpsertInventoryParams, UpsertInventoryResult } from '../types/domain';
+import type { InventoryItem, InventoryPageResult, InventoryQueryParams, ShoppingListItem, ShoppingListResult, UpsertInventoryParams, UpsertInventoryResult } from '../types/domain';
 
 const escapeIlike = (value: string) => value.replace(/[%_]/g, char => `\\${char}`);
 
@@ -142,17 +142,30 @@ export async function upsertInventoryItem({
   return data;
 }
 
-export async function fetchShoppingSuggestions(unidadeId: string): Promise<ShoppingListItem[]> {
+export async function fetchShoppingSuggestions(unidadeId: string): Promise<ShoppingListResult> {
   const { data, error } = await supabase
     .from('itens_inventario')
-    .select('id,nome,categoria,comodo,quantidade')
+    .select('id,nome,categoria,comodo,armario,caixa,quantidade')
     .eq('unidade_id', unidadeId)
     .is('deletado_em', null)
     .order('nome', { ascending: true });
 
   if (error) throw error;
 
-  const groupedItems = ((data || []) as Pick<InventoryItem, 'id' | 'nome' | 'categoria' | 'comodo' | 'quantidade'>[])
+  const inventoryItems = (data || []) as Pick<InventoryItem, 'id' | 'nome' | 'categoria' | 'comodo' | 'armario' | 'caixa' | 'quantidade'>[];
+
+  const zeroStockLocations = inventoryItems
+    .filter((item) => Number(item.quantidade) <= 0)
+    .map((item) => ({
+      id: item.id,
+      nome: item.nome,
+      categoria: item.categoria,
+      comodo: item.comodo,
+      armario: item.armario,
+      caixa: item.caixa,
+    }));
+
+  const groupedItems = inventoryItems
     .filter((item) => isReponivelParaCompras(item.categoria))
     .reduce<Map<string, ShoppingListItem>>((acc, item) => {
       const key = normalizarBusca(item.nome);
@@ -188,8 +201,13 @@ export async function fetchShoppingSuggestions(unidadeId: string): Promise<Shopp
       return acc;
     }, new Map<string, ShoppingListItem>());
 
-  return Array.from(groupedItems.values()).filter((item) => item.quantidade <= 1).sort((a, b) => {
+  const items = Array.from(groupedItems.values()).filter((item) => item.quantidade <= 1).sort((a, b) => {
     if (a.quantidade !== b.quantidade) return a.quantidade - b.quantidade;
     return a.nome.localeCompare(b.nome, 'pt-BR');
   });
+
+  return {
+    items,
+    zeroStockLocations,
+  };
 }

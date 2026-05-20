@@ -46,6 +46,7 @@ export function InventoryCard({
   const isExpired = diffDays !== null && diffDays < 0;
   const isExpiringVerySoon = diffDays !== null && diffDays >= 0 && diffDays <= 7;
   const isExpiringSoon = diffDays !== null && diffDays > 7 && diffDays <= 30;
+  const isZeroQuantity = Number(item.quantidade) <= 0;
 
   let cardStyle = "border-slate-100";
   if (isEditing) {
@@ -212,8 +213,16 @@ export function InventoryCard({
                 <motion.div 
                   key={item.quantidade}
                   initial={{ scale: 1.1, backgroundColor: "#fecdd3" }}
-                  animate={{ scale: 1, backgroundColor: "#0f172a" }}
-                  className="bg-slate-900 text-white w-10 h-10 rounded-2xl flex items-center justify-center font-black text-lg shadow-lg"
+                  animate={{
+                    scale: 1,
+                    backgroundColor: isZeroQuantity ? "#e11d48" : "#0f172a",
+                  }}
+                  className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black text-lg shadow-lg ${
+                    isZeroQuantity
+                      ? 'text-white ring-4 ring-rose-100 shadow-rose-100'
+                      : 'bg-slate-900 text-white'
+                  }`}
+                  title={isZeroQuantity ? 'Local zerado' : 'Quantidade disponível'}
                 >
                   {item.quantidade}
                 </motion.div>
