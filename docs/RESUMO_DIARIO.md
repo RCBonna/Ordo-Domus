@@ -20,3 +20,4 @@
 - Ajustado alerta visual de validade no card do inventario: itens vencidos mostram `Ja venceu` em vermelho, vencimento em ate 7 dias usa alerta laranja e vencimento em ate 30 dias usa alerta amarelo.
 - Revisada regra de classificacao de validade: calculo saiu do card para helper testavel `getValidityStatus`, usando data sem horario, aceitando `validade_date` ISO do banco e tratando `MM/AAAA` como ultimo dia do mes.
 - Iniciada insercao manual na Lista de Compras: criada migration `lista_compras`, repository dedicado, formulario na aba Faltas, listagem de itens manuais pendentes e acao de remover/cancelar item manual.
+- Insercao manual da Lista de Compras validada no app e SQL `20260520211500_create_shopping_list.sql` aplicado manualmente no Supabase.

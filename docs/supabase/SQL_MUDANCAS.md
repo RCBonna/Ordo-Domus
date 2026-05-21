@@ -4,7 +4,7 @@
 
 Data/hora de criacao: 2026-05-20 21:15:00 -03:00
 
-Data/hora de modificacao: 2026-05-20 21:16:00 -03:00
+Data/hora de modificacao: 2026-05-20 21:25:00 -03:00
 
 Arquivo SQL:
 
@@ -40,4 +40,5 @@ Implementacao frontend relacionada:
 Status:
 
 - Criado no repositorio.
-- Pendente de aplicacao manual no Supabase antes de usar a insercao manual no ambiente remoto.
+- Aplicado manualmente no Supabase em 2026-05-20.
+- Validado no app em 2026-05-20.
