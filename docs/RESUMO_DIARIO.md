@@ -18,3 +18,4 @@
 - Corrigida regra da Lista de Compras: sugestoes agora agregam registros pelo nome normalizado do produto, somam a quantidade total antes de marcar falta e consideram apenas categorias reponiveis, evitando falsos positivos como ferramentas/furadeira.
 - Adicionada secao `Locais zerados` na aba Faltas para mostrar posicoes especificas com quantidade 0 sem transformar isso em compra falsa; badge de quantidade zero no card do inventario passou a usar cor de alerta.
 - Ajustado alerta visual de validade no card do inventario: itens vencidos mostram `Ja venceu` em vermelho, vencimento em ate 7 dias usa alerta laranja e vencimento em ate 30 dias usa alerta amarelo.
+- Revisada regra de classificacao de validade: calculo saiu do card para helper testavel `getValidityStatus`, usando data sem horario, aceitando `validade_date` ISO do banco e tratando `MM/AAAA` como ultimo dia do mes.

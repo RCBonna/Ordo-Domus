@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatarData, formatarTexto, isConsumivel } from './utils';
+import { formatarData, formatarTexto, getValidityStatus, isConsumivel } from './utils';
 
 describe('formatarTexto', () => {
   it('normaliza texto com espaços e caixa mista', () => {
@@ -38,5 +38,44 @@ describe('isConsumivel', () => {
   it('classifica categorias comuns ou ausentes como consumíveis', () => {
     expect(isConsumivel('Alimentos')).toBe(true);
     expect(isConsumivel()).toBe(true);
+  });
+});
+
+describe('getValidityStatus', () => {
+  const today = new Date(2026, 4, 20);
+
+  it('classifica datas vencidas separadamente', () => {
+    expect(getValidityStatus('19/05/2026', today)).toEqual({
+      kind: 'expired',
+      daysUntil: -1,
+    });
+  });
+
+  it('classifica vencimentos nos próximos 7 dias', () => {
+    expect(getValidityStatus('25/05/2026', today)).toEqual({
+      kind: 'next_7',
+      daysUntil: 5,
+    });
+  });
+
+  it('classifica vencimentos nos próximos 30 dias', () => {
+    expect(getValidityStatus('31/05/2026', today)).toEqual({
+      kind: 'next_30',
+      daysUntil: 11,
+    });
+  });
+
+  it('trata validade mês/ano como último dia do mês', () => {
+    expect(getValidityStatus('05/2026', today)).toEqual({
+      kind: 'next_30',
+      daysUntil: 11,
+    });
+  });
+
+  it('aceita data ISO normalizada do banco', () => {
+    expect(getValidityStatus('2026-06-30', today)).toEqual({
+      kind: 'valid',
+      daysUntil: 41,
+    });
   });
 });

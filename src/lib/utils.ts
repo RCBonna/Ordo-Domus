@@ -57,6 +57,70 @@ export const getErrorMessage = (error: unknown, fallback = 'Erro desconhecido') 
   return error instanceof Error ? error.message : fallback;
 };
 
+export type ValidityStatusKind = 'expired' | 'next_7' | 'next_30' | 'valid';
+
+export interface ValidityStatus {
+  kind: ValidityStatusKind;
+  daysUntil: number;
+}
+
+const toDateOnly = (date: Date) => new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+const parseValidityDate = (value?: string | null) => {
+  const raw = value?.trim();
+  if (!raw) return null;
+
+  const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (isoMatch) {
+    const year = Number(isoMatch[1]);
+    const month = Number(isoMatch[2]);
+    const day = Number(isoMatch[3]);
+    const date = new Date(year, month - 1, day);
+    return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day ? date : null;
+  }
+
+  const fullBrMatch = raw.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if (fullBrMatch) {
+    const day = Number(fullBrMatch[1]);
+    const month = Number(fullBrMatch[2]);
+    const year = Number(fullBrMatch[3]);
+    const date = new Date(year, month - 1, day);
+    return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day ? date : null;
+  }
+
+  const monthYearMatch = raw.match(/^(\d{1,2})\/(\d{4})$/);
+  if (monthYearMatch) {
+    const month = Number(monthYearMatch[1]);
+    const year = Number(monthYearMatch[2]);
+    if (month < 1 || month > 12) return null;
+    return new Date(year, month, 0);
+  }
+
+  return null;
+};
+
+export const getValidityStatus = (value?: string | null, today = new Date()): ValidityStatus | null => {
+  const expiryDate = parseValidityDate(value);
+  if (!expiryDate) return null;
+
+  const msPerDay = 1000 * 60 * 60 * 24;
+  const daysUntil = Math.round((toDateOnly(expiryDate).getTime() - toDateOnly(today).getTime()) / msPerDay);
+
+  if (daysUntil < 0) {
+    return { kind: 'expired', daysUntil };
+  }
+
+  if (daysUntil <= 7) {
+    return { kind: 'next_7', daysUntil };
+  }
+
+  if (daysUntil <= 30) {
+    return { kind: 'next_30', daysUntil };
+  }
+
+  return { kind: 'valid', daysUntil };
+};
+
 // Blindagem de Datas: Valida rigorosamente no formato DD/MM/AAAA brasileiro
 export const formatarData = (dataRaw?: string | null) => {
   if (!dataRaw || dataRaw.trim() === '-' || dataRaw.trim() === '') return '';

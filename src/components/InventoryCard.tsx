@@ -5,6 +5,7 @@ import {
   Layers, Archive, AlertTriangle, Clock, Calendar 
 } from 'lucide-react';
 import type { EditableInventoryItem, InventoryItem } from '../types/domain';
+import { getValidityStatus } from '../lib/utils';
 
 interface InventoryCardProps {
   item: InventoryItem;
@@ -31,21 +32,10 @@ export function InventoryCard({
   onConsume,
   setEditingItemData
 }: InventoryCardProps) {
-  let diffDays: number | null = null;
-  if (item.validade) {
-    const parts = item.validade.split('/');
-    let expiryDate;
-    if (parts.length === 3) expiryDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
-    else if (parts.length === 2) expiryDate = new Date(parseInt(parts[1]), parseInt(parts[0]) - 1, 1);
-    
-    if (expiryDate) {
-      diffDays = Math.ceil((expiryDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
-    }
-  }
-
-  const isExpired = diffDays !== null && diffDays < 0;
-  const isExpiringVerySoon = diffDays !== null && diffDays >= 0 && diffDays <= 7;
-  const isExpiringSoon = diffDays !== null && diffDays > 7 && diffDays <= 30;
+  const validityStatus = getValidityStatus(item.validade_date || item.validade);
+  const isExpired = validityStatus?.kind === 'expired';
+  const isExpiringVerySoon = validityStatus?.kind === 'next_7';
+  const isExpiringSoon = validityStatus?.kind === 'next_30';
   const isZeroQuantity = Number(item.quantidade) <= 0;
 
   let cardStyle = "border-slate-100";
@@ -248,10 +238,10 @@ export function InventoryCard({
             )}
             {item.validade && (
               (() => {
-                if (diffDays === null) return null;
+                if (!validityStatus) return null;
                 
-                if (diffDays < 0) {
-                  const overdueDays = Math.abs(diffDays);
+                if (validityStatus.kind === 'expired') {
+                  const overdueDays = Math.abs(validityStatus.daysUntil);
                   return (
                     <div className="flex items-center gap-2 text-rose-700 bg-rose-50 p-2 rounded-xl border border-rose-200 animate-pulse">
                       <AlertTriangle className="w-3.5 h-3.5" />
@@ -260,21 +250,21 @@ export function InventoryCard({
                       </span>
                     </div>
                   );
-                } else if (diffDays <= 7) {
+                } else if (validityStatus.kind === 'next_7') {
                   return (
                     <div className="flex items-center gap-2 text-orange-700 bg-orange-50 p-2 rounded-xl border border-orange-200">
                       <Clock className="w-3.5 h-3.5" />
                       <span className="text-[10px] font-black uppercase tracking-tighter">
-                        Vence nos proximos 7 dias: {item.validade} ({diffDays}d)
+                        Vence nos proximos 7 dias: {item.validade} ({validityStatus.daysUntil}d)
                       </span>
                     </div>
                   );
-                } else if (diffDays <= 30) {
+                } else if (validityStatus.kind === 'next_30') {
                   return (
                     <div className="flex items-center gap-2 text-amber-600 bg-amber-50 p-2 rounded-xl border border-amber-100">
                       <Clock className="w-3.5 h-3.5" />
                       <span className="text-[10px] font-black uppercase tracking-tighter">
-                        Vence nos proximos 30 dias: {item.validade} ({diffDays}d)
+                        Vence nos proximos 30 dias: {item.validade} ({validityStatus.daysUntil}d)
                       </span>
                     </div>
                   );
