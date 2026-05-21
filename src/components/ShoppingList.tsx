@@ -1,22 +1,49 @@
 import { motion } from 'motion/react';
-import type { ReactNode } from 'react';
-import { AlertTriangle, Archive, CheckCircle2, MapPin, PackageSearch, ShoppingCart } from 'lucide-react';
+import { useState } from 'react';
+import type { FormEvent, ReactNode } from 'react';
+import { AlertTriangle, Archive, CheckCircle2, MapPin, PackageSearch, Plus, ShoppingCart, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { formatarTexto } from '@/src/lib/utils';
-import type { ShoppingListItem, ZeroStockLocation } from '../types/domain';
+import type { ManualShoppingItem, ShoppingListItem, ZeroStockLocation } from '../types/domain';
 
 interface ShoppingListProps {
   items: ShoppingListItem[];
+  manualItems: ManualShoppingItem[];
   zeroStockLocations: ZeroStockLocation[];
   isLoading: boolean;
+  isSavingManualItem: boolean;
   onRefresh: () => void;
+  onAddManualItem: (nome: string, quantidade: number, observacao: string) => Promise<void>;
+  onCancelManualItem: (id: string) => void;
   onNavigateToItem: (nome: string) => void;
 }
 
-export function ShoppingList({ items, zeroStockLocations, isLoading, onRefresh, onNavigateToItem }: ShoppingListProps) {
+export function ShoppingList({
+  items,
+  manualItems,
+  zeroStockLocations,
+  isLoading,
+  isSavingManualItem,
+  onRefresh,
+  onAddManualItem,
+  onCancelManualItem,
+  onNavigateToItem,
+}: ShoppingListProps) {
+  const [manualName, setManualName] = useState('');
+  const [manualQuantity, setManualQuantity] = useState(1);
+  const [manualNote, setManualNote] = useState('');
   const missingItems = items.filter((item) => item.prioridade === 'faltando');
   const lowStockItems = items.filter((item) => item.prioridade === 'baixo');
-  const totalAlerts = items.length + zeroStockLocations.length;
+  const hasAutomaticAlerts = items.length + zeroStockLocations.length > 0;
+
+  const handleSubmitManualItem = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    await onAddManualItem(manualName, manualQuantity, manualNote);
+    setManualName('');
+    setManualQuantity(1);
+    setManualNote('');
+  };
 
   return (
     <motion.div
@@ -31,7 +58,7 @@ export function ShoppingList({ items, zeroStockLocations, isLoading, onRefresh, 
         </div>
         <div className="flex items-center gap-3">
           <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3 text-sm font-black text-slate-500 shadow-sm">
-            {items.length} compras sugeridas
+            {items.length + manualItems.length} itens na compra
           </div>
           <Button
             type="button"
@@ -46,16 +73,30 @@ export function ShoppingList({ items, zeroStockLocations, isLoading, onRefresh, 
         </div>
       </div>
 
-      {totalAlerts === 0 ? (
-        <div className="rounded-[32px] border border-dashed border-slate-200 bg-white p-16 text-center">
-          <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-emerald-50">
-            <CheckCircle2 className="h-10 w-10 text-emerald-500" />
+      <div className="space-y-6">
+        <ManualShoppingSection
+          items={manualItems}
+          isSaving={isSavingManualItem}
+          manualName={manualName}
+          manualQuantity={manualQuantity}
+          manualNote={manualNote}
+          setManualName={setManualName}
+          setManualQuantity={setManualQuantity}
+          setManualNote={setManualNote}
+          onSubmit={handleSubmitManualItem}
+          onCancelItem={onCancelManualItem}
+        />
+
+        {!hasAutomaticAlerts ? (
+          <div className="rounded-[32px] border border-dashed border-slate-200 bg-white p-12 text-center">
+            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-3xl bg-emerald-50">
+              <CheckCircle2 className="h-8 w-8 text-emerald-500" />
+            </div>
+            <h3 className="mb-2 text-xl font-black text-slate-800">Sem alertas automáticos</h3>
+            <p className="font-medium text-slate-400">Itens reponíveis entram aqui quando a soma total do produto fica crítica.</p>
           </div>
-          <h3 className="mb-2 text-xl font-black text-slate-800">Nada faltando agora</h3>
-          <p className="font-medium text-slate-400">Itens reponíveis entram aqui quando a soma total do produto fica crítica.</p>
-        </div>
-      ) : (
-        <div className="space-y-6">
+        ) : (
+          <>
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <ShoppingGroup
               title="Faltando"
@@ -78,9 +119,104 @@ export function ShoppingList({ items, zeroStockLocations, isLoading, onRefresh, 
             locations={zeroStockLocations}
             onNavigateToItem={onNavigateToItem}
           />
+          </>
+        )}
+      </div>
+    </motion.div>
+  );
+}
+
+interface ManualShoppingSectionProps {
+  items: ManualShoppingItem[];
+  isSaving: boolean;
+  manualName: string;
+  manualQuantity: number;
+  manualNote: string;
+  setManualName: (value: string) => void;
+  setManualQuantity: (value: number) => void;
+  setManualNote: (value: string) => void;
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void;
+  onCancelItem: (id: string) => void;
+}
+
+function ManualShoppingSection({
+  items,
+  isSaving,
+  manualName,
+  manualQuantity,
+  manualNote,
+  setManualName,
+  setManualQuantity,
+  setManualNote,
+  onSubmit,
+  onCancelItem,
+}: ManualShoppingSectionProps) {
+  return (
+    <section className="rounded-[28px] border border-slate-100 bg-white p-5 shadow-sm">
+      <div className="mb-5 flex items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-emerald-100 bg-emerald-50 text-emerald-600">
+            <Plus className="h-5 w-5" />
+          </div>
+          <div>
+            <h3 className="text-lg font-black text-slate-900">Itens manuais</h3>
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Adicionados diretamente na lista</p>
+          </div>
+        </div>
+        <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-black text-slate-400">
+          {items.length}
+        </span>
+      </div>
+
+      <form onSubmit={onSubmit} className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_120px_1fr_auto]">
+        <Input
+          value={manualName}
+          onChange={(event) => setManualName(event.target.value)}
+          placeholder="Adicionar item manual..."
+          className="h-12 rounded-2xl bg-slate-50 border-slate-100 font-bold"
+        />
+        <Input
+          type="number"
+          min={1}
+          value={manualQuantity}
+          onChange={(event) => setManualQuantity(Math.max(1, Number(event.target.value)))}
+          className="h-12 rounded-2xl bg-slate-50 border-slate-100 font-bold"
+        />
+        <Input
+          value={manualNote}
+          onChange={(event) => setManualNote(event.target.value)}
+          placeholder="Observação opcional"
+          className="h-12 rounded-2xl bg-slate-50 border-slate-100 font-bold"
+        />
+        <Button type="submit" disabled={isSaving} className="h-12 rounded-2xl font-black">
+          <Plus className="mr-2 h-4 w-4" />
+          Adicionar
+        </Button>
+      </form>
+
+      {items.length > 0 && (
+        <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
+          {items.map((item) => (
+            <div key={item.id} className="flex items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-black text-slate-800">{formatarTexto(item.nome)}</p>
+                <p className="mt-1 truncate text-xs font-bold text-slate-400">
+                  Qtd. {item.quantidade}{item.observacao ? ` - ${item.observacao}` : ''}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => onCancelItem(item.id)}
+                className="shrink-0 rounded-xl bg-white p-2 text-slate-400 shadow-sm transition-colors hover:text-rose-500"
+                title="Remover item manual"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ))}
         </div>
       )}
-    </motion.div>
+    </section>
   );
 }
 

@@ -112,6 +112,24 @@ export interface ShoppingListResult {
   zeroStockLocations: ZeroStockLocation[];
 }
 
+export interface ManualShoppingItem {
+  id: string;
+  unidade_id: string;
+  nome: string;
+  quantidade: number;
+  observacao: string | null;
+  status: 'pendente' | 'comprado' | 'cancelado';
+  origem: 'manual';
+  criado_em?: string;
+}
+
+export interface CreateManualShoppingItemParams {
+  unidadeId: string;
+  nome: string;
+  quantidade: number;
+  observacao?: string;
+}
+
 export interface InventoryQueryParams {
   unidadeId: string;
   searchTerm?: string;
