@@ -35,10 +35,14 @@ const receiptResponseSchema = {
     type: "OBJECT",
     properties: {
       item: { type: "STRING", description: "Nome original bruto do produto no cupom" },
+      categoria: {
+        type: "STRING",
+        description: "Categoria provável para inventário doméstico, por exemplo Bebidas, Alimentos, Limpeza, Higiene, Medicamentos, Pet, Descartáveis ou Geral",
+      },
       quantidade: { type: "NUMBER" },
       valor: { type: "NUMBER", description: "Valor total ou unitário do item (opcional)" },
     },
-    required: ["item", "quantidade"],
+    required: ["item", "categoria", "quantidade"],
   },
 };
 
@@ -253,7 +257,7 @@ Deno.serve(async (req) => {
           role: "user",
           parts: [
             {
-              text: 'Extraia todos os itens deste cupom fiscal ou nota fiscal. Retorne um JSON com a lista de itens, contendo "item" (nome original bruto do produto no papel), "quantidade" (número) e "valor" (número, valor total do item, se houver). Não invente ou limpe muito os nomes, use a transcrição o mais fiel possível ao papel.',
+              text: 'Extraia todos os itens deste cupom fiscal ou nota fiscal. Retorne um JSON com a lista de itens, contendo "item" (nome original bruto do produto no papel), "categoria" (categoria provável para inventário doméstico), "quantidade" (número) e "valor" (número, valor total do item, se houver). Use categorias curtas e úteis como Bebidas, Alimentos, Limpeza, Higiene, Medicamentos, Pet, Descartáveis ou Geral. Não invente ou limpe muito os nomes, use a transcrição o mais fiel possível ao papel.',
             },
             {
               inlineData: {

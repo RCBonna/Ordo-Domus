@@ -17,6 +17,7 @@ export interface ExtractedItem {
 
 export interface ExtractedReceiptItem {
   item: string;
+  categoria?: string;
   quantidade: number;
   valor?: number;
 }

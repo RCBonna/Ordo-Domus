@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { logger } from '../lib/logger';
 import { fetchInventoryPage } from '../repositories/inventoryRepository';
@@ -10,9 +10,21 @@ import {
 } from '../services/inventoryService';
 import type { EditableInventoryItem, HistoryItem, InventoryExpiryFilter, InventoryItem } from '../types/domain';
 
+const INVENTORY_LOAD_TIMEOUT_MS = 20000;
+
+async function withInventoryTimeout<T>(promise: Promise<T>): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => {
+      window.setTimeout(() => reject(new Error('Tempo limite ao carregar inventario.')), INVENTORY_LOAD_TIMEOUT_MS);
+    }),
+  ]);
+}
+
 export function useInventory(unidadeId: string | undefined, onActionRecorded?: (item: HistoryItem) => void) {
   const [fullInventory, setFullInventory] = useState<InventoryItem[]>([]);
   const [isInventoryLoading, setIsInventoryLoading] = useState(false);
+  const loadRequestId = useRef(0);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilterState] = useState('');
   const [roomFilter, setRoomFilterState] = useState('');
@@ -60,9 +72,12 @@ export function useInventory(unidadeId: string | undefined, onActionRecorded?: (
 
   const carregarInventarioCompleto = async (silent = false) => {
     if (!unidadeId) return;
+    const requestId = loadRequestId.current + 1;
+    loadRequestId.current = requestId;
+
     if (!silent) setIsInventoryLoading(true);
     try {
-      const { items, total } = await fetchInventoryPage({
+      const { items, total } = await withInventoryTimeout(fetchInventoryPage({
         unidadeId,
         searchTerm,
         categoryFilter,
@@ -70,14 +85,20 @@ export function useInventory(unidadeId: string | undefined, onActionRecorded?: (
         expiryFilter,
         page: inventoryPage,
         pageSize: inventoryPageSize,
-      });
+      }));
+
+      if (requestId !== loadRequestId.current) return;
 
       setFullInventory(items);
       setInventoryTotal(total);
     } catch {
+      if (requestId !== loadRequestId.current) return;
       logger.warn('Falha ao carregar inventario.');
+      if (!silent) {
+        toast.error('Não foi possível carregar o inventário. Tente novamente.');
+      }
     } finally {
-      if (!silent) setIsInventoryLoading(false);
+      if (!silent && requestId === loadRequestId.current) setIsInventoryLoading(false);
     }
   };
 

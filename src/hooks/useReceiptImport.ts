@@ -41,6 +41,7 @@ export function useReceiptImport(unidadeId: string | undefined, onImportSuccess?
       const rowsToInsert = extractedItems.map(item => ({
         unidade_id: unidadeId,
         nome_bruto: item.item || 'Item sem nome',
+        categoria_sugerida: item.categoria || null,
         quantidade: item.quantidade || 1,
         valor_unitario: item.valor || null,
         processado: false
@@ -50,10 +51,26 @@ export function useReceiptImport(unidadeId: string | undefined, onImportSuccess?
       const { data: session } = await supabase.auth.getSession();
       logger.debug(session?.session ? 'Sessao ativa para importacao de cupom.' : 'Sessao ausente na importacao de cupom.');
 
-      const { data, error } = await supabase
+      let { data, error } = await supabase
         .from('importacoes_pendentes')
         .insert(rowsToInsert)
         .select();
+
+      const isMissingSuggestedCategoryColumn =
+        error?.code === 'PGRST204' ||
+        error?.message?.toLowerCase().includes('categoria_sugerida');
+
+      if (isMissingSuggestedCategoryColumn) {
+        logger.warn('Coluna categoria_sugerida indisponivel; salvando cupom sem categoria sugerida.');
+        const rowsWithoutSuggestedCategory = rowsToInsert.map(({ categoria_sugerida: _categoria, ...row }) => row);
+        const retry = await supabase
+          .from('importacoes_pendentes')
+          .insert(rowsWithoutSuggestedCategory)
+          .select();
+
+        data = retry.data;
+        error = retry.error;
+      }
 
       if (error) {
         logger.warn('Falha ao inserir importacoes pendentes.');

@@ -1,5 +1,25 @@
 # Resumo Diario
 
+## 2026-05-21
+
+- Ajustado fluxo de `Compra realizada` para itens manuais da Lista de Compras: o formulario nao inicia mais com categoria `Geral` por padrao.
+- Ao abrir a compra manual, o app busca item existente no inventario pelo nome normalizado e preenche categoria, comodo, armario, caixa e validade quando houver correspondencia, permitindo merge pela RPC `upsert_inventario` quando nome/local/validade coincidirem.
+- Adicionada validacao para impedir conclusao da compra manual sem categoria e comodo preenchidos.
+- Criado helper testavel para selecao do melhor item de inventario para compra manual, cobrindo caso como `Caixa de cerveja` reaproveitando categoria `Bebidas`.
+- Validacoes locais: `npm run lint`, `npm test` e `npm run build` passaram.
+- Blindado carregamento da aba Inventario contra requisicoes concorrentes/travadas: somente a requisicao mais recente atualiza estado, ha timeout de 20s e o estado vazio nao aparece enquanto a lista ainda esta carregando.
+- Ajustado seletor de unidade no cabecalho: quando o usuario tem mais de uma unidade, clicar em qualquer ponto do bloco da unidade ativa abre uma lista suspensa para troca; com apenas uma unidade, o bloco permanece estatico.
+- Executada validacao final da etapa: `npm run lint`, `npm test` e `npm run build` passaram, removendo a pendencia de build final que estava registrada na issue da Lista de Compras.
+- Implementada e aplicada manualmente no Supabase a RPC `efetivar_importacao_cupom` para consolidar item triado de cupom fiscal em inventario, movimentacao, dicionario e limpeza da pendencia de forma transacional.
+- RPC `efetivar_importacao_cupom` validada funcionalmente no app apos aplicacao manual do SQL; issue GitHub #11 fechada.
+- Fluxos de edicao e exclusao no Inventario validados funcionalmente no app pelo usuario; issue GitHub #1 fechada.
+- Iniciada issue #10: modal de triagem passou a permitir correcao inline de nome, categoria, comodo, armario, caixa, validade e quantidade; itens podem ser efetivados diretamente pela RPC e Smart Matches prontos podem ser aceitos em massa.
+- Ajustes na triagem: modal recebeu scroll vertical real, OCR de cupom passou a retornar categoria sugerida, e campos alfabeticos sao normalizados com primeira letra maiuscula antes da efetivacao. SQL `categoria_sugerida` aplicado manualmente; redeploy da Edge Function ainda pendente.
+- Adicionada acao UX de descarte completo da triagem com confirmacao explicita, mantendo tambem descarte individual por item.
+- Smart Match da triagem evoluiu para usar normalizacao acento-insensivel, dicionario e inventario existente; itens agora recebem estado visual forte/possivel/fraco em verde/laranja/cinza e o inventario pode sugerir categoria, comodo, armario, caixa e validade.
+- Ajustado Smart Match para nao preencher campos com item do inventario quando o estado e fraco; limite de possivel match ficou mais restritivo e categorias iniciais passaram a ter inferencia por tokens seguros, incluindo singular/plural simples.
+- Cabecalho do modal de triagem reorganizado com botao explicito `Fechar`; categorias passaram por normalizacao canonica para evitar divergencias como `Bebida` versus `Bebidas` nos fluxos principais.
+
 ## 2026-05-20
 
 - Validacao local parcial dos ajustes de inventario/P2.2 executada.

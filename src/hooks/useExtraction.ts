@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { extractInventoryData, extractInventoryDataFromAudio, type ExtractedItem } from '../services/geminiService';
-import { formatarTexto, formatarData, getErrorMessage } from '../lib/utils';
+import { formatarTexto, formatarData, getErrorMessage, normalizarCategoria } from '../lib/utils';
 import { logger } from '../lib/logger';
 import { getCurrentUserId } from '../repositories/authRepository';
-import { upsertInventoryItem } from '../repositories/inventoryRepository';
+import { finalizeReceiptImportItem, upsertInventoryItem } from '../repositories/inventoryRepository';
 import { fetchRecentInventoryMovements, insertInventoryMovement } from '../repositories/movementRepository';
 import type { HistoryItem } from '../types/domain';
 
@@ -105,7 +105,7 @@ export function useExtraction(unidadeId: string | undefined) {
 
     const data: ExtractedItem = {
       item: formatarTexto(dataRaw.item) || 'Item sem nome',
-      categoria: formatarTexto(dataRaw.categoria) || 'Geral',
+      categoria: normalizarCategoria(dataRaw.categoria) || 'Geral',
       comodo: formatarTexto(dataRaw.comodo) || 'Não informado',
       armario: formatarTexto(dataRaw.armario) || '',
       caixa: formatarTexto(dataRaw.caixa) || '',
@@ -134,16 +134,39 @@ export function useExtraction(unidadeId: string | undefined) {
       logger.debug('Iniciando gravacao de extracao no inventario.');
 
       const dbPromise = (async () => {
-        const resultado = await upsertInventoryItem({
-          unidadeId,
-          nome: editedData.item,
-          categoria: editedData.categoria,
-          comodo: editedData.comodo,
-          armario: editedData.armario,
-          caixa: editedData.caixa,
-          quantidade: editedData.quantidade,
-          validade: editedData.validade
-        });
+        let finalizedByRpc = false;
+        let resultado = null;
+
+        if (editedData.triage_id) {
+          try {
+            resultado = await finalizeReceiptImportItem({
+              importacaoId: editedData.triage_id,
+              nome: editedData.item,
+              categoria: editedData.categoria,
+              comodo: editedData.comodo,
+              armario: editedData.armario,
+              caixa: editedData.caixa,
+              quantidade: editedData.quantidade,
+              validade: editedData.validade,
+            });
+            finalizedByRpc = true;
+          } catch {
+            logger.warn('RPC de efetivacao de cupom indisponivel; usando fluxo client-side.');
+          }
+        }
+
+        if (!resultado) {
+          resultado = await upsertInventoryItem({
+            unidadeId,
+            nome: editedData.item,
+            categoria: editedData.categoria,
+            comodo: editedData.comodo,
+            armario: editedData.armario,
+            caixa: editedData.caixa,
+            quantidade: editedData.quantidade,
+            validade: editedData.validade
+          });
+        }
         logger.debug('RPC de upsert do inventario concluida.');
         
         const acaoFinal = resultado?.acao as 'MERGE' | 'ADD' || 'ADD';
@@ -164,23 +187,25 @@ export function useExtraction(unidadeId: string | undefined) {
           data: new Date().toISOString()
         };
 
-        // Gravar no histórico do banco
-        try {
-          await insertInventoryMovement({
-            unidade_id: unidadeId,
-            item_nome: itemNaTela.item,
-            categoria: itemNaTela.categoria,
-            comodo: itemNaTela.comodo,
-            quantidade: itemNaTela.quantidade,
-            tipo: 'entrada',
-            user_id: userId
-          });
-          logger.debug('Historico de inventario gravado.');
-        } catch {
-          logger.warn('Falha ao gravar historico de inventario.');
+        if (!finalizedByRpc) {
+          // Gravar no histórico do banco
+          try {
+            await insertInventoryMovement({
+              unidade_id: unidadeId,
+              item_nome: itemNaTela.item,
+              categoria: itemNaTela.categoria,
+              comodo: itemNaTela.comodo,
+              quantidade: itemNaTela.quantidade,
+              tipo: 'entrada',
+              user_id: userId
+            });
+            logger.debug('Historico de inventario gravado.');
+          } catch {
+            logger.warn('Falha ao gravar historico de inventario.');
+          }
         }
 
-        if (editedData.triage_id) {
+        if (editedData.triage_id && !finalizedByRpc) {
           const { error: errTriage } = await supabase
             .from('importacoes_pendentes')
             .delete()

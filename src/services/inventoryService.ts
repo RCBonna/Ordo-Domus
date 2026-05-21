@@ -1,4 +1,4 @@
-import { formatarData, formatarTexto } from '../lib/utils';
+import { formatarData, formatarTexto, normalizarCategoria } from '../lib/utils';
 import { getCurrentUserId } from '../repositories/authRepository';
 import { updateInventoryItem, softDeleteInventoryItem, updateInventoryQuantity } from '../repositories/inventoryMutationRepository';
 import { insertInventoryMovement } from '../repositories/movementRepository';
@@ -22,7 +22,7 @@ const toHistoryItem = (
   tipo: MovementType,
 ): HistoryItem => ({
   item: formatarTexto(item.nome) || '',
-  categoria: formatarTexto(item.categoria) || '',
+  categoria: normalizarCategoria(item.categoria) || '',
   comodo: formatarTexto(item.comodo) || '',
   quantidade,
   tipo,
@@ -45,7 +45,7 @@ export async function updateInventoryItemWithAudit({
 
   await updateInventoryItem(itemId, {
     nome: formatarTexto(editingItemData.nome),
-    categoria: formatarTexto(editingItemData.categoria),
+    categoria: normalizarCategoria(editingItemData.categoria),
     comodo: formatarTexto(editingItemData.comodo),
     armario: formatarTexto(editingItemData.armario),
     caixa: formatarTexto(editingItemData.caixa),
@@ -57,7 +57,7 @@ export async function updateInventoryItemWithAudit({
     unidade_id: unidadeId,
     item_id: itemId,
     item_nome: formatarTexto(editingItemData.nome),
-    categoria: formatarTexto(editingItemData.categoria),
+    categoria: normalizarCategoria(editingItemData.categoria),
     comodo: formatarTexto(editingItemData.comodo),
     quantidade: movementQuantity,
     tipo: movementType,

@@ -1,7 +1,8 @@
 import { supabase } from '../lib/supabaseClient';
 import { logger } from '../lib/logger';
+import { selectBestInventoryPurchaseMatch } from '../lib/shoppingDefaults';
 import { isReponivelParaCompras, normalizarBusca } from '../lib/utils';
-import type { InventoryItem, InventoryPageResult, InventoryQueryParams, ShoppingListItem, ShoppingListResult, UpsertInventoryParams, UpsertInventoryResult } from '../types/domain';
+import type { FinalizeReceiptImportParams, InventoryItem, InventoryPageResult, InventoryQueryParams, ShoppingListItem, ShoppingListResult, UpsertInventoryParams, UpsertInventoryResult } from '../types/domain';
 
 const escapeIlike = (value: string) => value.replace(/[%_]/g, char => `\\${char}`);
 
@@ -142,6 +143,32 @@ export async function upsertInventoryItem({
   return data;
 }
 
+export async function finalizeReceiptImportItem({
+  importacaoId,
+  nome,
+  categoria,
+  comodo,
+  armario,
+  caixa,
+  quantidade,
+  validade,
+}: FinalizeReceiptImportParams): Promise<UpsertInventoryResult | null> {
+  const { data, error } = await supabase.rpc('efetivar_importacao_cupom', {
+    p_importacao_id: importacaoId,
+    p_nome: nome,
+    p_categoria: categoria,
+    p_comodo: comodo,
+    p_armario: armario,
+    p_caixa: caixa,
+    p_quantidade: quantidade,
+    p_validade: validade,
+  });
+
+  if (error) throw error;
+
+  return data;
+}
+
 export async function fetchShoppingSuggestions(unidadeId: string): Promise<ShoppingListResult> {
   const { data, error } = await supabase
     .from('itens_inventario')
@@ -210,4 +237,21 @@ export async function fetchShoppingSuggestions(unidadeId: string): Promise<Shopp
     items,
     zeroStockLocations,
   };
+}
+
+export async function fetchInventoryPurchaseMatch(unidadeId: string, itemName: string) {
+  const normalizedName = normalizarBusca(itemName);
+  if (!normalizedName) return null;
+
+  const { data, error } = await supabase
+    .from('itens_inventario')
+    .select('nome,categoria,comodo,armario,caixa,validade,quantidade')
+    .eq('unidade_id', unidadeId)
+    .is('deletado_em', null)
+    .order('nome', { ascending: true })
+    .limit(500);
+
+  if (error) throw error;
+
+  return selectBestInventoryPurchaseMatch(itemName, data || []);
 }

@@ -1,4 +1,4 @@
-import { formatarData, formatarTexto } from '../lib/utils';
+import { formatarData, formatarTexto, normalizarCategoria } from '../lib/utils';
 import { getCurrentUserId } from '../repositories/authRepository';
 import { upsertInventoryItem } from '../repositories/inventoryRepository';
 import { insertInventoryMovement } from '../repositories/movementRepository';
@@ -16,7 +16,7 @@ export async function completeManualShoppingItemWithInventory({
   quantidade,
 }: CompleteManualShoppingItemParams): Promise<HistoryItem> {
   const cleanName = formatarTexto(item.nome);
-  const cleanCategoria = formatarTexto(categoria) || 'Geral';
+  const cleanCategoria = normalizarCategoria(categoria) || 'Geral';
   const cleanComodo = formatarTexto(comodo) || 'Não informado';
   const cleanArmario = formatarTexto(armario);
   const cleanCaixa = formatarTexto(caixa);

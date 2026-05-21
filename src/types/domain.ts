@@ -176,12 +176,35 @@ export interface UpsertInventoryParams {
   validade: string;
 }
 
+export interface FinalizeReceiptImportParams {
+  importacaoId: string;
+  nome: string;
+  categoria: string;
+  comodo: string;
+  armario: string;
+  caixa: string;
+  quantidade: number;
+  validade: string;
+}
+
+export interface ReceiptTriageDraft {
+  nome: string;
+  categoria: string;
+  comodo: string;
+  armario: string;
+  caixa: string;
+  validade: string;
+  quantidade: number;
+}
+
 export interface UpsertInventoryResult {
   acao?: 'MERGE' | 'ADD';
+  id?: string;
   nome?: string;
   categoria?: string;
   comodo?: string;
   armario?: string;
   caixa?: string;
   validade?: string;
+  quantidade?: number;
 }

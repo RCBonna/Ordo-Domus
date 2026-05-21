@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { motion } from 'motion/react';
-import { Package, Share2, LogOut, ArrowRight, BarChart2, Table as TableIcon, Box, ShoppingCart, MapPin, ClipboardList } from 'lucide-react';
+import { Package, Share2, LogOut, ChevronDown, Check, BarChart2, Table as TableIcon, Box, ShoppingCart, MapPin, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { UnitMembership } from '../types/domain';
 
@@ -36,6 +37,14 @@ export function MainHeader({
   isSistemaLiberado,
   isSystemAdmin
 }: MainHeaderProps) {
+  const [isUnitMenuOpen, setIsUnitMenuOpen] = useState(false);
+  const canSwitchUnit = unidades.length > 1;
+
+  const handleSelectUnit = (unidade: UnitMembership) => {
+    setUnidadeAtiva(unidade);
+    setIsUnitMenuOpen(false);
+  };
+
   return (
     <div className="sticky top-0 z-50 bg-slate-50/80 backdrop-blur-2xl border-b border-slate-200/50 px-4 py-3 sm:px-8 sm:py-4">
       <div className="max-w-7xl mx-auto flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -79,24 +88,62 @@ export function MainHeader({
           {unidadeAtiva && (
             <>
               <div className="h-8 w-px bg-slate-200 hidden sm:block" />
-              <div className="flex flex-col gap-1">
+              <div className="relative flex flex-col gap-1">
                 <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest leading-none ml-1">Unidade Ativa</p>
-                <div className="flex items-center gap-2 bg-white px-4 py-2 rounded-2xl border border-slate-100 group transition-all hover:border-primary/20 shadow-sm">
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (canSwitchUnit) {
+                      setIsUnitMenuOpen((current) => !current);
+                    }
+                  }}
+                  aria-haspopup={canSwitchUnit ? 'menu' : undefined}
+                  aria-expanded={canSwitchUnit ? isUnitMenuOpen : undefined}
+                  className={`flex items-center gap-2 bg-white px-4 py-2 rounded-2xl border border-slate-100 group transition-all shadow-sm text-left ${
+                    canSwitchUnit ? 'cursor-pointer hover:border-primary/20 hover:bg-primary/5' : 'cursor-default'
+                  }`}
+                  title={canSwitchUnit ? 'Trocar unidade' : 'Unidade ativa'}
+                >
                   <MapPin className="w-3.5 h-3.5 text-primary opacity-50 group-hover:opacity-100 transition-opacity" />
                   <span className="font-bold text-sm text-slate-700">{unidadeAtiva.nome}</span>
-                  {unidades.length > 1 && (
-                    <button 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setUnidadeAtiva(null);
-                      }}
-                      className="ml-2 p-1 hover:bg-slate-50 rounded-lg text-slate-400 hover:text-primary transition-colors"
-                      title="Trocar unidade"
-                    >
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
+                  {canSwitchUnit && (
+                    <ChevronDown className={`ml-2 w-3.5 h-3.5 text-slate-400 transition-transform ${isUnitMenuOpen ? 'rotate-180 text-primary' : ''}`} />
                   )}
-                </div>
+                </button>
+
+                {canSwitchUnit && isUnitMenuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: -6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="absolute left-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-2xl border border-slate-100 bg-white p-1 shadow-xl shadow-slate-200/70"
+                    role="menu"
+                  >
+                    {unidades.map((unidade) => {
+                      const isActive = unidade.id === unidadeAtiva.id;
+
+                      return (
+                        <button
+                          key={unidade.id}
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSelectUnit(unidade);
+                          }}
+                          className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-bold transition-colors ${
+                            isActive
+                              ? 'bg-primary/5 text-primary'
+                              : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                          }`}
+                          role="menuitem"
+                        >
+                          <span className="truncate">{unidade.nome}</span>
+                          {isActive && <Check className="h-4 w-4 shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </motion.div>
+                )}
               </div>
             </>
           )}

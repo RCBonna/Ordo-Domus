@@ -18,6 +18,7 @@ interface ShoppingListProps {
   onAddManualItem: (nome: string, quantidade: number, observacao: string) => Promise<void>;
   onCancelManualItem: (id: string) => void;
   onCompleteManualItem: (item: ManualShoppingItem, form: CompleteManualShoppingItemForm) => Promise<void>;
+  onPrepareManualItem: (item: ManualShoppingItem) => Promise<CompleteManualShoppingItemForm>;
   onNavigateToItem: (nome: string) => void;
 }
 
@@ -32,6 +33,7 @@ export function ShoppingList({
   onAddManualItem,
   onCancelManualItem,
   onCompleteManualItem,
+  onPrepareManualItem,
   onNavigateToItem,
 }: ShoppingListProps) {
   const [manualName, setManualName] = useState('');
@@ -90,6 +92,7 @@ export function ShoppingList({
           onSubmit={handleSubmitManualItem}
           onCancelItem={onCancelManualItem}
           onCompleteItem={onCompleteManualItem}
+          onPrepareItem={onPrepareManualItem}
           isCompletingItemId={isCompletingManualItemId}
         />
 
@@ -144,6 +147,7 @@ interface ManualShoppingSectionProps {
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onCancelItem: (id: string) => void;
   onCompleteItem: (item: ManualShoppingItem, form: CompleteManualShoppingItemForm) => Promise<void>;
+  onPrepareItem: (item: ManualShoppingItem) => Promise<CompleteManualShoppingItemForm>;
   isCompletingItemId: string | null;
 }
 
@@ -159,11 +163,12 @@ function ManualShoppingSection({
   onSubmit,
   onCancelItem,
   onCompleteItem,
+  onPrepareItem,
   isCompletingItemId,
 }: ManualShoppingSectionProps) {
   const [editingPurchaseId, setEditingPurchaseId] = useState<string | null>(null);
   const [purchaseForm, setPurchaseForm] = useState<CompleteManualShoppingItemForm>({
-    categoria: 'Geral',
+    categoria: '',
     comodo: '',
     armario: '',
     caixa: '',
@@ -171,22 +176,17 @@ function ManualShoppingSection({
     quantidade: 1,
   });
 
-  const startPurchase = (item: ManualShoppingItem) => {
+  const startPurchase = async (item: ManualShoppingItem) => {
     setEditingPurchaseId(item.id);
-    setPurchaseForm({
-      categoria: 'Geral',
-      comodo: '',
-      armario: '',
-      caixa: '',
-      validade: '',
-      quantidade: Number(item.quantidade) || 1,
-    });
+    setPurchaseForm(await onPrepareItem(item));
   };
 
   const submitPurchase = async (item: ManualShoppingItem) => {
     await onCompleteItem(item, purchaseForm);
     setEditingPurchaseId(null);
   };
+
+  const isPurchaseFormReady = purchaseForm.categoria.trim().length > 0 && purchaseForm.comodo.trim().length > 0;
 
   return (
     <section className="rounded-[28px] border border-slate-100 bg-white p-5 shadow-sm">
@@ -269,12 +269,14 @@ function ManualShoppingSection({
                     value={purchaseForm.categoria}
                     onChange={(event) => setPurchaseForm({ ...purchaseForm, categoria: event.target.value })}
                     placeholder="Categoria"
+                    required
                     className="h-11 rounded-xl bg-slate-50 border-slate-100 font-bold"
                   />
                   <Input
                     value={purchaseForm.comodo}
                     onChange={(event) => setPurchaseForm({ ...purchaseForm, comodo: event.target.value })}
                     placeholder="Cômodo"
+                    required
                     className="h-11 rounded-xl bg-slate-50 border-slate-100 font-bold"
                   />
                   <Input
@@ -306,7 +308,7 @@ function ManualShoppingSection({
                     <Button
                       type="button"
                       onClick={() => submitPurchase(item)}
-                      disabled={isCompletingItemId === item.id}
+                      disabled={isCompletingItemId === item.id || !isPurchaseFormReady}
                       className="h-11 rounded-xl font-black"
                     >
                       <Check className="mr-2 h-4 w-4" />

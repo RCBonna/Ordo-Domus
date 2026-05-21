@@ -22,7 +22,7 @@ import { useAuth } from './hooks/useAuth';
 import { useInventory } from './hooks/useInventory';
 import { useExtraction } from './hooks/useExtraction';
 import { useReceiptImport } from './hooks/useReceiptImport';
-import { useTriage, type TriageItem } from './hooks/useTriage';
+import { useTriage } from './hooks/useTriage';
 import { useDashboardMetrics } from './hooks/useDashboardMetrics';
 import { useShoppingList } from './hooks/useShoppingList';
 
@@ -134,7 +134,8 @@ export default function OrdoDomus() {
     carregarListaDeCompras,
     adicionarItemManual,
     cancelarItemManual,
-    concluirCompraManual
+    concluirCompraManual,
+    prepararCompraManual
   } = useShoppingList(unidadeAtiva?.id, isShoppingTabActive, addHistoryItem);
 
   const handleDeleteItem = (id: string) => {
@@ -147,26 +148,6 @@ export default function OrdoDomus() {
       message: `Tem certeza que deseja excluir "${item.nome}"? Esta ação será registrada no histórico de auditoria.`,
       onConfirm: () => rawHandleDelete(id)
     });
-  };
-
-  const handleReviewTriageItem = (item: TriageItem) => {
-    setIsTriageModalOpen(false);
-    setActiveTab('entrada');
-
-    // Se houver Smart Match, preencher com dados do dicionário
-    const match = item.dictMatch;
-    setCurrentResult({
-      item: match?.nome_oficial_inventario || item.nome_bruto,
-      categoria: match?.categoria || '',
-      comodo: match?.comodo || '',
-      armario: '',
-      caixa: '',
-      validade: '',
-      quantidade: Number(item.quantidade),
-      transcricao: item.nome_bruto,
-      triage_id: item.id
-    });
-    setIsPendingConfirmation(true);
   };
 
   const isSistemaLiberado = !!(!isAuthLoading && unidadeAtiva);
@@ -347,6 +328,7 @@ export default function OrdoDomus() {
                       onAddManualItem={adicionarItemManual}
                       onCancelManualItem={cancelarItemManual}
                       onCompleteManualItem={concluirCompraManual}
+                      onPrepareManualItem={prepararCompraManual}
                       onNavigateToItem={(nome) => {
                         setSearchTerm(nome);
                         setActiveTab('inventário');
@@ -423,7 +405,8 @@ export default function OrdoDomus() {
         isOpen={isTriageModalOpen}
         onClose={() => setIsTriageModalOpen(false)}
         unidadeId={unidadeAtiva?.id}
-        onReviewItem={handleReviewTriageItem}
+        onItemFinalized={addHistoryItem}
+        onTriageChanged={fetchPendingItems}
       />
 
       <ConfirmModal 

@@ -141,7 +141,15 @@ export function InventoryList({
         </Button>
       </div>
 
-      {inventory.length === 0 ? (
+      {isInventoryLoading && inventory.length === 0 ? (
+        <div className="bg-white rounded-[40px] p-20 text-center border border-dashed border-slate-200">
+          <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center mx-auto mb-6">
+            <Search className="w-10 h-10 text-slate-200 animate-pulse" />
+          </div>
+          <h3 className="text-xl font-black text-slate-800 mb-2">Carregando inventário</h3>
+          <p className="text-slate-400 font-medium">Buscando os itens da unidade selecionada.</p>
+        </div>
+      ) : inventory.length === 0 ? (
         <div className="bg-white rounded-[40px] p-20 text-center border border-dashed border-slate-200">
           <div className="w-20 h-20 bg-slate-50 rounded-3xl flex items-center justify-center mx-auto mb-6">
             <Search className="w-10 h-10 text-slate-200" />

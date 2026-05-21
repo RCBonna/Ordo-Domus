@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { logger } from '../lib/logger';
-import { fetchShoppingSuggestions } from '../repositories/inventoryRepository';
+import { buildPurchaseFormFromInventoryMatch, emptyPurchaseForm } from '../lib/shoppingDefaults';
+import { fetchInventoryPurchaseMatch, fetchShoppingSuggestions } from '../repositories/inventoryRepository';
 import { cancelManualShoppingItem, createManualShoppingItem, fetchManualShoppingItems } from '../repositories/shoppingRepository';
 import { completeManualShoppingItemWithInventory } from '../services/shoppingService';
 import type { CompleteManualShoppingItemForm, HistoryItem, ManualShoppingItem, ShoppingListItem, ZeroStockLocation } from '../types/domain';
@@ -96,6 +97,18 @@ export function useShoppingList(unidadeId: string | undefined, enabled: boolean,
     }
   };
 
+  const prepararCompraManual = async (item: ManualShoppingItem): Promise<CompleteManualShoppingItemForm> => {
+    if (!unidadeId) return emptyPurchaseForm(item.quantidade);
+
+    try {
+      const match = await fetchInventoryPurchaseMatch(unidadeId, item.nome);
+      return buildPurchaseFormFromInventoryMatch(match, item.quantidade);
+    } catch {
+      logger.warn('Falha ao buscar dados existentes para compra manual.');
+      return emptyPurchaseForm(item.quantidade);
+    }
+  };
+
   useEffect(() => {
     if (enabled) {
       carregarListaDeCompras();
@@ -113,5 +126,6 @@ export function useShoppingList(unidadeId: string | undefined, enabled: boolean,
     adicionarItemManual,
     cancelarItemManual,
     concluirCompraManual,
+    prepararCompraManual,
   };
 }

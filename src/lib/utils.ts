@@ -45,6 +45,34 @@ export const isReponivelParaCompras = (categoria?: string | null) => {
   return CATEGORIAS_REPONIVEIS.includes(categoriaNormalizada);
 };
 
+const CATEGORIAS_CANONICAS: Record<string, string> = {
+  alimento: 'Alimentos',
+  alimentos: 'Alimentos',
+  bebida: 'Bebidas',
+  bebidas: 'Bebidas',
+  limpeza: 'Limpeza',
+  higiene: 'Higiene',
+  descartavel: 'Descartáveis',
+  descartaveis: 'Descartáveis',
+  medicamento: 'Medicamentos',
+  medicamentos: 'Medicamentos',
+  remedio: 'Medicamentos',
+  remedios: 'Medicamentos',
+  pet: 'Pet',
+  consumivel: 'Consumíveis',
+  consumiveis: 'Consumíveis',
+  ferramenta: 'Ferramentas',
+  ferramentas: 'Ferramentas',
+  planta: 'Plantas',
+  plantas: 'Plantas',
+};
+
+export const normalizarCategoria = (categoria?: string | null) => {
+  const key = normalizarBusca(categoria);
+  if (!key) return '';
+  return CATEGORIAS_CANONICAS[key] || formatarTexto(categoria);
+};
+
 // Blindagem 1: Garante que o formatarTexto não quebre se receber números ou dados nulos
 export const formatarTexto = (texto?: unknown) => {
   if (!texto || typeof texto !== 'string') return '';
