@@ -1,11 +1,11 @@
 import { motion } from 'motion/react';
 import { useState } from 'react';
 import type { FormEvent, ReactNode } from 'react';
-import { AlertTriangle, Archive, CheckCircle2, MapPin, PackageSearch, Plus, ShoppingCart, X } from 'lucide-react';
+import { AlertTriangle, Archive, Check, CheckCircle2, MapPin, PackageSearch, Plus, ShoppingCart, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { formatarTexto } from '@/src/lib/utils';
-import type { ManualShoppingItem, ShoppingListItem, ZeroStockLocation } from '../types/domain';
+import type { CompleteManualShoppingItemForm, ManualShoppingItem, ShoppingListItem, ZeroStockLocation } from '../types/domain';
 
 interface ShoppingListProps {
   items: ShoppingListItem[];
@@ -13,9 +13,11 @@ interface ShoppingListProps {
   zeroStockLocations: ZeroStockLocation[];
   isLoading: boolean;
   isSavingManualItem: boolean;
+  isCompletingManualItemId: string | null;
   onRefresh: () => void;
   onAddManualItem: (nome: string, quantidade: number, observacao: string) => Promise<void>;
   onCancelManualItem: (id: string) => void;
+  onCompleteManualItem: (item: ManualShoppingItem, form: CompleteManualShoppingItemForm) => Promise<void>;
   onNavigateToItem: (nome: string) => void;
 }
 
@@ -25,9 +27,11 @@ export function ShoppingList({
   zeroStockLocations,
   isLoading,
   isSavingManualItem,
+  isCompletingManualItemId,
   onRefresh,
   onAddManualItem,
   onCancelManualItem,
+  onCompleteManualItem,
   onNavigateToItem,
 }: ShoppingListProps) {
   const [manualName, setManualName] = useState('');
@@ -85,6 +89,8 @@ export function ShoppingList({
           setManualNote={setManualNote}
           onSubmit={handleSubmitManualItem}
           onCancelItem={onCancelManualItem}
+          onCompleteItem={onCompleteManualItem}
+          isCompletingItemId={isCompletingManualItemId}
         />
 
         {!hasAutomaticAlerts ? (
@@ -137,6 +143,8 @@ interface ManualShoppingSectionProps {
   setManualNote: (value: string) => void;
   onSubmit: (event: FormEvent<HTMLFormElement>) => void;
   onCancelItem: (id: string) => void;
+  onCompleteItem: (item: ManualShoppingItem, form: CompleteManualShoppingItemForm) => Promise<void>;
+  isCompletingItemId: string | null;
 }
 
 function ManualShoppingSection({
@@ -150,7 +158,36 @@ function ManualShoppingSection({
   setManualNote,
   onSubmit,
   onCancelItem,
+  onCompleteItem,
+  isCompletingItemId,
 }: ManualShoppingSectionProps) {
+  const [editingPurchaseId, setEditingPurchaseId] = useState<string | null>(null);
+  const [purchaseForm, setPurchaseForm] = useState<CompleteManualShoppingItemForm>({
+    categoria: 'Geral',
+    comodo: '',
+    armario: '',
+    caixa: '',
+    validade: '',
+    quantidade: 1,
+  });
+
+  const startPurchase = (item: ManualShoppingItem) => {
+    setEditingPurchaseId(item.id);
+    setPurchaseForm({
+      categoria: 'Geral',
+      comodo: '',
+      armario: '',
+      caixa: '',
+      validade: '',
+      quantidade: Number(item.quantidade) || 1,
+    });
+  };
+
+  const submitPurchase = async (item: ManualShoppingItem) => {
+    await onCompleteItem(item, purchaseForm);
+    setEditingPurchaseId(null);
+  };
+
   return (
     <section className="rounded-[28px] border border-slate-100 bg-white p-5 shadow-sm">
       <div className="mb-5 flex items-center justify-between gap-4">
@@ -197,21 +234,95 @@ function ManualShoppingSection({
       {items.length > 0 && (
         <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
           {items.map((item) => (
-            <div key={item.id} className="flex items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-black text-slate-800">{formatarTexto(item.nome)}</p>
-                <p className="mt-1 truncate text-xs font-bold text-slate-400">
-                  Qtd. {item.quantidade}{item.observacao ? ` - ${item.observacao}` : ''}
-                </p>
+            <div key={item.id} className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-black text-slate-800">{formatarTexto(item.nome)}</p>
+                  <p className="mt-1 truncate text-xs font-bold text-slate-400">
+                    Qtd. {item.quantidade}{item.observacao ? ` - ${item.observacao}` : ''}
+                  </p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => startPurchase(item)}
+                    className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-600 shadow-sm transition-colors hover:bg-emerald-100"
+                    title="Registrar compra no inventário"
+                  >
+                    <Check className="mr-1 inline h-4 w-4" />
+                    Compra
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onCancelItem(item.id)}
+                    className="rounded-xl bg-white p-2 text-slate-400 shadow-sm transition-colors hover:text-rose-500"
+                    title="Remover item manual"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => onCancelItem(item.id)}
-                className="shrink-0 rounded-xl bg-white p-2 text-slate-400 shadow-sm transition-colors hover:text-rose-500"
-                title="Remover item manual"
-              >
-                <X className="h-4 w-4" />
-              </button>
+
+              {editingPurchaseId === item.id && (
+                <div className="mt-4 grid grid-cols-1 gap-3 rounded-2xl border border-emerald-100 bg-white p-4 md:grid-cols-2">
+                  <Input
+                    value={purchaseForm.categoria}
+                    onChange={(event) => setPurchaseForm({ ...purchaseForm, categoria: event.target.value })}
+                    placeholder="Categoria"
+                    className="h-11 rounded-xl bg-slate-50 border-slate-100 font-bold"
+                  />
+                  <Input
+                    value={purchaseForm.comodo}
+                    onChange={(event) => setPurchaseForm({ ...purchaseForm, comodo: event.target.value })}
+                    placeholder="Cômodo"
+                    className="h-11 rounded-xl bg-slate-50 border-slate-100 font-bold"
+                  />
+                  <Input
+                    value={purchaseForm.armario}
+                    onChange={(event) => setPurchaseForm({ ...purchaseForm, armario: event.target.value })}
+                    placeholder="Armário/prateleira"
+                    className="h-11 rounded-xl bg-slate-50 border-slate-100 font-bold"
+                  />
+                  <Input
+                    value={purchaseForm.caixa}
+                    onChange={(event) => setPurchaseForm({ ...purchaseForm, caixa: event.target.value })}
+                    placeholder="Caixa/gaveta"
+                    className="h-11 rounded-xl bg-slate-50 border-slate-100 font-bold"
+                  />
+                  <Input
+                    value={purchaseForm.validade}
+                    onChange={(event) => setPurchaseForm({ ...purchaseForm, validade: event.target.value })}
+                    placeholder="Validade opcional"
+                    className="h-11 rounded-xl bg-slate-50 border-slate-100 font-bold"
+                  />
+                  <Input
+                    type="number"
+                    min={1}
+                    value={purchaseForm.quantidade}
+                    onChange={(event) => setPurchaseForm({ ...purchaseForm, quantidade: Math.max(1, Number(event.target.value)) })}
+                    className="h-11 rounded-xl bg-slate-50 border-slate-100 font-bold"
+                  />
+                  <div className="flex gap-2 md:col-span-2">
+                    <Button
+                      type="button"
+                      onClick={() => submitPurchase(item)}
+                      disabled={isCompletingItemId === item.id}
+                      className="h-11 rounded-xl font-black"
+                    >
+                      <Check className="mr-2 h-4 w-4" />
+                      Adicionar ao inventário
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setEditingPurchaseId(null)}
+                      className="h-11 rounded-xl font-black"
+                    >
+                      Cancelar
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           ))}
         </div>

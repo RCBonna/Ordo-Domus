@@ -50,3 +50,15 @@ export async function cancelManualShoppingItem(id: string): Promise<void> {
 
   if (error) throw error;
 }
+
+export async function markManualShoppingItemAsBought(id: string): Promise<void> {
+  const { error } = await supabase
+    .from('lista_compras')
+    .update({
+      status: 'comprado',
+      atualizado_em: new Date().toISOString(),
+    })
+    .eq('id', id);
+
+  if (error) throw error;
+}

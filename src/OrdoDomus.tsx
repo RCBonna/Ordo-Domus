@@ -130,10 +130,12 @@ export default function OrdoDomus() {
     zeroStockLocations,
     isShoppingListLoading,
     isSavingManualItem,
+    isCompletingManualItemId,
     carregarListaDeCompras,
     adicionarItemManual,
-    cancelarItemManual
-  } = useShoppingList(unidadeAtiva?.id, isShoppingTabActive);
+    cancelarItemManual,
+    concluirCompraManual
+  } = useShoppingList(unidadeAtiva?.id, isShoppingTabActive, addHistoryItem);
 
   const handleDeleteItem = (id: string) => {
     const item = fullInventory.find(i => i.id === id);
@@ -340,9 +342,11 @@ export default function OrdoDomus() {
                       zeroStockLocations={zeroStockLocations}
                       isLoading={isShoppingListLoading}
                       isSavingManualItem={isSavingManualItem}
+                      isCompletingManualItemId={isCompletingManualItemId}
                       onRefresh={carregarListaDeCompras}
                       onAddManualItem={adicionarItemManual}
                       onCancelManualItem={cancelarItemManual}
+                      onCompleteManualItem={concluirCompraManual}
                       onNavigateToItem={(nome) => {
                         setSearchTerm(nome);
                         setActiveTab('inventário');

@@ -130,6 +130,26 @@ export interface CreateManualShoppingItemParams {
   observacao?: string;
 }
 
+export interface CompleteManualShoppingItemParams {
+  unidadeId: string;
+  item: ManualShoppingItem;
+  categoria: string;
+  comodo: string;
+  armario: string;
+  caixa: string;
+  validade: string;
+  quantidade: number;
+}
+
+export interface CompleteManualShoppingItemForm {
+  categoria: string;
+  comodo: string;
+  armario: string;
+  caixa: string;
+  validade: string;
+  quantidade: number;
+}
+
 export interface InventoryQueryParams {
   unidadeId: string;
   searchTerm?: string;

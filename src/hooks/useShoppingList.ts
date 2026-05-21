@@ -3,14 +3,16 @@ import { toast } from 'sonner';
 import { logger } from '../lib/logger';
 import { fetchShoppingSuggestions } from '../repositories/inventoryRepository';
 import { cancelManualShoppingItem, createManualShoppingItem, fetchManualShoppingItems } from '../repositories/shoppingRepository';
-import type { ManualShoppingItem, ShoppingListItem, ZeroStockLocation } from '../types/domain';
+import { completeManualShoppingItemWithInventory } from '../services/shoppingService';
+import type { CompleteManualShoppingItemForm, HistoryItem, ManualShoppingItem, ShoppingListItem, ZeroStockLocation } from '../types/domain';
 
-export function useShoppingList(unidadeId: string | undefined, enabled: boolean) {
+export function useShoppingList(unidadeId: string | undefined, enabled: boolean, onActionRecorded?: (item: HistoryItem) => void) {
   const [shoppingItems, setShoppingItems] = useState<ShoppingListItem[]>([]);
   const [manualShoppingItems, setManualShoppingItems] = useState<ManualShoppingItem[]>([]);
   const [zeroStockLocations, setZeroStockLocations] = useState<ZeroStockLocation[]>([]);
   const [isShoppingListLoading, setIsShoppingListLoading] = useState(false);
   const [isSavingManualItem, setIsSavingManualItem] = useState(false);
+  const [isCompletingManualItemId, setIsCompletingManualItemId] = useState<string | null>(null);
 
   const carregarListaDeCompras = async () => {
     if (!unidadeId) return;
@@ -71,6 +73,29 @@ export function useShoppingList(unidadeId: string | undefined, enabled: boolean)
     }
   };
 
+  const concluirCompraManual = async (item: ManualShoppingItem, form: CompleteManualShoppingItemForm) => {
+    if (!unidadeId) return;
+
+    setIsCompletingManualItemId(item.id);
+    try {
+      const historyItem = await completeManualShoppingItemWithInventory({
+        unidadeId,
+        item,
+        ...form,
+      });
+      setManualShoppingItems((current) => current.filter((manualItem) => manualItem.id !== item.id));
+      if (onActionRecorded) {
+        onActionRecorded(historyItem);
+      }
+      toast.success('Compra adicionada ao inventário.');
+    } catch {
+      logger.warn('Falha ao concluir compra manual.');
+      toast.error('Não foi possível concluir a compra.');
+    } finally {
+      setIsCompletingManualItemId(null);
+    }
+  };
+
   useEffect(() => {
     if (enabled) {
       carregarListaDeCompras();
@@ -83,8 +108,10 @@ export function useShoppingList(unidadeId: string | undefined, enabled: boolean)
     zeroStockLocations,
     isShoppingListLoading,
     isSavingManualItem,
+    isCompletingManualItemId,
     carregarListaDeCompras,
     adicionarItemManual,
     cancelarItemManual,
+    concluirCompraManual,
   };
 }

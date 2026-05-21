@@ -21,3 +21,4 @@
 - Revisada regra de classificacao de validade: calculo saiu do card para helper testavel `getValidityStatus`, usando data sem horario, aceitando `validade_date` ISO do banco e tratando `MM/AAAA` como ultimo dia do mes.
 - Iniciada insercao manual na Lista de Compras: criada migration `lista_compras`, repository dedicado, formulario na aba Faltas, listagem de itens manuais pendentes e acao de remover/cancelar item manual.
 - Insercao manual da Lista de Compras validada no app e SQL `20260520211500_create_shopping_list.sql` aplicado manualmente no Supabase.
+- Implementado fluxo inicial de `Compra realizada` para itens manuais: formulario por item, upsert no inventario, registro em movimentacoes, status `comprado` na lista e remocao da lista ativa.
