@@ -248,26 +248,34 @@ export function InventoryCard({
             )}
             {item.validade && (
               (() => {
-                const parts = item.validade.split('/');
-                let expiryDate;
-                if (parts.length === 3) expiryDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
-                else if (parts.length === 2) expiryDate = new Date(parseInt(parts[1]), parseInt(parts[0]) - 1, 1);
-                else return null;
-
-                const diffDays = Math.ceil((expiryDate.getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24));
+                if (diffDays === null) return null;
                 
                 if (diffDays < 0) {
+                  const overdueDays = Math.abs(diffDays);
                   return (
-                    <div className="flex items-center gap-2 text-rose-600 bg-rose-50 p-2 rounded-xl border border-rose-100 animate-pulse">
+                    <div className="flex items-center gap-2 text-rose-700 bg-rose-50 p-2 rounded-xl border border-rose-200 animate-pulse">
                       <AlertTriangle className="w-3.5 h-3.5" />
-                      <span className="text-[10px] font-black uppercase tracking-tighter">Vencido em {item.validade}</span>
+                      <span className="text-[10px] font-black uppercase tracking-tighter">
+                        Ja venceu: {item.validade} ({overdueDays}d atras)
+                      </span>
+                    </div>
+                  );
+                } else if (diffDays <= 7) {
+                  return (
+                    <div className="flex items-center gap-2 text-orange-700 bg-orange-50 p-2 rounded-xl border border-orange-200">
+                      <Clock className="w-3.5 h-3.5" />
+                      <span className="text-[10px] font-black uppercase tracking-tighter">
+                        Vence nos proximos 7 dias: {item.validade} ({diffDays}d)
+                      </span>
                     </div>
                   );
                 } else if (diffDays <= 30) {
                   return (
                     <div className="flex items-center gap-2 text-amber-600 bg-amber-50 p-2 rounded-xl border border-amber-100">
                       <Clock className="w-3.5 h-3.5" />
-                      <span className="text-[10px] font-black uppercase tracking-tighter">Vence em {item.validade} ({diffDays}d)</span>
+                      <span className="text-[10px] font-black uppercase tracking-tighter">
+                        Vence nos proximos 30 dias: {item.validade} ({diffDays}d)
+                      </span>
                     </div>
                   );
                 } else {
