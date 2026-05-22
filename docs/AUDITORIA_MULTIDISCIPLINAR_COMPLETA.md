@@ -182,7 +182,7 @@ Correcao:
    - `types/movement.ts`
    - `repositories/supabaseInventoryRepository.ts`
 4. ✅ Criar agregacoes server-side para dashboard.
-5. Implementar limpeza automatica de `importacoes_pendentes.expires_at`.
+5. ✅ Implementar limpeza automatica de `importacoes_pendentes.expires_at`.
 6. Adicionar Error Boundary e logging remoto.
 7. Criar tela de configuracoes da unidade.
 8. Melhorar triagem com acoes em massa.
@@ -309,8 +309,8 @@ Observacoes:
 | P0 | ✅ Remover Gemini do cliente | Seguranca e custo. |
 | P0 | ✅ RLS por papel | Autorizacao real. |
 | P1 | ✅ Tipar modelos de dominio | Reduzir `any`. |
-| P1 | Dividir `OrdoDomus.tsx` | Reduzir acoplamento do shell. |
-| P1 | Consolidar `supabaseClient` duplicado | Evitar configuracoes divergentes. |
+| P1 | ✅ Dividir `OrdoDomus.tsx` | Composition root reduzido com componentes dedicados para auth, estados, modal admin e workspace. |
+| P1 | ✅ Consolidar `supabaseClient` duplicado | `src/supabaseClient.ts` removido; `src/lib/supabaseClient.ts` e a unica origem ativa. |
 | P1 | ✅ Remover dependencias nao usadas | Reduzir superficie supply chain. |
 | P2 | ✅ Criar repositories/services | Iniciado em inventario, dashboard, movimentacoes e auth basico; dominios restantes seguem pendentes. |
 | P2 | ✅ Substituir logs por logger controlado | Evitar dados sensiveis no console. |

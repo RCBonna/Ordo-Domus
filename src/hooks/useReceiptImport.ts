@@ -37,6 +37,7 @@ export function useReceiptImport(unidadeId: string | undefined, onImportSuccess?
         .select('id,cupom_importado_em,criado_em')
         .eq('unidade_id', unidadeId)
         .eq('cupom_hash', cupomHash)
+        .gt('expires_at', new Date().toISOString())
         .order('cupom_importado_em', { ascending: false })
         .limit(1);
 

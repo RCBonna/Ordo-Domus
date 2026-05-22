@@ -78,10 +78,10 @@ Medidas positivas:
 - imagem do cupom nao e persistida no banco;
 - apenas itens extraidos sao salvos;
 - dados isolados por unidade.
+- `importacoes_pendentes` possui rotina de retencao automatizada para remover registros expirados via `pg_cron`.
 
 Lacunas:
 
-- nao ha politica de retencao automatizada implementada para `importacoes_pendentes` expiradas;
 - nao ha tela/exportacao/exclusao de dados pessoais;
 - nao ha registro de consentimento para envio a Gemini;
 - logs client-side sensiveis foram removidos/sanitizados em P2.4;

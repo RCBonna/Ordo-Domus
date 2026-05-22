@@ -20,8 +20,8 @@
 ## Debitos de Codigo
 
 - Uso extensivo de `any`.
-- `OrdoDomus.tsx` com muitas responsabilidades.
-- Duas copias de `supabaseClient` (`src/supabaseClient.ts` e `src/lib/supabaseClient.ts`).
+- `OrdoDomus.tsx` com muitas responsabilidades. Parcialmente resolvido com componentes de auth, estados, modal admin e workspace.
+- `supabaseClient` duplicado resolvido: `src/lib/supabaseClient.ts` e a unica origem ativa.
 - Dependencias possivelmente nao usadas: `express`, `dotenv`, `@base-ui/react`.
 - Tipo `activeTab` inclui `consumo`, mas fluxo usa `inventario` + flag.
 - Logs `console` muito verbosos para producao.
@@ -32,7 +32,7 @@
 - Sem checks em enums logicos.
 - `movimentacoes_inventario` sem autor.
 - `codigo_convite` nao alinhado ao fluxo de UI, que copia `unidadeId`.
-- `expires_at` de importacoes pendentes sem rotina de limpeza.
+- `expires_at` de importacoes pendentes resolvido com funcao SQL em lote, indice parcial e agendamento `pg_cron`.
 
 ## Debitos de Produto
 
@@ -49,4 +49,3 @@
 3. Semana 3: testes unitarios/integracao.
 4. Semana 4: Playwright e observabilidade.
 5. Semana 5: melhorias de produto em triagem e validade.
-

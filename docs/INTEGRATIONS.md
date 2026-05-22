@@ -88,12 +88,15 @@ Nao foram encontrados:
 - filas;
 - workers;
 - Redis/cache;
-- cron jobs;
 - Supabase Edge Functions.
+- Supabase Edge Functions adicionais alem de `extract-inventory`.
+
+Cron jobs:
+
+- `cleanup-expired-pending-imports`: agendado via `pg_cron` para remover `importacoes_pendentes` expiradas diariamente.
 
 Necessidades futuras:
 
-- limpeza de `importacoes_pendentes.expires_at`;
 - rate limit para IA;
 - processamento server-side de OCR;
 - notificacoes de validade.
@@ -101,7 +104,7 @@ Necessidades futuras:
 ## Riscos e Melhorias
 
 1. Mover Gemini para backend.
-2. Adicionar fila/cron para limpeza de pendencias.
+2. Monitorar execucao do cron de limpeza de pendencias.
 3. Implementar cache local controlado para inventario.
 4. Adicionar webhooks/notificacoes para validade e estoque critico.
 5. Formalizar contrato de integracao com Supabase em tipos gerados.

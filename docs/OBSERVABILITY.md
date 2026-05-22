@@ -72,7 +72,8 @@ Alertas recomendados:
 - RPC `upsert_inventario` acima de 2s p95;
 - RPC `efetivar_importacao_cupom` acima de 2s p95;
 - falhas RLS inesperadas;
-- crescimento de `importacoes_pendentes` expiradas;
+- falha ou queda para zero inesperada no job `cleanup-expired-pending-imports`;
+- crescimento de `importacoes_pendentes` expiradas mesmo apos o cron;
 - falhas de login acima do normal;
 - custo Gemini por dia.
 

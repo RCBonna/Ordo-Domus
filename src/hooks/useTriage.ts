@@ -80,6 +80,7 @@ export function useTriage(unidadeId: string | undefined) {
           .select('*')
           .eq('unidade_id', unidadeId)
           .eq('processado', false)
+          .gt('expires_at', new Date().toISOString())
           .order('criado_em', { ascending: false });
 
       const dictionaryQuery = supabase

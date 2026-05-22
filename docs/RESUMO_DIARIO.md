@@ -17,6 +17,10 @@
 - Iniciada observabilidade real: Sentry opcional via `@sentry/react`, Error Boundary global, scrubber de PII, usuario sem email, logger remoto para `warn`/`error` e spans em extracao por IA, inventario, efetivacao de cupom e dashboard.
 - Validacoes da observabilidade: `npm run lint`, `npm test`, `npm run build` e `npm run test:e2e` passaram; app local verificado em `http://127.0.0.1:3001/` sem erros de console; nao havia issue aberta no GitHub para atualizar.
 - Refatorado `OrdoDomus.tsx`: estados de auth/unidade, modal administrativo e render das abas foram extraidos para componentes dedicados, mantendo o arquivo principal como composition root dos hooks e handlers globais.
+- Consolidado `supabaseClient`: removida a copia legada `src/supabaseClient.ts`, mantendo `src/lib/supabaseClient.ts` como unica origem ativa com configuracao de auth/lock.
+- Validacoes da consolidacao do `supabaseClient`: busca de imports legados sem ocorrencias ativas; `npm run lint`, `npm test`, `npm run build` e `npm run test:e2e` passaram.
+- Implementada retencao de pendencias expiradas: migration com `pg_cron`, funcao `cleanup_expired_pending_imports`, indice parcial para expiradas nao processadas e filtros frontend para nao exibir nem bloquear duplicidade com linhas vencidas.
+- Migration `20260522205000_cleanup_expired_pending_imports.sql` aplicada no Supabase; `npx supabase db push --dry-run` confirmou `Remote database is up to date`.
 
 ## 2026-05-21
 

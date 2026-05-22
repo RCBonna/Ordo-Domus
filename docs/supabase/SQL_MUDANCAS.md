@@ -1,5 +1,92 @@
 # Mudancas SQL
 
+## Retencao de Importacoes Pendentes Expiradas
+
+Data/hora de criacao: 2026-05-22 20:49:15 -03:00
+
+Data/hora de modificacao: 2026-05-22 20:50:49 -03:00
+
+Arquivo SQL:
+
+```text
+supabase/migrations/20260522205000_cleanup_expired_pending_imports.sql
+```
+
+Necessidade:
+
+- Remover automaticamente linhas expiradas de `importacoes_pendentes`.
+- Reduzir acumulo de dados operacionais temporarios da triagem de cupom.
+- Evitar que pendencias expiradas aparecam na triagem ou bloqueiem nova importacao do mesmo cupom como duplicidade pendente.
+
+Blocos de comandos documentados:
+
+```sql
+create extension if not exists pg_cron with schema extensions;
+
+create index if not exists idx_importacoes_pendentes_expired_unprocessed
+  on public.importacoes_pendentes(expires_at)
+  where processado = false;
+
+create or replace function public.cleanup_expired_pending_imports(
+  p_reference_time timestamptz default now(),
+  p_batch_size integer default 5000
+) returns integer ...;
+
+revoke execute on function public.cleanup_expired_pending_imports(timestamptz, integer) from public, anon, authenticated;
+grant execute on function public.cleanup_expired_pending_imports(timestamptz, integer) to service_role;
+
+select cron.schedule(
+  'cleanup-expired-pending-imports',
+  '17 3 * * *',
+  'select public.cleanup_expired_pending_imports();'
+);
+```
+
+Implementacao frontend relacionada:
+
+- `src/hooks/useTriage.ts`: carrega apenas `importacoes_pendentes` com `expires_at` futuro.
+- `src/hooks/useReceiptImport.ts`: a checagem de duplicidade pendente tambem ignora registros expirados.
+
+Status:
+
+- Criado no repositorio.
+- Aplicado no Supabase em 2026-05-22 20:50:49 -03:00 via `npx supabase db push`.
+- Validacao pos-aplicacao: `npx supabase db push --dry-run` retornou `Remote database is up to date`.
+- A rotina agendada roda diariamente as 03:17 UTC pelo `pg_cron`.
+
+## Consolidacao do Cliente Supabase
+
+Data/hora de criacao: 2026-05-22 20:45:16 -03:00
+
+Data/hora de modificacao: 2026-05-22 20:45:16 -03:00
+
+Arquivo SQL:
+
+```text
+Nao houve migration SQL.
+```
+
+Necessidade:
+
+- Registrar que a consolidacao de `supabaseClient` nao altera schema, policies, RPCs ou dados no Supabase.
+- Evitar configuracoes divergentes entre clientes frontend.
+
+Blocos de comandos documentados:
+
+```sql
+-- Nenhum comando SQL necessario.
+```
+
+Implementacao frontend relacionada:
+
+- `src/supabaseClient.ts`: removido por ser copia legada sem configuracao de auth/lock.
+- `src/lib/supabaseClient.ts`: mantido como unica origem ativa do cliente Supabase no frontend.
+
+Status:
+
+- Sem aplicacao no Supabase.
+- Validado em 2026-05-22: nao restam imports para `src/supabaseClient.ts`; `npm run lint`, `npm test`, `npm run build` e `npm run test:e2e` passaram.
+
 ## Observabilidade Remota
 
 Data/hora de criacao: 2026-05-22 20:26:18 -03:00
