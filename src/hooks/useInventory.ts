@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { logger } from '../lib/logger';
+import { formatarData, formatarTexto, getErrorMessage, normalizarCategoria } from '../lib/utils';
 import { fetchInventoryPage } from '../repositories/inventoryRepository';
 import {
   consumeInventoryItemWithAudit,
@@ -34,6 +35,7 @@ export function useInventory(unidadeId: string | undefined, onActionRecorded?: (
   const [inventoryTotal, setInventoryTotal] = useState(0);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editingItemData, setEditingItemData] = useState<EditableInventoryItem | null>(null);
+  const [savingItemId, setSavingItemId] = useState<string | null>(null);
 
   const resetToFirstPage = () => setInventoryPage(1);
 
@@ -103,21 +105,25 @@ export function useInventory(unidadeId: string | undefined, onActionRecorded?: (
   };
 
   const handleStartEdit = (item: InventoryItem) => {
+    if (savingItemId) return;
     setEditingItemId(item.id);
     setEditingItemData({ ...item });
   };
 
   const handleCancelEdit = () => {
+    if (savingItemId) return;
     setEditingItemId(null);
     setEditingItemData(null);
   };
 
   const handleUpdateItem = async () => {
     if (!editingItemId || !editingItemData || !unidadeId) return;
+    if (savingItemId) return;
     
     // Buscar dados atuais para comparar se houve mudança de quantidade
     const originalItem = fullInventory.find(i => i.id === editingItemId);
 
+    setSavingItemId(editingItemId);
     try {
       const historyItem = await updateInventoryItemWithAudit({
         unidadeId,
@@ -130,12 +136,29 @@ export function useInventory(unidadeId: string | undefined, onActionRecorded?: (
         onActionRecorded(historyItem);
       }
 
-      await carregarInventarioCompleto(true);
-      handleCancelEdit();
+      setFullInventory((current) => current.map((item) => {
+        if (item.id !== editingItemId) return item;
+        return {
+          ...item,
+          nome: formatarTexto(editingItemData.nome),
+          categoria: normalizarCategoria(editingItemData.categoria),
+          comodo: formatarTexto(editingItemData.comodo),
+          armario: formatarTexto(editingItemData.armario),
+          caixa: formatarTexto(editingItemData.caixa),
+          quantidade: editingItemData.quantidade ?? 0,
+          validade: formatarData(editingItemData.validade),
+          validade_date: null,
+        };
+      }));
+      setEditingItemId(null);
+      setEditingItemData(null);
       toast.success("Item atualizado e registrado.");
-    } catch {
-      logger.warn('Falha ao atualizar item de inventario.');
+      void carregarInventarioCompleto(true);
+    } catch (error) {
+      logger.warn(`Falha ao atualizar item de inventario: ${getErrorMessage(error)}`);
       toast.error("Erro ao salvar alterações.");
+    } finally {
+      setSavingItemId(null);
     }
   };
 
@@ -229,6 +252,7 @@ export function useInventory(unidadeId: string | undefined, onActionRecorded?: (
     clearInventoryFilters,
     editingItemId,
     editingItemData,
+    savingItemId,
     setEditingItemData,
     carregarInventarioCompleto,
     handleStartEdit,

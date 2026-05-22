@@ -26,6 +26,7 @@ interface InventoryListProps {
   isConsumoMode: boolean;
   editingItemId: string | null;
   editingItemData: EditableInventoryItem | null;
+  savingItemId: string | null;
   onEdit: (item: InventoryItem) => void;
   onCancelEdit: () => void;
   onUpdate: () => void;
@@ -54,6 +55,7 @@ export function InventoryList({
   isConsumoMode,
   editingItemId,
   editingItemData,
+  savingItemId,
   onEdit,
   onCancelEdit,
   onUpdate,
@@ -183,6 +185,8 @@ export function InventoryList({
                       isEditing={editingItemId === item.id}
                       isConsumoMode={isConsumoMode}
                       editingItemData={editingItemData}
+                      isSaving={savingItemId === item.id}
+                      isAnyItemSaving={Boolean(savingItemId)}
                       onEdit={onEdit}
                       onCancelEdit={onCancelEdit}
                       onUpdate={onUpdate}

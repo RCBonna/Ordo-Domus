@@ -22,6 +22,11 @@ describe('formatarData', () => {
     expect(formatarData('05/08')).toBe(`05/08/${currentYear}`);
   });
 
+  it('completa fim de ano sem ano informado', () => {
+    const currentYear = new Date().getFullYear();
+    expect(formatarData('31/12')).toBe(`31/12/${currentYear}`);
+  });
+
   it('rejeita datas inválidas', () => {
     expect(formatarData('31/02/2099')).toBe('');
     expect(formatarData('99/99/2099')).toBe('');

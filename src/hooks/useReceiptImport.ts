@@ -24,6 +24,30 @@ export function useReceiptImport(unidadeId: string | undefined, onImportSuccess?
       const base64DataUrl = await compressImage(file, 800);
       const mimeType = 'image/webp';
       const base64Data = base64DataUrl.split(',')[1];
+      const cupomHash = await sha256Hex(base64Data);
+
+      const { data: existingImport, error: existingImportError } = await supabase
+        .from('importacoes_pendentes')
+        .select('id,cupom_importado_em,criado_em')
+        .eq('unidade_id', unidadeId)
+        .eq('cupom_hash', cupomHash)
+        .order('cupom_importado_em', { ascending: false })
+        .limit(1);
+
+      const isMissingHashColumn =
+        existingImportError?.code === 'PGRST204' ||
+        existingImportError?.message?.toLowerCase().includes('cupom_hash');
+
+      if (!isMissingHashColumn && existingImportError) {
+        throw existingImportError;
+      }
+
+      if (!isMissingHashColumn && existingImport && existingImport.length > 0) {
+        const importedAt = existingImport[0].cupom_importado_em || existingImport[0].criado_em;
+        toast.warning(`Este cupom já está pendente desde ${formatImportedAt(importedAt)}.`, { id: 'import-receipt' });
+        setIsImporting(false);
+        return;
+      }
       
       // 2. OCR with Gemini
       toast.loading('Extraindo itens com IA...', { id: 'import-receipt' });
@@ -42,6 +66,8 @@ export function useReceiptImport(unidadeId: string | undefined, onImportSuccess?
         unidade_id: unidadeId,
         nome_bruto: item.item || 'Item sem nome',
         categoria_sugerida: item.categoria || null,
+        cupom_hash: cupomHash,
+        cupom_importado_em: new Date().toISOString(),
         quantidade: item.quantidade || 1,
         valor_unitario: item.valor || null,
         processado: false
@@ -58,14 +84,21 @@ export function useReceiptImport(unidadeId: string | undefined, onImportSuccess?
 
       const isMissingSuggestedCategoryColumn =
         error?.code === 'PGRST204' ||
-        error?.message?.toLowerCase().includes('categoria_sugerida');
+        error?.message?.toLowerCase().includes('categoria_sugerida') ||
+        error?.message?.toLowerCase().includes('cupom_hash') ||
+        error?.message?.toLowerCase().includes('cupom_importado_em');
 
       if (isMissingSuggestedCategoryColumn) {
-        logger.warn('Coluna categoria_sugerida indisponivel; salvando cupom sem categoria sugerida.');
-        const rowsWithoutSuggestedCategory = rowsToInsert.map(({ categoria_sugerida: _categoria, ...row }) => row);
+        logger.warn('Colunas novas da importacao de cupom indisponiveis; salvando com fallback.');
+        const rowsWithoutNewColumns = rowsToInsert.map(({
+          categoria_sugerida: _categoria,
+          cupom_hash: _hash,
+          cupom_importado_em: _importedAt,
+          ...row
+        }) => row);
         const retry = await supabase
           .from('importacoes_pendentes')
-          .insert(rowsWithoutSuggestedCategory)
+          .insert(rowsWithoutNewColumns)
           .select();
 
         data = retry.data;
@@ -102,4 +135,20 @@ export function useReceiptImport(unidadeId: string | undefined, onImportSuccess?
     handleImportReceipt,
     triggerImport
   };
+}
+
+function formatImportedAt(value?: string | null) {
+  if (!value) return 'data/hora anterior não informada';
+  return new Intl.DateTimeFormat('pt-BR', {
+    dateStyle: 'short',
+    timeStyle: 'medium',
+  }).format(new Date(value));
+}
+
+async function sha256Hex(value: string) {
+  const bytes = new TextEncoder().encode(value);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', bytes);
+  return Array.from(new Uint8Array(hashBuffer))
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
 }

@@ -25,6 +25,7 @@ export function TriageModal({ isOpen, onClose, unidadeId, onItemFinalized, onTri
   const [isBulkSaving, setIsBulkSaving] = useState(false);
   const [isDiscardingAll, setIsDiscardingAll] = useState(false);
   const [isDiscardAllConfirmOpen, setIsDiscardAllConfirmOpen] = useState(false);
+  const [matchFilter, setMatchFilter] = useState<'all' | TriageMatchLevel>('all');
 
   useEffect(() => {
     if (isOpen) {
@@ -43,6 +44,15 @@ export function TriageModal({ isOpen, onClose, unidadeId, onItemFinalized, onTri
   }, [pendingItems]);
 
   const matchedCount = pendingItems.filter((item) => item.dictMatch).length;
+  const matchCounts = {
+    strong: pendingItems.filter((item) => item.matchLevel === 'strong').length,
+    possible: pendingItems.filter((item) => item.matchLevel === 'possible').length,
+    weak: pendingItems.filter((item) => item.matchLevel === 'weak').length,
+  };
+  const filteredItems = matchFilter === 'all'
+    ? pendingItems
+    : pendingItems.filter((item) => item.matchLevel === matchFilter);
+  const isMutating = isBulkSaving || Boolean(savingItemId) || isDiscardingAll;
 
   const readySmartItems = useMemo(() => pendingItems.filter((item) => {
     const draft = drafts[item.id];
@@ -171,7 +181,7 @@ export function TriageModal({ isOpen, onClose, unidadeId, onItemFinalized, onTri
                 type="button"
                 variant="outline"
                 onClick={() => setIsDiscardAllConfirmOpen(true)}
-                disabled={isBulkSaving || Boolean(savingItemId) || isDiscardingAll}
+                disabled={isMutating}
                 className="rounded-xl border-rose-200 font-black text-rose-600 hover:bg-rose-50 hover:text-rose-700"
               >
                 <Trash2 className="mr-2 h-4 w-4" />
@@ -182,7 +192,7 @@ export function TriageModal({ isOpen, onClose, unidadeId, onItemFinalized, onTri
               <Button
                 type="button"
                 onClick={handleBulkAcceptSmartMatches}
-                disabled={isBulkSaving || Boolean(savingItemId)}
+                disabled={isMutating}
                 className="rounded-xl bg-emerald-600 font-black hover:bg-emerald-700"
               >
                 {isBulkSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
@@ -190,6 +200,44 @@ export function TriageModal({ isOpen, onClose, unidadeId, onItemFinalized, onTri
               </Button>
             )}
           </div>
+
+          {pendingItems.length > 0 && (
+            <div className="mt-4 flex flex-wrap items-center gap-2">
+              <FilterButton
+                label="Todos"
+                count={pendingItems.length}
+                isActive={matchFilter === 'all'}
+                onClick={() => setMatchFilter('all')}
+              />
+              {matchCounts.strong > 0 && (
+                <FilterButton
+                  label="Fortes"
+                  count={matchCounts.strong}
+                  isActive={matchFilter === 'strong'}
+                  onClick={() => setMatchFilter('strong')}
+                  tone="strong"
+                />
+              )}
+              {matchCounts.possible > 0 && (
+                <FilterButton
+                  label="Possíveis"
+                  count={matchCounts.possible}
+                  isActive={matchFilter === 'possible'}
+                  onClick={() => setMatchFilter('possible')}
+                  tone="possible"
+                />
+              )}
+              {matchCounts.weak > 0 && (
+                <FilterButton
+                  label="Fracos"
+                  count={matchCounts.weak}
+                  isActive={matchFilter === 'weak'}
+                  onClick={() => setMatchFilter('weak')}
+                  tone="weak"
+                />
+              )}
+            </div>
+          )}
         </div>
 
         {isDiscardAllConfirmOpen && (
@@ -232,7 +280,13 @@ export function TriageModal({ isOpen, onClose, unidadeId, onItemFinalized, onTri
 
         <ScrollArea className="min-h-0 flex-1 bg-gray-50/30">
           <div className="p-6">
-          {isLoading ? (
+          {isLoading && pendingItems.length > 0 && (
+            <div className="mb-4 flex items-center gap-2 rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm font-bold text-indigo-700">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Atualizando triagem...
+            </div>
+          )}
+          {isLoading && pendingItems.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-gray-500">
               <Loader2 className="mb-4 h-8 w-8 animate-spin text-indigo-500" />
               <p>Carregando itens pendentes...</p>
@@ -241,9 +295,13 @@ export function TriageModal({ isOpen, onClose, unidadeId, onItemFinalized, onTri
             <div className="py-12 text-center">
               <p className="text-gray-500">Nenhum item pendente para triagem.</p>
             </div>
+          ) : filteredItems.length === 0 ? (
+            <div className="py-12 text-center">
+              <p className="text-gray-500">Nenhum item neste filtro.</p>
+            </div>
           ) : (
             <div className="space-y-4">
-              {pendingItems.map((item) => {
+              {filteredItems.map((item) => {
                 const draft = drafts[item.id] || buildTriageDraft(item);
                 const isReady = isDraftReady(draft);
                 const isSaving = savingItemId === item.id;
@@ -273,7 +331,7 @@ export function TriageModal({ isOpen, onClose, unidadeId, onItemFinalized, onTri
                           type="button"
                           variant="outline"
                           size="sm"
-                          disabled={isBulkSaving || isSaving}
+                          disabled={isMutating}
                           className="gap-2 text-red-600 hover:bg-red-50 hover:text-red-700"
                           onClick={() => handleDiscard(item.id)}
                         >
@@ -283,7 +341,7 @@ export function TriageModal({ isOpen, onClose, unidadeId, onItemFinalized, onTri
                         <Button
                           type="button"
                           size="sm"
-                          disabled={isBulkSaving || isSaving || !isReady}
+                          disabled={isMutating || !isReady}
                           className={`gap-2 ${tone.button}`}
                           onClick={() => handleSaveItem(item.id)}
                         >
@@ -295,18 +353,21 @@ export function TriageModal({ isOpen, onClose, unidadeId, onItemFinalized, onTri
 
                     <div className="grid grid-cols-1 gap-3 md:grid-cols-[1.4fr_1fr_1fr_0.7fr]">
                       <Input
+                        disabled={isMutating}
                         value={draft.nome}
                         onChange={(event) => updateDraft(item.id, { nome: event.target.value })}
                         placeholder="Nome oficial"
                         className="h-11 rounded-xl bg-slate-50 font-bold"
                       />
                       <Input
+                        disabled={isMutating}
                         value={draft.categoria}
                         onChange={(event) => updateDraft(item.id, { categoria: event.target.value })}
                         placeholder="Categoria"
                         className="h-11 rounded-xl bg-slate-50 font-bold"
                       />
                       <Input
+                        disabled={isMutating}
                         value={draft.comodo}
                         onChange={(event) => updateDraft(item.id, { comodo: event.target.value })}
                         placeholder="Cômodo"
@@ -315,23 +376,27 @@ export function TriageModal({ isOpen, onClose, unidadeId, onItemFinalized, onTri
                       <Input
                         type="number"
                         min={1}
+                        disabled={isMutating}
                         value={draft.quantidade}
                         onChange={(event) => updateDraft(item.id, { quantidade: Math.max(1, Number(event.target.value) || 1) })}
                         className="h-11 rounded-xl bg-slate-50 font-bold"
                       />
                       <Input
+                        disabled={isMutating}
                         value={draft.armario}
                         onChange={(event) => updateDraft(item.id, { armario: event.target.value })}
                         placeholder="Armário/prateleira"
                         className="h-11 rounded-xl bg-slate-50 font-bold"
                       />
                       <Input
+                        disabled={isMutating}
                         value={draft.caixa}
                         onChange={(event) => updateDraft(item.id, { caixa: event.target.value })}
                         placeholder="Caixa/gaveta"
                         className="h-11 rounded-xl bg-slate-50 font-bold"
                       />
                       <Input
+                        disabled={isMutating}
                         value={draft.validade}
                         onChange={(event) => updateDraft(item.id, { validade: event.target.value })}
                         placeholder="Validade"
@@ -391,4 +456,43 @@ function getMatchTone(level: TriageMatchLevel) {
     button: 'bg-slate-700 hover:bg-slate-800',
     reason: 'text-slate-400',
   };
+}
+
+interface FilterButtonProps {
+  label: string;
+  count: number;
+  isActive: boolean;
+  onClick: () => void;
+  tone?: TriageMatchLevel;
+}
+
+function FilterButton({ label, count, isActive, onClick, tone }: FilterButtonProps) {
+  const toneClass = tone === 'strong'
+    ? 'border-emerald-200 text-emerald-700 hover:bg-emerald-50'
+    : tone === 'possible'
+      ? 'border-amber-200 text-amber-700 hover:bg-amber-50'
+      : tone === 'weak'
+        ? 'border-slate-200 text-slate-500 hover:bg-slate-50'
+        : 'border-indigo-200 text-indigo-700 hover:bg-indigo-50';
+
+  const activeClass = tone === 'strong'
+    ? 'bg-emerald-600 border-emerald-600 text-white hover:bg-emerald-700'
+    : tone === 'possible'
+      ? 'bg-amber-500 border-amber-500 text-white hover:bg-amber-600'
+      : tone === 'weak'
+        ? 'bg-slate-700 border-slate-700 text-white hover:bg-slate-800'
+        : 'bg-indigo-600 border-indigo-600 text-white hover:bg-indigo-700';
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-full border px-3 py-1.5 text-xs font-black transition-colors ${isActive ? activeClass : toneClass}`}
+    >
+      {label}
+      <span className={`ml-2 rounded-full px-1.5 py-0.5 ${isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'}`}>
+        {count}
+      </span>
+    </button>
+  );
 }

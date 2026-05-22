@@ -9,7 +9,10 @@
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "supabase:migrations:list": "supabase migration list",
+    "supabase:migrations:dry-run": "supabase db push --dry-run",
+    "supabase:migrations:push": "supabase db push"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",

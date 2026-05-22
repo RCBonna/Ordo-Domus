@@ -1,5 +1,10 @@
 # Resumo Diario
 
+## 2026-05-22
+
+- Corrigida normalizacao de validade antes da persistencia: entradas como `31/12` agora sao gravadas como data brasileira completa com o ano atual nos fluxos de entrada manual, triagem de cupom e RPCs de inventario.
+- Adicionado teste unitario cobrindo o caso `31/12` sem ano informado.
+
 ## 2026-05-21
 
 - Ajustado fluxo de `Compra realizada` para itens manuais da Lista de Compras: o formulario nao inicia mais com categoria `Geral` por padrao.
@@ -19,6 +24,9 @@
 - Smart Match da triagem evoluiu para usar normalizacao acento-insensivel, dicionario e inventario existente; itens agora recebem estado visual forte/possivel/fraco em verde/laranja/cinza e o inventario pode sugerir categoria, comodo, armario, caixa e validade.
 - Ajustado Smart Match para nao preencher campos com item do inventario quando o estado e fraco; limite de possivel match ficou mais restritivo e categorias iniciais passaram a ter inferencia por tokens seguros, incluindo singular/plural simples.
 - Cabecalho do modal de triagem reorganizado com botao explicito `Fechar`; categorias passaram por normalizacao canonica para evitar divergencias como `Bebida` versus `Bebidas` nos fluxos principais.
+- Ajustado layout dos botoes de entrada para evitar corte quando ha triagem pendente; triagem ganhou filtros dinamicos por match forte/possivel/fraco; criada e aplicada manualmente a migration de `cupom_hash` e `cupom_importado_em` para detectar reimportacao do mesmo cupom enquanto pendente e informar data/hora anterior ao usuario.
+- Reconciliado historico de migrations Supabase via CLI; `npx supabase migration list` passou a mostrar as mesmas versoes em Local e Remote, e `npx supabase db push --dry-run` retornou `Remote database is up to date`. Adicionados scripts npm para listar, simular e aplicar migrations.
+- Edge Function `extract-inventory` redeployada no Supabase; triagem passou a carregar pendencias, dicionario e inventario em paralelo com timeout explicito, mantendo dados atuais visiveis durante refresh. Edicao de item no inventario agora bloqueia campos enquanto salva, atualiza o card localmente ao concluir a gravacao e deixa o recarregamento remoto em segundo plano.
 
 ## 2026-05-20
 

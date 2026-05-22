@@ -110,6 +110,7 @@ export default function OrdoDomus() {
     clearInventoryFilters,
     editingItemId,
     editingItemData,
+    savingItemId,
     setEditingItemData,
     carregarInventarioCompleto,
     handleStartEdit,
@@ -309,6 +310,7 @@ export default function OrdoDomus() {
                       onUpdate={handleUpdateItem}
                       editingItemId={editingItemId}
                       editingItemData={editingItemData}
+                      savingItemId={savingItemId}
                       setEditingItemData={setEditingItemData}
                       onEdit={handleStartEdit}
                       onCancelEdit={handleCancelEdit}

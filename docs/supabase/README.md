@@ -156,3 +156,26 @@ Depois disso, as correcoes podem ser preparadas como migrations versionadas e ap
 supabase db push
 ```
 
+## 11. Fluxo Automatizado no Projeto
+
+Depois da reconciliacao do historico remoto em 2026-05-21, os comandos de rotina devem ser executados pela raiz do repositorio:
+
+```powershell
+npm run supabase:migrations:list
+npm run supabase:migrations:dry-run
+npm run supabase:migrations:push
+```
+
+Uso recomendado:
+
+1. `npm run supabase:migrations:list`: confirma se as migrations locais e remotas estao alinhadas.
+2. `npm run supabase:migrations:dry-run`: mostra o que seria aplicado sem alterar o banco remoto.
+3. `npm run supabase:migrations:push`: aplica as migrations pendentes no projeto Supabase linkado.
+
+Estado validado em 2026-05-21:
+
+```text
+Remote database is up to date.
+```
+
+Isso significa que as migrations locais em `supabase/migrations/` estavam reconciliadas com o historico remoto no momento da validacao.

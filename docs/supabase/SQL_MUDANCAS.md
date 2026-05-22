@@ -1,5 +1,46 @@
 # Mudancas SQL
 
+## Hash de Cupom para Duplicidade
+
+Data/hora de criacao: 2026-05-21 11:00:00 -03:00
+
+Data/hora de modificacao: 2026-05-21 18:49:21 -03:00
+
+Arquivo SQL:
+
+```text
+supabase/migrations/20260521110000_add_receipt_import_hash.sql
+```
+
+Necessidade:
+
+- Detectar que o mesmo arquivo de cupom ja foi importado enquanto ainda existe triagem pendente.
+- Guardar a data/hora da importacao anterior para informar o usuario com precisao.
+- Melhorar a UX de erro operacional, evitando duplicidade acidental antes de criar mais linhas em `importacoes_pendentes`.
+
+Blocos de comandos documentados:
+
+```sql
+alter table public.importacoes_pendentes
+  add column if not exists cupom_hash text;
+
+alter table public.importacoes_pendentes
+  add column if not exists cupom_importado_em timestamp with time zone default timezone('utc'::text, now()) not null;
+
+create index if not exists idx_importacoes_pendentes_unidade_cupom_hash_importado
+  on public.importacoes_pendentes(unidade_id, cupom_hash, cupom_importado_em desc)
+  where cupom_hash is not null;
+```
+
+Implementacao frontend relacionada:
+
+- `src/hooks/useReceiptImport.ts`: calcula SHA-256 do cupom comprimido e informa se o mesmo hash ja estiver pendente na unidade, exibindo data/hora da importacao anterior.
+
+Status:
+
+- Criado no repositorio.
+- Aplicado manualmente no Supabase em 2026-05-21 18:49:21 -03:00.
+
 ## Categoria Sugerida na Importacao de Cupom
 
 Data/hora de criacao: 2026-05-21 10:30:00 -03:00

@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabaseClient';
 import { logger } from '../lib/logger';
 import { selectBestInventoryPurchaseMatch } from '../lib/shoppingDefaults';
-import { isReponivelParaCompras, normalizarBusca } from '../lib/utils';
+import { formatarData, isReponivelParaCompras, normalizarBusca } from '../lib/utils';
 import type { FinalizeReceiptImportParams, InventoryItem, InventoryPageResult, InventoryQueryParams, ShoppingListItem, ShoppingListResult, UpsertInventoryParams, UpsertInventoryResult } from '../types/domain';
 
 const escapeIlike = (value: string) => value.replace(/[%_]/g, char => `\\${char}`);
@@ -127,6 +127,8 @@ export async function upsertInventoryItem({
   quantidade,
   validade,
 }: UpsertInventoryParams): Promise<UpsertInventoryResult | null> {
+  const normalizedValidade = formatarData(validade) || '';
+
   const { data, error } = await supabase.rpc('upsert_inventario', {
     p_unidade_id: unidadeId,
     p_nome: nome,
@@ -135,7 +137,7 @@ export async function upsertInventoryItem({
     p_armario: armario,
     p_caixa: caixa,
     p_quantidade: quantidade,
-    p_validade: validade,
+    p_validade: normalizedValidade,
   });
 
   if (error) throw error;
@@ -153,6 +155,8 @@ export async function finalizeReceiptImportItem({
   quantidade,
   validade,
 }: FinalizeReceiptImportParams): Promise<UpsertInventoryResult | null> {
+  const normalizedValidade = formatarData(validade) || '';
+
   const { data, error } = await supabase.rpc('efetivar_importacao_cupom', {
     p_importacao_id: importacaoId,
     p_nome: nome,
@@ -161,7 +165,7 @@ export async function finalizeReceiptImportItem({
     p_armario: armario,
     p_caixa: caixa,
     p_quantidade: quantidade,
-    p_validade: validade,
+    p_validade: normalizedValidade,
   });
 
   if (error) throw error;

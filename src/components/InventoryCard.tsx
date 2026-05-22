@@ -1,7 +1,7 @@
 import { motion } from 'motion/react';
 import { Button } from '@/components/ui/button';
 import { 
-  Edit2, Trash2, X, Save, Box, MinusCircle, 
+  Edit2, Trash2, X, Save, Box, MinusCircle, Loader2,
   Layers, Archive, AlertTriangle, Clock, Calendar 
 } from 'lucide-react';
 import type { EditableInventoryItem, InventoryItem } from '../types/domain';
@@ -12,6 +12,8 @@ interface InventoryCardProps {
   isEditing: boolean;
   isConsumoMode: boolean;
   editingItemData: EditableInventoryItem | null;
+  isSaving: boolean;
+  isAnyItemSaving: boolean;
   onEdit: (item: InventoryItem) => void;
   onCancelEdit: () => void;
   onUpdate: () => void;
@@ -25,6 +27,8 @@ export function InventoryCard({
   isEditing,
   isConsumoMode,
   editingItemData,
+  isSaving,
+  isAnyItemSaving,
   onEdit,
   onCancelEdit,
   onUpdate,
@@ -54,13 +58,14 @@ export function InventoryCard({
       layout
       key={item.id} 
       whileHover={isEditing ? {} : { y: -5 }}
-      className={`group relative bg-white p-6 rounded-[28px] shadow-sm hover:shadow-xl hover:shadow-slate-200/50 border transition-all cursor-default ${cardStyle}`}
+      className={`group relative bg-white p-6 rounded-[28px] shadow-sm hover:shadow-xl hover:shadow-slate-200/50 border transition-all cursor-default ${isSaving ? 'pointer-events-auto' : ''} ${cardStyle}`}
     >
       {/* Ações (Edit/Delete) - visíveis sempre no mobile, e no hover em telas maiores */}
       {!isEditing && !isConsumoMode && (
         <div className="absolute top-4 right-4 flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity z-10">
           <button 
             onClick={() => onEdit(item)}
+            disabled={isAnyItemSaving}
             className="p-2 bg-slate-100 hover:bg-primary/10 text-slate-400 hover:text-primary rounded-xl transition-colors"
             title="Editar item"
           >
@@ -68,6 +73,7 @@ export function InventoryCard({
           </button>
           <button 
             onClick={() => onDelete(item.id)}
+            disabled={isAnyItemSaving}
             className="p-2 bg-slate-100 hover:bg-destructive/10 text-slate-400 hover:text-destructive rounded-xl transition-colors"
             title="Excluir item"
           >
@@ -81,7 +87,11 @@ export function InventoryCard({
           <div className="flex justify-between items-center mb-2">
             <span className="text-[10px] font-black text-primary uppercase tracking-widest">Modo Edição</span>
             <div className="flex gap-2">
-              <button onClick={onCancelEdit} className="p-1.5 text-slate-400 hover:text-slate-600">
+              <button
+                onClick={onCancelEdit}
+                disabled={isSaving}
+                className="p-1.5 text-slate-400 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-40"
+              >
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -90,6 +100,7 @@ export function InventoryCard({
           <div className="space-y-3">
             <input 
               type="text" 
+              disabled={isSaving}
               value={editingItemData.nome || ''}
               onChange={(e) => setEditingItemData({...editingItemData, nome: e.target.value})}
               className="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-800 text-sm focus:ring-2 focus:ring-primary/20 outline-none"
@@ -97,6 +108,7 @@ export function InventoryCard({
             />
             <input 
               type="text" 
+              disabled={isSaving}
               value={editingItemData.categoria || ''}
               onChange={(e) => setEditingItemData({...editingItemData, categoria: e.target.value})}
               className="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl font-bold text-primary/60 uppercase text-[10px] tracking-widest focus:ring-2 focus:ring-primary/20 outline-none"
@@ -107,6 +119,7 @@ export function InventoryCard({
                 <p className="text-[10px] font-black text-slate-300 uppercase mb-1 ml-1">Cômodo</p>
                 <input 
                   type="text" 
+                  disabled={isSaving}
                   value={editingItemData.comodo || ''}
                   onChange={(e) => setEditingItemData({...editingItemData, comodo: e.target.value})}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-800 text-sm focus:ring-2 focus:ring-primary/20 outline-none"
@@ -118,22 +131,25 @@ export function InventoryCard({
                 <div className="flex items-center bg-slate-50 border border-slate-100 rounded-xl overflow-hidden focus-within:ring-2 focus-within:ring-primary/20 transition-all">
                   <button 
                     type="button"
+                    disabled={isSaving}
                     onClick={() => setEditingItemData({...editingItemData, quantidade: Math.max(0, (editingItemData.quantidade || 0) - 1)})}
-                    className="px-3 py-2 text-slate-400 hover:text-primary hover:bg-primary/10 transition-colors font-black"
+                    className="px-3 py-2 text-slate-400 hover:text-primary hover:bg-primary/10 transition-colors font-black disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     -
                   </button>
                   <input 
                     type="number" 
                     min="0"
+                    disabled={isSaving}
                     value={editingItemData.quantidade}
                     onChange={(e) => setEditingItemData({...editingItemData, quantidade: Math.max(0, Number(e.target.value))})}
                     className="w-full py-2 bg-transparent font-bold text-slate-800 text-sm text-center outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                   <button 
                     type="button"
+                    disabled={isSaving}
                     onClick={() => setEditingItemData({...editingItemData, quantidade: (editingItemData.quantidade || 0) + 1})}
-                    className="px-3 py-2 text-slate-400 hover:text-primary hover:bg-primary/10 transition-colors font-black"
+                    className="px-3 py-2 text-slate-400 hover:text-primary hover:bg-primary/10 transition-colors font-black disabled:cursor-not-allowed disabled:opacity-40"
                   >
                     +
                   </button>
@@ -146,6 +162,7 @@ export function InventoryCard({
                 <p className="text-[10px] font-black text-slate-300 uppercase mb-1 ml-1">Armário/Prateleira</p>
                 <input 
                   type="text" 
+                  disabled={isSaving}
                   value={editingItemData.armario || ''}
                   onChange={(e) => setEditingItemData({...editingItemData, armario: e.target.value})}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-800 text-sm focus:ring-2 focus:ring-primary/20 outline-none"
@@ -156,6 +173,7 @@ export function InventoryCard({
                 <p className="text-[10px] font-black text-slate-300 uppercase mb-1 ml-1">Caixa/Gaveta</p>
                 <input 
                   type="text" 
+                  disabled={isSaving}
                   value={editingItemData.caixa || ''}
                   onChange={(e) => setEditingItemData({...editingItemData, caixa: e.target.value})}
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-800 text-sm focus:ring-2 focus:ring-primary/20 outline-none"
@@ -168,6 +186,7 @@ export function InventoryCard({
               <p className="text-[10px] font-black text-slate-300 uppercase mb-1 ml-1">Validade</p>
               <input 
                 type="text" 
+                disabled={isSaving}
                 value={editingItemData.validade || ''}
                 onChange={(e) => setEditingItemData({...editingItemData, validade: e.target.value})}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-800 text-sm focus:ring-2 focus:ring-primary/20 outline-none"
@@ -176,8 +195,13 @@ export function InventoryCard({
             </div>
           </div>
 
-          <Button onClick={onUpdate} className="w-full rounded-xl font-bold shadow-lg shadow-primary/20 mt-2">
-            <Save className="w-4 h-4 mr-2" /> Salvar Alterações
+          <Button
+            onClick={onUpdate}
+            disabled={isSaving}
+            className="w-full rounded-xl font-bold shadow-lg shadow-primary/20 mt-2"
+          >
+            {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Save className="w-4 h-4 mr-2" />}
+            {isSaving ? 'Salvando...' : 'Salvar Alterações'}
           </Button>
         </div>
       ) : (
@@ -194,7 +218,8 @@ export function InventoryCard({
                     whileHover={{ scale: 1.05, backgroundColor: "#fff5f5" }}
                     whileTap={{ scale: 0.95 }}
                     onClick={() => onConsume(item)}
-                    className="w-10 h-10 bg-white text-rose-500 rounded-2xl flex items-center justify-center border border-rose-100 shadow-sm transition-colors"
+                    disabled={isAnyItemSaving}
+                    className="w-10 h-10 bg-white text-rose-500 rounded-2xl flex items-center justify-center border border-rose-100 shadow-sm transition-colors disabled:cursor-not-allowed disabled:opacity-40"
                     title="Subtrair 1 unidade"
                   >
                     <MinusCircle className="w-5 h-5" />

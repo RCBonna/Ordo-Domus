@@ -81,7 +81,7 @@ export function EntrySection({
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-3">
-              <div className="flex justify-end gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 <input 
                   type="file" 
                   accept="image/*" 
@@ -95,21 +95,21 @@ export function EntrySection({
                   size="sm"
                   onClick={triggerImport}
                   disabled={isExtracting || isPendingConfirmation || !isSistemaLiberado || isImporting}
-                  className="gap-2 rounded-xl transition-all h-10 px-5 text-slate-700 hover:bg-slate-50"
+                  className="w-full gap-2 rounded-xl transition-all h-10 px-3 text-slate-700 hover:bg-slate-50"
                 >
-                  {isImporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Receipt className="w-4 h-4" />}
-                  {isImporting ? "Importando..." : "Importar Cupom"}
+                  {isImporting ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : <Receipt className="h-4 w-4 shrink-0" />}
+                  <span className="truncate">{isImporting ? "Importando..." : "Importar Cupom"}</span>
                 </Button>
                 {pendingTriageCount > 0 && (
                   <Button
                     variant="default"
                     size="sm"
                     onClick={openTriageModal}
-                    className="gap-2 rounded-xl transition-all h-10 px-5 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
+                    className="w-full gap-2 rounded-xl transition-all h-10 px-3 bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm"
                   >
-                    <Package className="w-4 h-4" />
-                    Triagem Pendente
-                    <Badge variant="secondary" className="ml-1 bg-white/20 hover:bg-white/30 text-white border-none px-1.5 min-w-[20px] text-xs">
+                    <Package className="h-4 w-4 shrink-0" />
+                    <span className="truncate">Triagem Pendente</span>
+                    <Badge variant="secondary" className="ml-auto bg-white/20 hover:bg-white/30 text-white border-none px-1.5 min-w-[20px] text-xs">
                       {pendingTriageCount}
                     </Badge>
                   </Button>
@@ -119,7 +119,7 @@ export function EntrySection({
                   size="sm"
                   onClick={toggleRecording}
                   disabled={isExtracting || isPendingConfirmation || !isSistemaLiberado}
-                  className={`gap-2 rounded-xl transition-all h-10 px-5 ${isRecording ? "animate-pulse" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
+                  className={`w-full gap-2 rounded-xl transition-all h-10 px-3 ${isRecording ? "animate-pulse" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
                 >
                   {isExtracting ? (
                     <Loader2 className="w-4 h-4 animate-spin" />

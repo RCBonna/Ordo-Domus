@@ -1,10 +1,21 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { logger } from '../lib/logger';
 import { toast } from 'sonner';
 import { finalizeReceiptImportItem } from '../repositories/inventoryRepository';
 import type { HistoryItem, ReceiptTriageDraft } from '../types/domain';
-import { formatarTexto, normalizarBusca, normalizarCategoria } from '../lib/utils';
+import { formatarData, formatarTexto, getErrorMessage, normalizarBusca, normalizarCategoria } from '../lib/utils';
+
+const TRIAGE_LOAD_TIMEOUT_MS = 20000;
+
+async function withTriageTimeout<T>(promise: Promise<T>): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => {
+      window.setTimeout(() => reject(new Error('Tempo limite ao carregar triagem.')), TRIAGE_LOAD_TIMEOUT_MS);
+    }),
+  ]);
+}
 
 export interface DictionaryMatch {
   nome_oficial_inventario: string;
@@ -55,18 +66,45 @@ export function buildTriageDraft(item: TriageItem): ReceiptTriageDraft {
 export function useTriage(unidadeId: string | undefined) {
   const [pendingItems, setPendingItems] = useState<TriageItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const loadRequestId = useRef(0);
 
   const fetchPendingItems = useCallback(async () => {
     if (!unidadeId) return;
+    const requestId = loadRequestId.current + 1;
+    loadRequestId.current = requestId;
+
     setIsLoading(true);
     try {
-      // 1. Buscar itens pendentes
-      const { data: pendentes, error: errPendentes } = await supabase
-        .from('importacoes_pendentes')
-        .select('*')
-        .eq('unidade_id', unidadeId)
-        .eq('processado', false)
-        .order('criado_em', { ascending: false });
+      const pendingQuery = supabase
+          .from('importacoes_pendentes')
+          .select('*')
+          .eq('unidade_id', unidadeId)
+          .eq('processado', false)
+          .order('criado_em', { ascending: false });
+
+      const dictionaryQuery = supabase
+          .from('dicionario_produtos')
+          .select('nome_bruto_cupom, nome_oficial_inventario, categoria, comodo')
+          .eq('unidade_id', unidadeId);
+
+      const inventoryQuery = supabase
+          .from('itens_inventario')
+          .select('nome,categoria,comodo,armario,caixa,validade')
+          .eq('unidade_id', unidadeId)
+          .is('deletado_em', null)
+          .limit(1000);
+
+      const [
+        { data: pendentes, error: errPendentes },
+        dictionaryResult,
+        inventoryResult,
+      ] = await withTriageTimeout(Promise.all([
+        pendingQuery,
+        dictionaryQuery,
+        inventoryQuery,
+      ]));
+
+      if (requestId !== loadRequestId.current) return;
 
       if (errPendentes) throw errPendentes;
       if (!pendentes || pendentes.length === 0) {
@@ -74,22 +112,11 @@ export function useTriage(unidadeId: string | undefined) {
         return;
       }
 
-      // 2. Buscar dicionário da unidade para Smart Match
-      const { data: dicionario, error: errDict } = await supabase
-        .from('dicionario_produtos')
-        .select('nome_bruto_cupom, nome_oficial_inventario, categoria, comodo')
-        .eq('unidade_id', unidadeId);
-
-      const { data: inventario, error: errInventory } = await supabase
-        .from('itens_inventario')
-        .select('nome,categoria,comodo,armario,caixa,validade')
-        .eq('unidade_id', unidadeId)
-        .is('deletado_em', null)
-        .limit(1000);
-
       const dictMap = new Map<string, DictionaryMatch>();
-      if (!errDict && dicionario) {
-        for (const d of dicionario) {
+      if (dictionaryResult.error) {
+        logger.warn(`Dicionario da triagem indisponivel: ${dictionaryResult.error.message}`);
+      } else if (dictionaryResult.data) {
+        for (const d of dictionaryResult.data) {
           const key = normalizarBusca(d.nome_bruto_cupom);
           dictMap.set(key, {
             nome_oficial_inventario: d.nome_oficial_inventario,
@@ -99,8 +126,12 @@ export function useTriage(unidadeId: string | undefined) {
         }
       }
 
-      const inventoryMatches = !errInventory && inventario
-        ? (inventario as InventoryTriageMatch[])
+      if (inventoryResult.error) {
+        logger.warn(`Inventario para smart match indisponivel: ${inventoryResult.error.message}`);
+      }
+
+      const inventoryMatches = !inventoryResult.error && inventoryResult.data
+        ? (inventoryResult.data as InventoryTriageMatch[])
         : [];
 
       // 3. Enriquecer cada item pendente com o match do dicionário
@@ -121,11 +152,12 @@ export function useTriage(unidadeId: string | undefined) {
 
       logger.debug('Smart match da triagem concluido.');
       setPendingItems(enriched);
-    } catch {
-      logger.warn('Falha ao buscar itens para triagem.');
+    } catch (error) {
+      if (requestId !== loadRequestId.current) return;
+      logger.warn(`Falha ao buscar itens para triagem: ${getErrorMessage(error)}`);
       toast.error("Não foi possível carregar os itens pendentes.");
     } finally {
-      setIsLoading(false);
+      if (requestId === loadRequestId.current) setIsLoading(false);
     }
   }, [unidadeId]);
 
@@ -215,7 +247,7 @@ function normalizeTriageDraft(draft: ReceiptTriageDraft): ReceiptTriageDraft {
     comodo: formatarTexto(draft.comodo),
     armario: formatarTexto(draft.armario),
     caixa: formatarTexto(draft.caixa),
-    validade: draft.validade.trim(),
+    validade: formatarData(draft.validade) || '',
     quantidade: Math.max(1, Number(draft.quantidade) || 1),
   };
 }

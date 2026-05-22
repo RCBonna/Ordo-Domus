@@ -131,6 +131,10 @@ export function useExtraction(unidadeId: string | undefined) {
 
     try {
       const userId = await getCurrentUserId();
+      const normalizedEditedData: ExtractedItem = {
+        ...editedData,
+        validade: formatarData(editedData.validade) || '',
+      };
       logger.debug('Iniciando gravacao de extracao no inventario.');
 
       const dbPromise = (async () => {
@@ -140,14 +144,14 @@ export function useExtraction(unidadeId: string | undefined) {
         if (editedData.triage_id) {
           try {
             resultado = await finalizeReceiptImportItem({
-              importacaoId: editedData.triage_id,
-              nome: editedData.item,
-              categoria: editedData.categoria,
-              comodo: editedData.comodo,
-              armario: editedData.armario,
-              caixa: editedData.caixa,
-              quantidade: editedData.quantidade,
-              validade: editedData.validade,
+              importacaoId: normalizedEditedData.triage_id,
+              nome: normalizedEditedData.item,
+              categoria: normalizedEditedData.categoria,
+              comodo: normalizedEditedData.comodo,
+              armario: normalizedEditedData.armario,
+              caixa: normalizedEditedData.caixa,
+              quantidade: normalizedEditedData.quantidade,
+              validade: normalizedEditedData.validade,
             });
             finalizedByRpc = true;
           } catch {
@@ -158,13 +162,13 @@ export function useExtraction(unidadeId: string | undefined) {
         if (!resultado) {
           resultado = await upsertInventoryItem({
             unidadeId,
-            nome: editedData.item,
-            categoria: editedData.categoria,
-            comodo: editedData.comodo,
-            armario: editedData.armario,
-            caixa: editedData.caixa,
-            quantidade: editedData.quantidade,
-            validade: editedData.validade
+            nome: normalizedEditedData.item,
+            categoria: normalizedEditedData.categoria,
+            comodo: normalizedEditedData.comodo,
+            armario: normalizedEditedData.armario,
+            caixa: normalizedEditedData.caixa,
+            quantidade: normalizedEditedData.quantidade,
+            validade: normalizedEditedData.validade
           });
         }
         logger.debug('RPC de upsert do inventario concluida.');
@@ -175,15 +179,15 @@ export function useExtraction(unidadeId: string | undefined) {
           : 'Item gravado com sucesso no inventário!';
         
         const itemNaTela: ExtractedItem = {
-          item: resultado?.nome || editedData.item,
-          categoria: resultado?.categoria || editedData.categoria,
-          comodo: resultado?.comodo || editedData.comodo,
-          armario: resultado?.armario || editedData.armario,
-          caixa: resultado?.caixa || editedData.caixa,
-          validade: resultado?.validade || editedData.validade || '',
-          quantidade: Number(editedData.quantidade),
+          item: resultado?.nome || normalizedEditedData.item,
+          categoria: resultado?.categoria || normalizedEditedData.categoria,
+          comodo: resultado?.comodo || normalizedEditedData.comodo,
+          armario: resultado?.armario || normalizedEditedData.armario,
+          caixa: resultado?.caixa || normalizedEditedData.caixa,
+          validade: resultado?.validade || normalizedEditedData.validade || '',
+          quantidade: Number(normalizedEditedData.quantidade),
           tipo: 'entrada',
-          transcricao: editedData.transcricao,
+          transcricao: normalizedEditedData.transcricao,
           data: new Date().toISOString()
         };
 
@@ -205,23 +209,23 @@ export function useExtraction(unidadeId: string | undefined) {
           }
         }
 
-        if (editedData.triage_id && !finalizedByRpc) {
+        if (normalizedEditedData.triage_id && !finalizedByRpc) {
           const { error: errTriage } = await supabase
             .from('importacoes_pendentes')
             .delete()
-            .eq('id', editedData.triage_id);
+            .eq('id', normalizedEditedData.triage_id);
             
           if (errTriage) logger.warn('Falha ao remover item da triagem.');
 
-          if (editedData.transcricao) {
+          if (normalizedEditedData.transcricao) {
             const { error: errDict } = await supabase
               .from('dicionario_produtos')
               .upsert({
                 unidade_id: unidadeId,
-                nome_bruto_cupom: editedData.transcricao,
-                nome_oficial_inventario: editedData.item,
-                categoria: editedData.categoria,
-                comodo: editedData.comodo
+                nome_bruto_cupom: normalizedEditedData.transcricao,
+                nome_oficial_inventario: normalizedEditedData.item,
+                categoria: normalizedEditedData.categoria,
+                comodo: normalizedEditedData.comodo
               }, { onConflict: 'unidade_id, nome_bruto_cupom' });
               
             if (errDict) logger.warn('Falha ao atualizar dicionario de produtos.');
@@ -247,7 +251,7 @@ export function useExtraction(unidadeId: string | undefined) {
       setCurrentResult(dbResult.itemNaTela);
       setIsPendingConfirmation(false);
       
-      if (!editedData.transcricao) {
+      if (!normalizedEditedData.transcricao) {
          setInput('');
       }
     } catch (err: unknown) {
