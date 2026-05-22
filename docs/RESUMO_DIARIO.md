@@ -16,6 +16,7 @@
 - Testes autenticados de Playwright ampliados para usar seed: validam login operacional, Entrada com IA mockada, Inventario e Triagem quando `E2E_USER_EMAIL`/`E2E_USER_PASSWORD` estiverem definidos.
 - Iniciada observabilidade real: Sentry opcional via `@sentry/react`, Error Boundary global, scrubber de PII, usuario sem email, logger remoto para `warn`/`error` e spans em extracao por IA, inventario, efetivacao de cupom e dashboard.
 - Validacoes da observabilidade: `npm run lint`, `npm test`, `npm run build` e `npm run test:e2e` passaram; app local verificado em `http://127.0.0.1:3001/` sem erros de console; nao havia issue aberta no GitHub para atualizar.
+- Refatorado `OrdoDomus.tsx`: estados de auth/unidade, modal administrativo e render das abas foram extraidos para componentes dedicados, mantendo o arquivo principal como composition root dos hooks e handlers globais.
 
 ## 2026-05-21
 
