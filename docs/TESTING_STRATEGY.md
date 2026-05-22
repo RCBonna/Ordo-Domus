@@ -13,13 +13,19 @@
 
 ## Estado Atual
 
-Nao foram encontrados testes automatizados no repositorio. O script `lint` executa apenas TypeScript:
+O repositorio possui uma base inicial de testes automatizados:
 
 ```json
-"lint": "tsc --noEmit"
+"lint": "tsc --noEmit",
+"test": "vitest run",
+"test:e2e": "playwright test"
 ```
 
-Nao ha Jest, Vitest, Testing Library, Playwright ou Cypress configurados.
+- Vitest cobre helpers de dominio em `src/lib`.
+- Playwright cobre smoke publico da tela de login e possui fluxo autenticado opcional por variaveis de ambiente.
+- `npm run test:e2e` inicia/reusa o Vite em `http://127.0.0.1:3000`.
+- Fluxos autenticados devem ser executados com `E2E_USER_EMAIL` e `E2E_USER_PASSWORD`.
+- Seed autenticado pode ser preparado com `npm run test:e2e:seed`, usando `.env.e2e.local` baseado em `.env.e2e.example`.
 
 ## Riscos Sem Teste
 
@@ -63,7 +69,7 @@ Casos:
 
 ## Testes E2E
 
-Ferramenta recomendada: Playwright.
+Ferramenta configurada: Playwright.
 
 Fluxos criticos:
 
@@ -78,6 +84,47 @@ Fluxos criticos:
 | Dashboard | KPIs aparecem apos carregar inventario. |
 
 Gemini deve ser mockado em E2E para reduzir custo e flakiness.
+
+Cobertura inicial implementada:
+
+| Spec | Status | Observacao |
+| --- | --- | --- |
+| `tests/e2e/auth-public.spec.ts` | Implementado | Login publico, alternancia cadastro/login e visibilidade de senha. |
+| `tests/e2e/authenticated-entry.spec.ts` | Implementado opcional | Roda somente com `E2E_USER_EMAIL` e `E2E_USER_PASSWORD`; valida entrada operacional, Entrada com IA mockada, Inventario e Triagem seed. |
+
+### Seed E2E autenticado
+
+Arquivo de referencia:
+
+```text
+.env.e2e.example
+```
+
+Variaveis:
+
+| Variavel | Obrigatoria | Uso |
+| --- | --- | --- |
+| `VITE_SUPABASE_URL` ou `E2E_SUPABASE_URL` | Sim | Projeto Supabase alvo. |
+| `E2E_SUPABASE_SERVICE_ROLE_KEY` | Sim | Criar/atualizar usuario Auth e dados seed. Nunca versionar. |
+| `E2E_USER_EMAIL` | Sim | Usuario de teste para Playwright. |
+| `E2E_USER_PASSWORD` | Sim | Senha do usuario de teste. Nunca versionar. |
+| `E2E_UNIT_NAME` | Nao | Nome da unidade seed. |
+| `E2E_UNIT_CODE` | Nao | Codigo de convite deterministico da unidade seed. |
+
+Comandos:
+
+```bash
+npm run test:e2e:seed
+npm run test:e2e
+```
+
+O seed cria/atualiza:
+
+- usuario Auth confirmado;
+- unidade `Ordo E2E`;
+- membro admin aprovado;
+- itens de inventario `E2E Cafe`, `E2E Arroz`, `E2E Sabao`;
+- dicionario e pendencias de triagem `E2E CAFE TORRADO 500G` e `E2E DETERGENTE NEUTRO`.
 
 ## Testes de Banco/RLS
 
@@ -107,10 +154,10 @@ Validar:
 
 ## Plano de Implantacao
 
-1. Instalar Vitest e Testing Library.
-2. Testar `src/lib/utils.ts`.
-3. Mockar `supabaseClient` e testar hooks.
-4. Adicionar Playwright com fixtures de auth.
-5. Criar Supabase local/migrations versionadas.
-6. Colocar `npm run test`, `npm run test:e2e` no CI.
-
+1. ✅ Instalar Vitest.
+2. ✅ Testar `src/lib/utils.ts`.
+3. ✅ Adicionar Playwright com smoke publico e fluxo autenticado opcional.
+4. ✅ Adicionar seed de auth/unidade/dados para Playwright.
+5. Mockar `supabaseClient` e testar hooks.
+6. Criar Supabase local/migrations versionadas.
+7. Colocar `npm run test` e `npm run test:e2e` no CI.

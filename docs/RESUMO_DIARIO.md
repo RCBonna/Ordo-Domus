@@ -10,6 +10,12 @@
 - Usuario validou o fluxo de reimportacao de cupom ja triado: o app informa data/hora da importacao anterior e questiona se deve importar novamente.
 - Iniciada issue #2 de captura de audio nativa: fluxo `MediaRecorder` ganhou deteccao de suporte do navegador, timer visivel, limite automatico de 60s, limpeza de tracks/timers e tratamento explicito de erro de gravacao/leitura.
 - Usuario validou funcionalmente a captura de audio nativa: gravacao, processamento e fluxo de confirmacao funcionaram bem no app.
+- Criada base E2E com Playwright: scripts `test:e2e`, `test:e2e:headed` e `test:e2e:ui`, smoke publico de autenticacao e fluxo autenticado opcional por `E2E_USER_EMAIL`/`E2E_USER_PASSWORD`.
+- Validacoes locais da base E2E: `npm run lint`, `npm test`, `npm run build` e `npm run test:e2e` passaram; E2E autenticado ficou skipado sem credenciais de teste.
+- Criado seed E2E parametrizado por env: `npm run test:e2e:seed` cria/atualiza usuario Auth, unidade admin, itens de inventario, dicionario e pendencias de triagem; credenciais e `service_role` ficam fora do repositorio em `.env.e2e.local`.
+- Testes autenticados de Playwright ampliados para usar seed: validam login operacional, Entrada com IA mockada, Inventario e Triagem quando `E2E_USER_EMAIL`/`E2E_USER_PASSWORD` estiverem definidos.
+- Iniciada observabilidade real: Sentry opcional via `@sentry/react`, Error Boundary global, scrubber de PII, usuario sem email, logger remoto para `warn`/`error` e spans em extracao por IA, inventario, efetivacao de cupom e dashboard.
+- Validacoes da observabilidade: `npm run lint`, `npm test`, `npm run build` e `npm run test:e2e` passaram; app local verificado em `http://127.0.0.1:3001/` sem erros de console; nao havia issue aberta no GitHub para atualizar.
 
 ## 2026-05-21
 

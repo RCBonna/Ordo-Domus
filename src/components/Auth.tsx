@@ -125,6 +125,7 @@ export default function Auth() {
             />
             <button 
               type="button"
+              aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
               onClick={() => setShowPassword(!showPassword)}
             >

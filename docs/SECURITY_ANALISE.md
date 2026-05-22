@@ -84,7 +84,8 @@ Lacunas:
 - nao ha politica de retencao automatizada implementada para `importacoes_pendentes` expiradas;
 - nao ha tela/exportacao/exclusao de dados pessoais;
 - nao ha registro de consentimento para envio a Gemini;
-- logs client-side sensiveis foram removidos/sanitizados em P2.4; ainda falta mascaramento formal em ferramenta de observabilidade remota.
+- logs client-side sensiveis foram removidos/sanitizados em P2.4;
+- observabilidade remota opcional via Sentry possui scrubber formal antes do envio de eventos e nao envia email do usuario para `setUser`.
 
 ## OWASP
 
@@ -97,7 +98,7 @@ Lacunas:
 | Security Misconfiguration | Medio por scripts SQL divergentes e secrets Vite. |
 | Vulnerable Components | Depende de auditoria `npm audit`; nao analisada aqui. |
 | Identification/Auth Failures | Medio por ausencia de MFA e politicas adicionais. |
-| Logging/Monitoring Failures | Alto; sem observabilidade remota. |
+| Logging/Monitoring Failures | Medio; observabilidade remota opcional foi adicionada, mas depende de DSN e alertas configurados no ambiente. |
 
 ## Riscos Criticos
 
@@ -131,4 +132,4 @@ Lacunas:
    - `status in ('pendente','aprovado')`
    - `tipo in ('entrada','consumo','ajuste','exclusao')`
 6. Criar politica de privacidade e consentimento para IA.
-7. Adicionar monitoramento de erro client-side.
+7. Configurar DSN, alertas e ownership no Sentry por ambiente.

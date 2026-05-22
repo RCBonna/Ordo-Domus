@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
+import { addBreadcrumb, measureAsync } from '../lib/observability';
 import type { MovementType } from '../types/domain';
 
 export interface ExtractedItem {
@@ -25,12 +26,19 @@ export interface ExtractedReceiptItem {
 type ExtractionMode = 'text' | 'audio' | 'receipt';
 
 async function invokeExtraction<T>(mode: ExtractionMode, payload: Record<string, unknown>): Promise<T> {
-  const { data, error } = await supabase.functions.invoke('extract-inventory', {
-    body: {
-      mode,
-      ...payload,
-    },
-  });
+  addBreadcrumb('extract-inventory invoked', { mode });
+
+  const { data, error } = await measureAsync(
+    'extract-inventory',
+    'edge.function',
+    async () => await supabase.functions.invoke('extract-inventory', {
+      body: {
+        mode,
+        ...payload,
+      },
+    }),
+    { mode },
+  );
 
   if (error) {
     throw new Error(error.message || 'Falha ao chamar extração por IA.');

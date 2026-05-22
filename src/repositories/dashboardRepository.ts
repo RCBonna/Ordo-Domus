@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabaseClient';
+import { measureAsync } from '../lib/observability';
 import type { DashboardMetrics, HistoryItem, InventoryItem, MovementType } from '../types/domain';
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -60,9 +61,13 @@ const toCategoryChart = (value: unknown) =>
   });
 
 export async function fetchDashboardMetrics(unidadeId: string): Promise<DashboardMetrics> {
-  const { data, error } = await supabase.rpc('get_dashboard_metrics', {
-    p_unidade_id: unidadeId,
-  });
+  const { data, error } = await measureAsync(
+    'get_dashboard_metrics',
+    'supabase.rpc',
+    async () => await supabase.rpc('get_dashboard_metrics', {
+      p_unidade_id: unidadeId,
+    }),
+  );
 
   if (error) throw error;
 

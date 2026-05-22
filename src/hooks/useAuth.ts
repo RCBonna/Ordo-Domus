@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { logger } from '../lib/logger';
+import { clearObservabilityUser, setObservabilityUser } from '../lib/observability';
 import type { UnitMembership } from '../types/domain';
 
 export type Unidade = UnitMembership;
@@ -71,6 +72,7 @@ export function useAuth() {
     isLoggingOut.current = true;
     setCurrentUserEmail(null);
     setCurrentUserId(null);
+    clearObservabilityUser();
     setIsSystemAdmin(false);
     setUnidades([]);
     setUnidadeAtiva(null);
@@ -91,6 +93,7 @@ export function useAuth() {
       if (cancelled || isLoggingOut.current) return;
       
       setCurrentUserId(userId);
+      setObservabilityUser(userId);
       setCurrentUserEmail(email || null);
       setIsAuthLoading(true);
 
@@ -159,6 +162,7 @@ export function useAuth() {
       } else if (event === 'SIGNED_OUT') {
         setCurrentUserEmail(null);
         setCurrentUserId(null);
+        clearObservabilityUser();
         setIsSystemAdmin(false);
         setUnidades([]);
         setUnidadeAtiva(null);

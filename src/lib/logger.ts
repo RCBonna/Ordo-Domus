@@ -1,8 +1,16 @@
+import { captureMessage } from './observability';
+
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 const isDev = import.meta.env.DEV;
 
 const writeLog = (level: LogLevel, message: string) => {
+  if (level === 'warn') {
+    captureMessage(message, 'warning');
+  } else if (level === 'error') {
+    captureMessage(message, 'error');
+  }
+
   if (!isDev) return;
 
   const prefix = `[OrdoDomus] ${message}`;

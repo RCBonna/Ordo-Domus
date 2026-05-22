@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabaseClient';
 import { logger } from '../lib/logger';
+import { measureAsync } from '../lib/observability';
 import { selectBestInventoryPurchaseMatch } from '../lib/shoppingDefaults';
 import { formatarData, isReponivelParaCompras, normalizarBusca } from '../lib/utils';
 import type { FinalizeReceiptImportParams, InventoryItem, InventoryPageResult, InventoryQueryParams, ShoppingListItem, ShoppingListResult, UpsertInventoryParams, UpsertInventoryResult } from '../types/domain';
@@ -94,15 +95,27 @@ export async function fetchInventoryPage(params: InventoryQueryParams): Promise<
   pageSize,
   } = params;
 
-  const { data, error } = await supabase.rpc('get_inventory_page', {
-    p_unidade_id: unidadeId,
-    p_search_term: searchTerm.trim(),
-    p_category_filter: categoryFilter.trim(),
-    p_room_filter: roomFilter.trim(),
-    p_expiry_filter: expiryFilter,
-    p_page: page,
-    p_page_size: pageSize,
-  });
+  const { data, error } = await measureAsync(
+    'get_inventory_page',
+    'supabase.rpc',
+    async () => await supabase.rpc('get_inventory_page', {
+      p_unidade_id: unidadeId,
+      p_search_term: searchTerm.trim(),
+      p_category_filter: categoryFilter.trim(),
+      p_room_filter: roomFilter.trim(),
+      p_expiry_filter: expiryFilter,
+      p_page: page,
+      p_page_size: pageSize,
+    }),
+    {
+      expiryFilter,
+      hasCategoryFilter: Boolean(categoryFilter.trim()),
+      hasRoomFilter: Boolean(roomFilter.trim()),
+      hasSearchTerm: Boolean(searchTerm.trim()),
+      page,
+      pageSize,
+    },
+  );
 
   if (error) {
     logger.warn('RPC de inventario indisponivel; usando consulta direta como fallback.');
@@ -129,16 +142,24 @@ export async function upsertInventoryItem({
 }: UpsertInventoryParams): Promise<UpsertInventoryResult | null> {
   const normalizedValidade = formatarData(validade) || '';
 
-  const { data, error } = await supabase.rpc('upsert_inventario', {
-    p_unidade_id: unidadeId,
-    p_nome: nome,
-    p_categoria: categoria,
-    p_comodo: comodo,
-    p_armario: armario,
-    p_caixa: caixa,
-    p_quantidade: quantidade,
-    p_validade: normalizedValidade,
-  });
+  const { data, error } = await measureAsync(
+    'upsert_inventario',
+    'supabase.rpc',
+    async () => await supabase.rpc('upsert_inventario', {
+      p_unidade_id: unidadeId,
+      p_nome: nome,
+      p_categoria: categoria,
+      p_comodo: comodo,
+      p_armario: armario,
+      p_caixa: caixa,
+      p_quantidade: quantidade,
+      p_validade: normalizedValidade,
+    }),
+    {
+      hasExpiry: Boolean(normalizedValidade),
+      quantity: quantidade,
+    },
+  );
 
   if (error) throw error;
 
@@ -157,16 +178,24 @@ export async function finalizeReceiptImportItem({
 }: FinalizeReceiptImportParams): Promise<UpsertInventoryResult | null> {
   const normalizedValidade = formatarData(validade) || '';
 
-  const { data, error } = await supabase.rpc('efetivar_importacao_cupom', {
-    p_importacao_id: importacaoId,
-    p_nome: nome,
-    p_categoria: categoria,
-    p_comodo: comodo,
-    p_armario: armario,
-    p_caixa: caixa,
-    p_quantidade: quantidade,
-    p_validade: normalizedValidade,
-  });
+  const { data, error } = await measureAsync(
+    'efetivar_importacao_cupom',
+    'supabase.rpc',
+    async () => await supabase.rpc('efetivar_importacao_cupom', {
+      p_importacao_id: importacaoId,
+      p_nome: nome,
+      p_categoria: categoria,
+      p_comodo: comodo,
+      p_armario: armario,
+      p_caixa: caixa,
+      p_quantidade: quantidade,
+      p_validade: normalizedValidade,
+    }),
+    {
+      hasExpiry: Boolean(normalizedValidade),
+      quantity: quantidade,
+    },
+  );
 
   if (error) throw error;
 

@@ -1,5 +1,41 @@
 # Mudancas SQL
 
+## Observabilidade Remota
+
+Data/hora de criacao: 2026-05-22 20:26:18 -03:00
+
+Data/hora de modificacao: 2026-05-22 20:26:18 -03:00
+
+Arquivo SQL:
+
+```text
+Nao houve migration SQL.
+```
+
+Necessidade:
+
+- Registrar que a etapa de observabilidade real nao altera schema, policies, RPCs ou dados no Supabase.
+- Manter o controle operacional em arquivo unico de mudancas SQL/DB, conforme padrao do projeto.
+
+Blocos de comandos documentados:
+
+```sql
+-- Nenhum comando SQL necessario.
+```
+
+Implementacao frontend relacionada:
+
+- `src/lib/observability.ts`: inicializacao opcional do Sentry, scrubber de PII, Error Boundary, breadcrumbs, mensagens, excecoes e spans.
+- `src/lib/logger.ts`: envio remoto apenas de `warn`/`error` quando observabilidade estiver habilitada.
+- `src/services/geminiService.ts`: span da Edge Function `extract-inventory`.
+- `src/repositories/inventoryRepository.ts`: spans das RPCs `get_inventory_page`, `upsert_inventario` e `efetivar_importacao_cupom`.
+- `src/repositories/dashboardRepository.ts`: span da RPC `get_dashboard_metrics`.
+
+Status:
+
+- Sem aplicacao no Supabase.
+- Ativacao depende das variaveis `VITE_SENTRY_DSN`, `VITE_OBSERVABILITY_ENABLED`, `VITE_SENTRY_TRACES_SAMPLE_RATE` e `VITE_APP_VERSION`.
+
 ## Historico de Cupons Importados
 
 Data/hora de criacao: 2026-05-22 11:30:00 -03:00
