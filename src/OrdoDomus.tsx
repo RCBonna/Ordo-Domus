@@ -71,7 +71,7 @@ export default function OrdoDomus() {
   // Extraction logic
   const {
     input, setInput,
-    isRecording, toggleRecording,
+    isRecording, recordingSeconds, isAudioCaptureSupported, toggleRecording,
     isExtracting, handleExtract,
     currentResult, setCurrentResult,
     isPendingConfirmation, setIsPendingConfirmation, isSaving, confirmAndSave, cancelConfirmation,
@@ -262,6 +262,8 @@ export default function OrdoDomus() {
                       input={input}
                       setInput={setInput}
                       isRecording={isRecording}
+                      recordingSeconds={recordingSeconds}
+                      isAudioCaptureSupported={isAudioCaptureSupported}
                       toggleRecording={toggleRecording}
                       isExtracting={isExtracting}
                       isSistemaLiberado={isSistemaLiberado}

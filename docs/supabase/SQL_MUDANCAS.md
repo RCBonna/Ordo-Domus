@@ -1,5 +1,50 @@
 # Mudancas SQL
 
+## Historico de Cupons Importados
+
+Data/hora de criacao: 2026-05-22 11:30:00 -03:00
+
+Data/hora de modificacao: 2026-05-22 19:20:49 -03:00
+
+Arquivo SQL:
+
+```text
+supabase/migrations/20260522113000_create_receipt_import_history.sql
+```
+
+Necessidade:
+
+- Detectar reimportacao de cupom mesmo depois que a triagem foi efetivada e as linhas de `importacoes_pendentes` foram removidas.
+- Informar ao usuario a data/hora da primeira importacao conhecida daquele hash.
+- Permitir reimportacao consciente por acao explicita na UI quando o usuario realmente quiser importar novamente.
+
+Blocos de comandos documentados:
+
+```sql
+create table if not exists public.importacoes_cupons (...);
+
+create index if not exists idx_importacoes_cupons_unidade_hash_ultimo
+  on public.importacoes_cupons(unidade_id, cupom_hash, ultimo_importado_em desc);
+
+alter table public.importacoes_cupons enable row level security;
+
+create policy "Admins gerenciam historico de cupons"
+  on public.importacoes_cupons for all
+  using (... papel = 'admin' and status = 'aprovado' ...)
+  with check (... papel = 'admin' and status = 'aprovado' ...);
+```
+
+Implementacao frontend relacionada:
+
+- `src/hooks/useReceiptImport.ts`: consulta `importacoes_cupons` antes do OCR; se o hash ja existir, mostra aviso com acao `Importar novamente`.
+- `src/hooks/useReceiptImport.ts`: registra o hash em `importacoes_cupons` apos salvar os itens pendentes, preservando a primeira importacao e atualizando a ultima importacao em reimportacoes conscientes.
+
+Status:
+
+- Criado no repositorio.
+- Aplicado no Supabase em 2026-05-22 19:20:49 -03:00.
+- Validacao pos-aplicacao: `npx supabase migration list` mostra `20260522113000` em Local e Remote; `npx supabase db push --dry-run` retornou `Remote database is up to date`.
+
 ## Hash de Cupom para Duplicidade
 
 Data/hora de criacao: 2026-05-21 11:00:00 -03:00

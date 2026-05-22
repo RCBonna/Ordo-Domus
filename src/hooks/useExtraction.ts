@@ -8,9 +8,14 @@ import { finalizeReceiptImportItem, upsertInventoryItem } from '../repositories/
 import { fetchRecentInventoryMovements, insertInventoryMovement } from '../repositories/movementRepository';
 import type { HistoryItem } from '../types/domain';
 
+const MAX_RECORDING_SECONDS = 60;
+const MIN_AUDIO_BYTES = 1000;
+
 export function useExtraction(unidadeId: string | undefined) {
   const [input, setInput] = useState('');
   const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [isAudioCaptureSupported, setIsAudioCaptureSupported] = useState(true);
   const [isExtracting, setIsExtracting] = useState(false);
   const [currentResult, setCurrentResult] = useState<ExtractedItem | null>(null);
   const [mergeStatus, setMergeStatus] = useState<{ action: 'MERGE' | 'ADD', message: string } | null>(null);
@@ -22,26 +27,51 @@ export function useExtraction(unidadeId: string | undefined) {
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const audioStreamRef = useRef<MediaStream | null>(null);
+  const recordingIntervalRef = useRef<number | null>(null);
+  const maxRecordingTimeoutRef = useRef<number | null>(null);
+  const shouldProcessAudioRef = useRef(true);
+
+  const clearRecordingTimers = () => {
+    if (recordingIntervalRef.current !== null) {
+      window.clearInterval(recordingIntervalRef.current);
+      recordingIntervalRef.current = null;
+    }
+
+    if (maxRecordingTimeoutRef.current !== null) {
+      window.clearTimeout(maxRecordingTimeoutRef.current);
+      maxRecordingTimeoutRef.current = null;
+    }
+  };
+
+  const stopAudioTracks = () => {
+    audioStreamRef.current?.getTracks().forEach(track => track.stop());
+    audioStreamRef.current = null;
+  };
 
   const toggleRecording = async () => {
     if (isRecording) {
-      if (mediaRecorderRef.current) {
-        mediaRecorderRef.current.stop();
-      }
+      stopRecording(true);
       return;
     }
 
     try {
+      if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
+        setIsAudioCaptureSupported(false);
+        setError('Captura de áudio não suportada neste navegador.');
+        return;
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') 
-        ? 'audio/webm;codecs=opus' 
-        : MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')
-        ? 'audio/ogg;codecs=opus'
-        : 'audio/webm';
+      const mimeType = getSupportedAudioMimeType();
         
-      const mediaRecorder = new MediaRecorder(stream, { mimeType });
+      const mediaRecorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
       mediaRecorderRef.current = mediaRecorder;
+      audioStreamRef.current = stream;
       audioChunksRef.current = [];
+      shouldProcessAudioRef.current = true;
 
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
@@ -49,12 +79,26 @@ export function useExtraction(unidadeId: string | undefined) {
         }
       };
 
+      mediaRecorder.onerror = () => {
+        logger.warn('Falha no MediaRecorder.');
+        setError('Erro ao gravar áudio. Tente novamente.');
+        stopRecording(false);
+      };
+
       mediaRecorder.onstop = async () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
-        stream.getTracks().forEach(track => track.stop());
+        const shouldProcessAudio = shouldProcessAudioRef.current;
+        clearRecordingTimers();
+        stopAudioTracks();
         setIsRecording(false);
+        mediaRecorderRef.current = null;
         
-        if (audioBlob.size < 1000) {
+        if (!shouldProcessAudio) {
+          return;
+        }
+
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType || mediaRecorder.mimeType || 'audio/webm' });
+
+        if (audioBlob.size < MIN_AUDIO_BYTES) {
           setError("O áudio gravado está vazio. Verifique seu microfone.");
           return;
         }
@@ -64,13 +108,35 @@ export function useExtraction(unidadeId: string | undefined) {
       };
 
       mediaRecorder.start(1000); // Enviar dados a cada 1 segundo
+      setRecordingSeconds(0);
       setIsRecording(true);
       setError(null);
+      recordingIntervalRef.current = window.setInterval(() => {
+        setRecordingSeconds((current) => Math.min(MAX_RECORDING_SECONDS, current + 1));
+      }, 1000);
+      maxRecordingTimeoutRef.current = window.setTimeout(() => {
+        stopRecording(true);
+      }, MAX_RECORDING_SECONDS * 1000);
     } catch {
       logger.warn('Falha ao acessar microfone.');
       setError("Não foi possível acessar o microfone.");
+      clearRecordingTimers();
+      stopAudioTracks();
       setIsRecording(false);
     }
+  };
+
+  const stopRecording = (processAudio: boolean) => {
+    shouldProcessAudioRef.current = processAudio;
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state !== 'inactive') {
+      recorder.stop();
+      return;
+    }
+
+    clearRecordingTimers();
+    stopAudioTracks();
+    setIsRecording(false);
   };
 
   const handleAudioExtraction = async (blob: Blob, mimeType: string) => {
@@ -80,15 +146,7 @@ export function useExtraction(unidadeId: string | undefined) {
     
     try {
       // Converter blob para base64
-      const reader = new FileReader();
-      const base64Promise = new Promise<string>((resolve) => {
-        reader.onloadend = () => {
-          const base64String = reader.result as string;
-          resolve(base64String.split(',')[1]);
-        };
-      });
-      reader.readAsDataURL(blob);
-      const base64Data = await base64Promise;
+      const base64Data = await blobToBase64(blob);
 
       const dataRaw = await extractInventoryDataFromAudio(base64Data, mimeType, unidadeId);
       await processExtractionResult(dataRaw);
@@ -336,16 +394,16 @@ export function useExtraction(unidadeId: string | undefined) {
   };
 
   useEffect(() => {
+    setIsAudioCaptureSupported(Boolean(navigator.mediaDevices?.getUserMedia) && typeof MediaRecorder !== 'undefined');
+
     return () => {
-      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-        mediaRecorderRef.current.stop();
-      }
+      stopRecording(false);
     };
   }, []);
 
   return {
     input, setInput,
-    isRecording, toggleRecording,
+    isRecording, recordingSeconds, isAudioCaptureSupported, toggleRecording,
     isExtracting, handleExtract,
     currentResult, setCurrentResult,
     isPendingConfirmation, setIsPendingConfirmation, isSaving, confirmAndSave, cancelConfirmation,
@@ -354,4 +412,35 @@ export function useExtraction(unidadeId: string | undefined) {
     addHistoryItem,
     carregarHistorico
   };
+}
+
+function getSupportedAudioMimeType() {
+  if (typeof MediaRecorder === 'undefined') return '';
+
+  const supportedTypes = [
+    'audio/webm;codecs=opus',
+    'audio/ogg;codecs=opus',
+    'audio/webm',
+  ];
+
+  return supportedTypes.find((type) => MediaRecorder.isTypeSupported(type)) || '';
+}
+
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onerror = () => reject(new Error('Falha ao ler áudio gravado.'));
+    reader.onloadend = () => {
+      const result = typeof reader.result === 'string' ? reader.result : '';
+      const base64Data = result.split(',')[1];
+      if (!base64Data) {
+        reject(new Error('Áudio gravado sem conteúdo.'));
+        return;
+      }
+      resolve(base64Data);
+    };
+
+    reader.readAsDataURL(blob);
+  });
 }

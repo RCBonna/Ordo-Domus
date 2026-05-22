@@ -15,7 +15,13 @@ export function useReceiptImport(unidadeId: string | undefined, onImportSuccess?
 
     // Reset input
     event.target.value = '';
-    
+
+    await importReceiptFile(file);
+  };
+
+  const importReceiptFile = async (file: File, options: { forceDuplicate?: boolean } = {}) => {
+    if (!unidadeId) return;
+
     setIsImporting(true);
     try {
       toast.info('Processando imagem do cupom...', { id: 'import-receipt' });
@@ -47,6 +53,24 @@ export function useReceiptImport(unidadeId: string | undefined, onImportSuccess?
         toast.warning(`Este cupom já está pendente desde ${formatImportedAt(importedAt)}.`, { id: 'import-receipt' });
         setIsImporting(false);
         return;
+      }
+
+      if (!options.forceDuplicate) {
+        const importHistory = await fetchReceiptImportHistory(unidadeId, cupomHash);
+        if (importHistory) {
+          toast.warning(`Este cupom já foi importado em ${formatImportedAt(importHistory.primeiro_importado_em)}.`, {
+            id: 'import-receipt',
+            duration: 15000,
+            action: {
+              label: 'Importar novamente',
+              onClick: () => {
+                void importReceiptFile(file, { forceDuplicate: true });
+              },
+            },
+          });
+          setIsImporting(false);
+          return;
+        }
       }
       
       // 2. OCR with Gemini
@@ -112,6 +136,11 @@ export function useReceiptImport(unidadeId: string | undefined, onImportSuccess?
         logger.warn('Importacao de cupom retornou sem dados inseridos.');
         toast.warning('Os itens podem não ter sido salvos. Verifique as permissões.', { id: 'import-receipt' });
       } else {
+        try {
+          await recordReceiptImportHistory(unidadeId, cupomHash);
+        } catch {
+          logger.warn('Falha ao registrar historico de importacao de cupom.');
+        }
         logger.info('Importacao de cupom concluida.');
         toast.success(`Cupom importado! ${data.length} itens aguardando triagem.`, { id: 'import-receipt' });
         onImportSuccess?.();
@@ -135,6 +164,75 @@ export function useReceiptImport(unidadeId: string | undefined, onImportSuccess?
     handleImportReceipt,
     triggerImport
   };
+}
+
+interface ReceiptImportHistory {
+  id: string;
+  primeiro_importado_em: string;
+  ultimo_importado_em: string;
+}
+
+function isMissingReceiptHistoryTable(error: { code?: string; message?: string } | null) {
+  const message = error?.message?.toLowerCase() || '';
+  return error?.code === 'PGRST205'
+    || error?.code === 'PGRST204'
+    || message.includes('importacoes_cupons');
+}
+
+async function fetchReceiptImportHistory(unidadeId: string, cupomHash: string): Promise<ReceiptImportHistory | null> {
+  const { data, error } = await supabase
+    .from('importacoes_cupons')
+    .select('id,primeiro_importado_em,ultimo_importado_em')
+    .eq('unidade_id', unidadeId)
+    .eq('cupom_hash', cupomHash)
+    .order('ultimo_importado_em', { ascending: false })
+    .limit(1);
+
+  if (error) {
+    if (isMissingReceiptHistoryTable(error)) {
+      logger.warn('Historico de importacao de cupons ainda indisponivel; seguindo sem aviso de cupom ja triado.');
+      return null;
+    }
+    throw error;
+  }
+
+  return data?.[0] || null;
+}
+
+async function recordReceiptImportHistory(unidadeId: string, cupomHash: string) {
+  const importedAt = new Date().toISOString();
+  const existing = await fetchReceiptImportHistory(unidadeId, cupomHash);
+
+  if (existing) {
+    const { error } = await supabase
+      .from('importacoes_cupons')
+      .update({
+        ultimo_importado_em: importedAt,
+        atualizado_em: importedAt,
+      })
+      .eq('id', existing.id);
+
+    if (error) throw error;
+    return;
+  }
+
+  const { error } = await supabase
+    .from('importacoes_cupons')
+    .insert({
+      unidade_id: unidadeId,
+      cupom_hash: cupomHash,
+      primeiro_importado_em: importedAt,
+      ultimo_importado_em: importedAt,
+      atualizado_em: importedAt,
+    });
+
+  if (error) {
+    if (isMissingReceiptHistoryTable(error)) {
+      logger.warn('Historico de importacao de cupons ainda indisponivel; hash nao registrado.');
+      return;
+    }
+    throw error;
+  }
 }
 
 function formatImportedAt(value?: string | null) {

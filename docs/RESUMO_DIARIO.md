@@ -4,6 +4,12 @@
 
 - Corrigida normalizacao de validade antes da persistencia: entradas como `31/12` agora sao gravadas como data brasileira completa com o ano atual nos fluxos de entrada manual, triagem de cupom e RPCs de inventario.
 - Adicionado teste unitario cobrindo o caso `31/12` sem ano informado.
+- Usuario validou importacao de cupom, edicao inline, soma de itens iguais, aceite em massa de Smart Matches, bloqueio de duplicidade pendente e ajuste de datas.
+- Criada migration `importacoes_cupons` para manter historico de hashes ja importados mesmo apos a triagem ser efetivada; frontend passa a avisar quando um cupom ja triado for importado novamente e oferece acao explicita para reimportar.
+- Migration `20260522113000_create_receipt_import_history.sql` aplicada no Supabase; `npx supabase migration list` sincronizado e `npx supabase db push --dry-run` retornou `Remote database is up to date`.
+- Usuario validou o fluxo de reimportacao de cupom ja triado: o app informa data/hora da importacao anterior e questiona se deve importar novamente.
+- Iniciada issue #2 de captura de audio nativa: fluxo `MediaRecorder` ganhou deteccao de suporte do navegador, timer visivel, limite automatico de 60s, limpeza de tracks/timers e tratamento explicito de erro de gravacao/leitura.
+- Usuario validou funcionalmente a captura de audio nativa: gravacao, processamento e fluxo de confirmacao funcionaram bem no app.
 
 ## 2026-05-21
 

@@ -17,6 +17,8 @@ interface EntrySectionProps {
   input: string;
   setInput: (val: string) => void;
   isRecording: boolean;
+  recordingSeconds: number;
+  isAudioCaptureSupported: boolean;
   toggleRecording: () => void;
   isExtracting: boolean;
   isSistemaLiberado: boolean;
@@ -43,6 +45,8 @@ export function EntrySection({
   input,
   setInput,
   isRecording,
+  recordingSeconds,
+  isAudioCaptureSupported,
   toggleRecording,
   isExtracting,
   isSistemaLiberado,
@@ -118,7 +122,7 @@ export function EntrySection({
                   variant={isRecording ? "destructive" : "secondary"}
                   size="sm"
                   onClick={toggleRecording}
-                  disabled={isExtracting || isPendingConfirmation || !isSistemaLiberado}
+                  disabled={isExtracting || isPendingConfirmation || !isSistemaLiberado || !isAudioCaptureSupported}
                   className={`w-full gap-2 rounded-xl transition-all h-10 px-3 ${isRecording ? "animate-pulse" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
                 >
                   {isExtracting ? (
@@ -128,9 +132,22 @@ export function EntrySection({
                   ) : (
                     <Mic className="w-4 h-4" />
                   )}
-                  {isExtracting ? "Processando..." : isRecording ? "Parar" : "Falar"}
+                  <span className="truncate">
+                    {isExtracting
+                      ? "Processando..."
+                      : isRecording
+                        ? `Parar ${formatRecordingTime(recordingSeconds)}`
+                        : isAudioCaptureSupported
+                          ? "Falar"
+                          : "Sem áudio"}
+                  </span>
                 </Button>
               </div>
+              {isRecording && (
+                <div className="rounded-xl border border-rose-100 bg-rose-50 px-3 py-2 text-center text-xs font-black uppercase tracking-widest text-rose-600">
+                  Gravando {formatRecordingTime(recordingSeconds)} / 01:00
+                </div>
+              )}
               <Textarea
                 placeholder="Ex: Guardei 2 pacotes de café no armário superior da cozinha..."
                 className="min-h-[140px] resize-none rounded-[20px] bg-slate-50/50 border-slate-100 focus-visible:ring-primary/20 text-base p-5"
@@ -365,4 +382,11 @@ export function EntrySection({
       </div>
     </motion.div>
   );
+}
+
+function formatRecordingTime(seconds: number) {
+  const safeSeconds = Math.max(0, seconds);
+  const minutes = Math.floor(safeSeconds / 60).toString().padStart(2, '0');
+  const remainder = (safeSeconds % 60).toString().padStart(2, '0');
+  return `${minutes}:${remainder}`;
 }
