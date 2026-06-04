@@ -24,6 +24,7 @@ test.describe('fluxos autenticados com seed', () => {
     await acceptAiConsent(page);
 
     await expect(page.getByText(/Cupom importado!/)).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText(/Mova o arquivo para sua pasta de importados/)).toBeVisible();
     await page.getByRole('button', { name: /Triagem Pendente/ }).click();
 
     await expect(page.getByText('Triagem de Importações')).toBeVisible();
@@ -68,6 +69,7 @@ test.describe('fluxos autenticados com seed', () => {
     await acceptAiConsent(page);
 
     await expect(page.getByText(/Inventário por Foto importado!/)).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByText(/Mova o arquivo para sua pasta de importados/)).toBeVisible();
     await page.getByRole('button', { name: /Triagem Pendente/ }).click();
 
     await expect(page.getByText('Triagem de Importações')).toBeVisible();
@@ -113,7 +115,7 @@ test.describe('fluxos autenticados com seed', () => {
   });
 
   test('admin edita nome da unidade sem recarregar', async ({ page }) => {
-    await page.getByRole('button', { name: 'Gerenciar acessos e compartilhar' }).click();
+    await page.getByRole('button', { name: 'Configurações da unidade' }).click();
 
     const input = page.getByLabel('Nome da unidade');
     await expect(input).toBeVisible();
@@ -146,7 +148,7 @@ test.describe('fluxos autenticados com seed', () => {
       }).catch(() => undefined);
     });
 
-    await page.getByRole('button', { name: 'Gerenciar acessos e compartilhar' }).click();
+    await page.getByRole('button', { name: 'Configurações da unidade' }).click();
 
     await expect(page.getByTestId('admin-panel-loading')).toBeVisible();
     await expect(page.getByText('Não foi possível carregar os acessos agora.')).toBeVisible({ timeout: 10_000 });

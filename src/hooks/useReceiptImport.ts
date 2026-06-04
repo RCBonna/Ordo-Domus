@@ -156,7 +156,7 @@ export function useReceiptImport(
           logger.warn('Falha ao registrar historico de importacao de cupom.');
         }
         logger.info('Importacao de cupom concluida.');
-        toast.success(`Cupom importado! ${data.length} itens aguardando triagem.`, { id: 'import-receipt' });
+        toast.success(`Cupom importado! ${data.length} itens aguardando triagem. Mova o arquivo para sua pasta de importados.`, { id: 'import-receipt' });
         onImportSuccess?.();
       }
     } catch (error: unknown) {

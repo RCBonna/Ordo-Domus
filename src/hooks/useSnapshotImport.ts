@@ -159,7 +159,7 @@ export function useSnapshotImport(
       }
 
       logger.info('Inventario por Foto importado para triagem.');
-      toast.success(`Inventário por Foto importado! ${data.length} itens aguardando triagem.`, { id: 'import-snapshot' });
+      toast.success(`Inventário por Foto importado! ${data.length} itens aguardando triagem. Mova o arquivo para sua pasta de importados.`, { id: 'import-snapshot' });
       onImportSuccess?.();
     } catch (error: unknown) {
       logger.warn('Falha inesperada no Inventario por Foto.');

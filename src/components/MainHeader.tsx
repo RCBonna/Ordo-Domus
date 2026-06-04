@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { Package, Share2, LogOut, ChevronDown, Check, BarChart2, Table as TableIcon, Box, ShoppingCart, MapPin, ClipboardList } from 'lucide-react';
+import { Package, Settings, LogOut, ChevronDown, Check, BarChart2, Table as TableIcon, Box, ShoppingCart, MapPin, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { UnitMembership } from '../types/domain';
 
@@ -153,16 +153,16 @@ export function MainHeader({
         {currentUserEmail && (
           <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-6">
             <div className="flex items-center gap-3">
-              {/* Botão de Compartilhar / Admin */}
+              {/* Botão de Configurações / Admin */}
               {unidadeAtiva && unidadeAtiva.papel === 'admin' && (
                 <Button
                   onClick={onOpenAdminModal}
                   variant="outline"
                   size="icon"
-                  title="Gerenciar acessos e compartilhar"
+                  title="Configurações da unidade"
                   className="relative w-11 h-11 rounded-2xl border-slate-200 hover:border-primary/30 hover:bg-primary/5 transition-all group"
                 >
-                  <Share2 className="w-5 h-5 text-slate-500 group-hover:text-primary transition-colors" />
+                  <Settings className="w-5 h-5 text-slate-500 group-hover:text-primary transition-colors" />
                   {pendentesCount > 0 && (
                     <motion.div 
                       initial={{ scale: 0 }}
