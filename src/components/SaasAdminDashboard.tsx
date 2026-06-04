@@ -202,7 +202,7 @@ export function SaasAdminDashboard() {
     return (
       <div className="flex flex-col items-center justify-center gap-4 py-20">
         <Loader2 className="h-10 w-10 animate-spin text-emerald-500" />
-        <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Carregando métricas globais...</p>
+        <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-400 dark:text-muted-foreground">Carregando métricas globais...</p>
       </div>
     );
   }
@@ -210,7 +210,7 @@ export function SaasAdminDashboard() {
   if (!snapshot) {
     return (
       <div className="py-20 text-center">
-        <p className="text-slate-500">Não foi possível carregar o painel. Verifique se você é um Super-Admin.</p>
+        <p className="text-slate-500 dark:text-muted-foreground">Não foi possível carregar o painel. Verifique se você é um Super-Admin.</p>
         <Button onClick={fetchSnapshot} className="mt-4">Tentar novamente</Button>
       </div>
     );
@@ -224,8 +224,8 @@ export function SaasAdminDashboard() {
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h2 className="text-3xl font-black tracking-tight text-slate-900">SaaS Admin Dashboard</h2>
-          <p className="font-medium text-slate-500">Visão global da plataforma Ordo Domus</p>
+          <h2 className="text-3xl font-black tracking-tight text-slate-900 dark:text-foreground">SaaS Admin Dashboard</h2>
+          <p className="font-medium text-slate-500 dark:text-muted-foreground">Visão global da plataforma Ordo Domus</p>
         </div>
         <Button onClick={fetchSnapshot} variant="outline" className="h-10 gap-2 rounded-2xl">
           <RefreshCw className="h-4 w-4" />
@@ -279,11 +279,11 @@ export function SaasAdminDashboard() {
       >
         <div className="space-y-4">
           {snapshot.unidades.map((unit) => (
-            <div key={unit.id} className="rounded-2xl border border-slate-100 bg-white p-5">
+            <div key={unit.id} className="rounded-2xl border border-slate-100 bg-white p-5 dark:border-border dark:bg-card">
               <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div>
-                  <h3 className="text-lg font-black text-slate-900">{unit.nome}</h3>
-                  <p className="font-mono text-xs font-bold text-slate-400">{unit.id}</p>
+                  <h3 className="text-lg font-black text-slate-900 dark:text-foreground">{unit.nome}</h3>
+                  <p className="font-mono text-xs font-bold text-slate-400 dark:text-muted-foreground">{unit.id}</p>
                 </div>
                 <Badge variant="secondary" className="w-fit">{unit.total_itens} itens</Badge>
               </div>
@@ -339,12 +339,12 @@ export function SaasAdminDashboard() {
       >
         <div className="mb-4 grid gap-3 lg:grid-cols-[1fr_220px_220px]">
           <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-300" />
+            <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-300 dark:text-muted-foreground" />
             <Input
               value={inventorySearch}
               onChange={(event) => setInventorySearch(event.target.value)}
               placeholder="Buscar item, unidade ou cômodo..."
-              className="h-10 rounded-2xl pl-9"
+              className="h-10 rounded-2xl bg-white pl-9 dark:bg-card"
             />
           </div>
           <SelectFilter
@@ -364,8 +364,8 @@ export function SaasAdminDashboard() {
             ]}
           />
         </div>
-        <div className="overflow-hidden rounded-2xl border border-slate-100">
-          <div className="grid grid-cols-[1.5fr_1fr_1fr_90px] gap-3 bg-slate-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400">
+        <div className="overflow-hidden rounded-2xl border border-slate-100 dark:border-border">
+          <div className="grid grid-cols-[1.5fr_1fr_1fr_90px] gap-3 bg-slate-50 px-4 py-3 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:bg-muted dark:text-muted-foreground">
             <span>Item</span>
             <span>Unidade</span>
             <span>Categoria/local</span>
@@ -373,14 +373,14 @@ export function SaasAdminDashboard() {
           </div>
           <div className="max-h-[52vh] overflow-y-auto">
             {filteredItems.map((item) => (
-              <div key={item.id} className="grid grid-cols-[1.5fr_1fr_1fr_90px] gap-3 border-t border-slate-100 px-4 py-3 text-sm">
+              <div key={item.id} className="grid grid-cols-[1.5fr_1fr_1fr_90px] gap-3 border-t border-slate-100 px-4 py-3 text-sm dark:border-border">
                 <div>
-                  <p className="font-black text-slate-800">{item.nome}</p>
-                  <p className="text-xs font-bold text-slate-400">{item.validade || 'Sem validade'}</p>
+                  <p className="font-black text-slate-800 dark:text-foreground">{item.nome}</p>
+                  <p className="text-xs font-bold text-slate-400 dark:text-muted-foreground">{item.validade || 'Sem validade'}</p>
                 </div>
-                <p className="font-bold text-slate-600">{item.unidade_nome}</p>
-                <p className="font-bold text-slate-500">{item.categoria || 'Geral'} - {item.comodo || 'Sem local'}</p>
-                <p className="text-right font-black text-slate-800">{Number(item.quantidade || 0)}</p>
+                <p className="font-bold text-slate-600 dark:text-muted-foreground">{item.unidade_nome}</p>
+                <p className="font-bold text-slate-500 dark:text-muted-foreground">{item.categoria || 'Geral'} - {item.comodo || 'Sem local'}</p>
+                <p className="text-right font-black text-slate-800 dark:text-foreground">{Number(item.quantidade || 0)}</p>
               </div>
             ))}
             {filteredItems.length === 0 && <EmptyState text="Nenhum item encontrado para os filtros atuais." />}
@@ -398,10 +398,10 @@ export function SaasAdminDashboard() {
           {snapshot.convites_pendentes.map((invite) => {
             const loadingKey = `${invite.unidade_id}:${invite.user_id}:approve`;
             return (
-              <div key={`${invite.unidade_id}:${invite.user_id}`} className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div key={`${invite.unidade_id}:${invite.user_id}`} className="flex flex-col gap-3 rounded-2xl border border-slate-100 bg-white p-4 sm:flex-row sm:items-center sm:justify-between dark:border-border dark:bg-card">
                 <div>
-                  <p className="font-black text-slate-800">{invite.email}</p>
-                  <p className="text-xs font-bold text-slate-400">{invite.unidade_nome} - {formatDate(invite.adicionado_em)}</p>
+                  <p className="font-black text-slate-800 dark:text-foreground">{invite.email}</p>
+                  <p className="text-xs font-bold text-slate-400 dark:text-muted-foreground">{invite.unidade_nome} - {formatDate(invite.adicionado_em)}</p>
                 </div>
                 <Button
                   onClick={() => approveInvite(invite)}
@@ -435,23 +435,23 @@ function MetricButton({
   onClick: () => void;
 }) {
   const toneClasses = {
-    blue: 'bg-blue-50',
-    emerald: 'bg-emerald-50',
-    rose: 'bg-rose-50',
-    indigo: 'bg-indigo-50',
-    amber: 'bg-amber-50',
+    blue: 'bg-blue-50 dark:bg-blue-950/40',
+    emerald: 'bg-emerald-50 dark:bg-emerald-950/40',
+    rose: 'bg-rose-50 dark:bg-rose-950/40',
+    indigo: 'bg-indigo-50 dark:bg-indigo-950/40',
+    amber: 'bg-amber-50 dark:bg-amber-950/40',
   };
 
   return (
     <button
       type="button"
       onClick={onClick}
-      className="group relative flex min-h-[156px] flex-col items-start gap-2 overflow-hidden rounded-3xl border border-slate-100 bg-white p-6 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-100"
+      className="group relative flex min-h-[156px] flex-col items-start gap-2 overflow-hidden rounded-3xl border border-slate-100 bg-white p-6 text-left shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-emerald-100 dark:border-border dark:bg-card dark:shadow-none dark:hover:border-muted-foreground/30 dark:focus-visible:ring-primary/25"
     >
       <div className={`absolute -right-6 -top-6 h-24 w-24 rounded-full transition-transform duration-500 group-hover:scale-110 ${toneClasses[tone]}`} />
       <div className="relative z-10">{icon}</div>
-      <p className="relative z-10 mt-2 text-xs font-black uppercase tracking-widest text-slate-400">{label}</p>
-      <p className="relative z-10 text-4xl font-black text-slate-800">{value}</p>
+      <p className="relative z-10 mt-2 text-xs font-black uppercase tracking-widest text-slate-400 dark:text-muted-foreground">{label}</p>
+      <p className="relative z-10 text-4xl font-black text-slate-800 dark:text-foreground">{value}</p>
     </button>
   );
 }
@@ -478,29 +478,29 @@ function DashboardModal({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/45 p-4 backdrop-blur-sm dark:bg-black/70"
         >
           <motion.div
             initial={{ scale: 0.97, opacity: 0, y: 8 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.97, opacity: 0, y: 8 }}
-            className="flex max-h-[88vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl"
+            className="flex max-h-[88vh] w-full max-w-6xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl dark:border-border dark:bg-card"
           >
-            <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-6">
+            <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-6 dark:border-border">
               <div>
-                <h2 className="text-2xl font-black text-slate-900">{title}</h2>
-                <p className="text-sm font-bold text-slate-400">{subtitle}</p>
+                <h2 className="text-2xl font-black text-slate-900 dark:text-foreground">{title}</h2>
+                <p className="text-sm font-bold text-slate-400 dark:text-muted-foreground">{subtitle}</p>
               </div>
               <button
                 type="button"
                 onClick={onClose}
-                className="rounded-xl p-2 text-slate-300 transition-colors hover:bg-slate-50 hover:text-slate-600"
+                className="rounded-xl p-2 text-slate-300 transition-colors hover:bg-slate-50 hover:text-slate-600 dark:text-muted-foreground dark:hover:bg-accent dark:hover:text-foreground"
                 aria-label="Fechar modal"
               >
                 <X className="h-5 w-5" />
               </button>
             </div>
-            <div className="overflow-y-auto bg-slate-50/50 p-6">{children}</div>
+            <div className="overflow-y-auto bg-slate-50/50 p-6 dark:bg-background/40">{children}</div>
           </motion.div>
         </motion.div>
       )}
@@ -511,12 +511,12 @@ function DashboardModal({
 
 function MemberRow({ member }: { member: UnitMember }) {
   return (
-    <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3">
+    <div className="rounded-2xl border border-slate-100 bg-slate-50 p-3 dark:border-border dark:bg-muted/40">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <p className="truncate text-sm font-black text-slate-700">{member.email || member.user_id}</p>
+        <p className="truncate text-sm font-black text-slate-700 dark:text-foreground">{member.email || member.user_id}</p>
         <StatusBadge status={member.status} />
       </div>
-      <div className="flex items-center justify-between text-xs font-bold text-slate-400">
+      <div className="flex items-center justify-between text-xs font-bold text-slate-400 dark:text-muted-foreground">
         <span>{member.papel}</span>
         <span>{formatDate(member.adicionado_em)}</span>
       </div>
@@ -548,11 +548,11 @@ function UserList({
       {users.map((user) => {
         const loadingKey = `${user.user_id}:${actionKeySuffix}`;
         return (
-          <div key={user.user_id} className="rounded-2xl border border-slate-100 bg-white p-4">
+          <div key={user.user_id} className="rounded-2xl border border-slate-100 bg-white p-4 dark:border-border dark:bg-card">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
               <div>
-                <p className="font-black text-slate-800">{user.email}</p>
-                <p className="font-mono text-xs font-bold text-slate-400">{user.user_id}</p>
+                <p className="font-black text-slate-800 dark:text-foreground">{user.email}</p>
+                <p className="font-mono text-xs font-bold text-slate-400 dark:text-muted-foreground">{user.user_id}</p>
               </div>
               <Button
                 onClick={() => onAction(user)}
@@ -589,11 +589,11 @@ function SelectFilter({
 }) {
   return (
     <label className="relative block">
-      <Filter className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-300" />
+      <Filter className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-slate-300 dark:text-muted-foreground" />
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="h-10 w-full rounded-2xl border border-input bg-white pl-9 pr-3 text-sm font-bold text-slate-600 outline-none transition-colors focus:border-ring focus:ring-4 focus:ring-ring/20"
+        className="h-10 w-full rounded-2xl border border-input bg-white pl-9 pr-3 text-sm font-bold text-slate-600 outline-none transition-colors focus:border-ring focus:ring-4 focus:ring-ring/20 dark:bg-card dark:text-foreground"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>{option.label}</option>
@@ -604,14 +604,14 @@ function SelectFilter({
 }
 
 function StatusBadge({ status }: { status: string }) {
-  if (status === 'aprovado') return <Badge className="bg-emerald-100 text-emerald-700">ativo</Badge>;
-  if (status === 'inativo') return <Badge className="bg-rose-100 text-rose-700">inativo</Badge>;
-  return <Badge className="bg-amber-100 text-amber-700">pendente</Badge>;
+  if (status === 'aprovado') return <Badge className="bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">ativo</Badge>;
+  if (status === 'inativo') return <Badge className="bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300">inativo</Badge>;
+  return <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300">pendente</Badge>;
 }
 
 function EmptyState({ text }: { text: string }) {
   return (
-    <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400">
+    <div className="rounded-2xl border border-dashed border-slate-200 bg-white p-8 text-center text-sm font-bold text-slate-400 dark:border-border dark:bg-card dark:text-muted-foreground">
       {text}
     </div>
   );

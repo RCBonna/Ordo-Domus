@@ -134,7 +134,7 @@ export default function AdminPanel({ unidadeId, papel, unidadeNome }: Props) {
 
   if (loading) return (
     <div className="flex items-center justify-center p-12" data-testid="admin-panel-loading">
-      <Loader2 className="animate-spin w-8 h-8 text-slate-200" />
+      <Loader2 className="h-8 w-8 animate-spin text-slate-200 dark:text-muted-foreground" />
     </div>
   );
 
@@ -144,7 +144,7 @@ export default function AdminPanel({ unidadeId, papel, unidadeNome }: Props) {
   return (
     <div className="space-y-10">
       {loadError && (
-        <div className="flex items-start gap-3 rounded-2xl border border-amber-100 bg-amber-50 p-4 text-amber-800">
+        <div className="flex items-start gap-3 rounded-2xl border border-amber-100 bg-amber-50 p-4 text-amber-800 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200">
           <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
           <div className="space-y-3">
             <p className="text-sm font-bold leading-relaxed">{loadError}</p>
@@ -152,7 +152,7 @@ export default function AdminPanel({ unidadeId, papel, unidadeNome }: Props) {
               type="button"
               variant="secondary"
               onClick={carregarMembros}
-              className="h-9 rounded-xl bg-white px-4 text-xs font-black text-amber-700 hover:bg-amber-100"
+              className="h-9 rounded-xl bg-white px-4 text-xs font-black text-amber-700 hover:bg-amber-100 dark:bg-card dark:text-amber-300 dark:hover:bg-amber-950/50"
             >
               Tentar novamente
             </Button>
@@ -164,43 +164,43 @@ export default function AdminPanel({ unidadeId, papel, unidadeNome }: Props) {
       <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-blue-50 rounded-2xl">
-              <Share2 className="w-6 h-6 text-blue-500" />
+            <div className="rounded-2xl bg-blue-50 p-3 dark:bg-blue-950/40">
+              <Share2 className="h-6 w-6 text-blue-500 dark:text-blue-300" />
             </div>
             <div>
-              <h3 className="text-slate-900 font-black text-xl leading-none mb-1">Acesso à Unidade</h3>
-              <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">{unidadeNome || 'Equipe'}</p>
+              <h3 className="mb-1 text-xl font-black leading-none text-slate-900 dark:text-foreground">Acesso à Unidade</h3>
+              <p className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-muted-foreground">{unidadeNome || 'Equipe'}</p>
             </div>
           </div>
-          <Badge variant="secondary" className="bg-slate-100 text-slate-500 border-none px-4 py-1.5 rounded-full text-[10px] font-black">
+          <Badge variant="secondary" className="rounded-full border-none bg-slate-100 px-4 py-1.5 text-[10px] font-black text-slate-500 dark:bg-muted dark:text-muted-foreground">
             ATIVA
           </Badge>
         </div>
 
-        <div className="bg-slate-50/50 border border-slate-100 rounded-[32px] p-8">
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 ml-1">
+        <div className="rounded-[32px] border border-slate-100 bg-slate-50/50 p-8 dark:border-border dark:bg-muted/30">
+          <p className="mb-4 ml-1 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-muted-foreground">
             Código Único de Identificação
           </p>
           <div className="flex items-center gap-4">
-            <div className="flex-1 px-6 py-5 bg-white rounded-2xl border border-slate-200 text-slate-700 font-mono text-sm font-bold tracking-tight shadow-sm overflow-hidden truncate">
+            <div className="flex-1 overflow-hidden truncate rounded-2xl border border-slate-200 bg-white px-6 py-5 font-mono text-sm font-bold tracking-tight text-slate-700 shadow-sm dark:border-border dark:bg-card dark:text-foreground dark:shadow-none">
               {unidadeId}
             </div>
             <Button 
               onClick={copiarCodigo}
               size="icon"
               className={`h-16 w-16 rounded-2xl transition-all shadow-xl active:scale-95 ${
-                copiado ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-100' : 'bg-slate-900 hover:bg-slate-800 text-white shadow-slate-200'
+                copiado ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-emerald-100 dark:shadow-none' : 'bg-slate-900 hover:bg-slate-800 text-white shadow-slate-200 dark:bg-primary dark:text-primary-foreground dark:shadow-none dark:hover:bg-primary/90'
               }`}
             >
               {copiado ? <Check className="w-7 h-7" /> : <Copy className="w-6 h-6" />}
             </Button>
           </div>
 
-          <div className="mt-6 flex items-center gap-4 bg-emerald-50/50 p-4 rounded-2xl border border-emerald-100/50">
-            <div className="p-2 bg-white rounded-lg shadow-sm">
-              <ShieldCheck className="w-4 h-4 text-emerald-500" />
+          <div className="mt-6 flex items-center gap-4 rounded-2xl border border-emerald-100/50 bg-emerald-50/50 p-4 dark:border-emerald-900/60 dark:bg-emerald-950/25">
+            <div className="rounded-lg bg-white p-2 shadow-sm dark:bg-emerald-950/50 dark:shadow-none">
+              <ShieldCheck className="h-4 w-4 text-emerald-500 dark:text-emerald-300" />
             </div>
-            <p className="text-xs text-emerald-700/80 leading-relaxed font-bold">
+            <p className="text-xs font-bold leading-relaxed text-emerald-700/80 dark:text-emerald-200">
               Segurança ativada: Compartilhe o código acima com os membros que deseja convidar para esta unidade. Novos acessos precisam da sua aprovação manual.
             </p>
           </div>
@@ -211,12 +211,12 @@ export default function AdminPanel({ unidadeId, papel, unidadeNome }: Props) {
       {pendentes.length > 0 && (
         <div className="space-y-6">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-amber-50 rounded-2xl">
-              <Users className="w-6 h-6 text-amber-500" />
+            <div className="rounded-2xl bg-amber-50 p-3 dark:bg-amber-950/40">
+              <Users className="h-6 w-6 text-amber-500 dark:text-amber-300" />
             </div>
             <div>
-              <h3 className="text-slate-900 font-black text-xl leading-none mb-1">Solicitações</h3>
-              <p className="text-amber-500 text-xs font-bold uppercase tracking-widest">Aprovações Pendentes</p>
+              <h3 className="mb-1 text-xl font-black leading-none text-slate-900 dark:text-foreground">Solicitações</h3>
+              <p className="text-xs font-bold uppercase tracking-widest text-amber-500 dark:text-amber-300">Aprovações Pendentes</p>
             </div>
             <Badge className="bg-amber-500 text-white border-none font-black text-[10px] ml-auto">
               {pendentes.length}
@@ -227,16 +227,16 @@ export default function AdminPanel({ unidadeId, papel, unidadeNome }: Props) {
             {pendentes.map(convite => (
               <div 
                 key={convite.user_id} 
-                className="bg-white border border-slate-100 p-6 rounded-[28px] flex items-center justify-between group hover:border-amber-200 hover:shadow-lg hover:shadow-amber-500/5 transition-all"
+                className="group flex items-center justify-between rounded-[28px] border border-slate-100 bg-white p-6 transition-all hover:border-amber-200 hover:shadow-lg hover:shadow-amber-500/5 dark:border-border dark:bg-card dark:hover:border-amber-900/70 dark:hover:shadow-none"
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100 text-slate-300">
-                    <Users className="w-7 h-7" />
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-100 bg-slate-50 text-slate-300 dark:border-border dark:bg-muted dark:text-muted-foreground">
+                    <Users className="h-7 w-7" />
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">ID do Solicitante</span>
-                    <span className="font-mono text-xs text-slate-600 font-bold">{convite.user_id.slice(0, 18)}...</span>
-                    <span className="text-[10px] font-bold text-slate-400 mt-1">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-300 dark:text-muted-foreground">ID do Solicitante</span>
+                    <span className="font-mono text-xs font-bold text-slate-600 dark:text-foreground">{convite.user_id.slice(0, 18)}...</span>
+                    <span className="mt-1 text-[10px] font-bold text-slate-400 dark:text-muted-foreground">
                       Enviado em {new Date(convite.adicionado_em).toLocaleDateString()}
                     </span>
                   </div>
@@ -246,14 +246,14 @@ export default function AdminPanel({ unidadeId, papel, unidadeNome }: Props) {
                   <Button 
                     variant="ghost" 
                     onClick={() => rejeitarOuRemover(convite.user_id, true)} 
-                    className="h-12 w-12 p-0 rounded-2xl text-slate-300 hover:text-rose-500 hover:bg-rose-50 transition-all"
+                    className="h-12 w-12 rounded-2xl p-0 text-slate-300 transition-all hover:bg-rose-50 hover:text-rose-500 dark:text-muted-foreground dark:hover:bg-rose-950/40 dark:hover:text-rose-300"
                     title="Rejeitar"
                   >
                     <UserMinus className="w-5 h-5" />
                   </Button>
                   <Button 
                     onClick={() => aprovarConvidado(convite.user_id)} 
-                    className="h-12 px-6 rounded-2xl bg-amber-500 hover:bg-amber-600 text-white font-black text-xs shadow-lg shadow-amber-200 transition-all active:scale-95"
+                    className="h-12 rounded-2xl bg-amber-500 px-6 text-xs font-black text-white shadow-lg shadow-amber-200 transition-all hover:bg-amber-600 active:scale-95 dark:shadow-none"
                   >
                     <span className="flex items-center gap-2">
                       <UserCheck className="w-4 h-4" />
@@ -271,14 +271,14 @@ export default function AdminPanel({ unidadeId, papel, unidadeNome }: Props) {
       {aprovados.length > 0 && (
         <div className="space-y-6">
           <div className="flex items-center gap-4">
-            <div className="p-3 bg-slate-50 rounded-2xl">
-              <ShieldCheck className="w-6 h-6 text-slate-500" />
+            <div className="rounded-2xl bg-slate-50 p-3 dark:bg-muted">
+              <ShieldCheck className="h-6 w-6 text-slate-500 dark:text-muted-foreground" />
             </div>
             <div>
-              <h3 className="text-slate-900 font-black text-xl leading-none mb-1">Membros</h3>
-              <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">Equipe Ativa</p>
+              <h3 className="mb-1 text-xl font-black leading-none text-slate-900 dark:text-foreground">Membros</h3>
+              <p className="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-muted-foreground">Equipe Ativa</p>
             </div>
-            <Badge className="bg-slate-200 text-slate-600 border-none font-black text-[10px] ml-auto">
+            <Badge className="ml-auto border-none bg-slate-200 text-[10px] font-black text-slate-600 dark:bg-muted dark:text-muted-foreground">
               {aprovados.length}
             </Badge>
           </div>
@@ -287,22 +287,22 @@ export default function AdminPanel({ unidadeId, papel, unidadeNome }: Props) {
             {aprovados.map(membro => (
               <div 
                 key={membro.user_id} 
-                className="bg-white border border-slate-100 p-6 rounded-[28px] flex items-center justify-between group hover:border-slate-200 transition-all"
+                className="group flex items-center justify-between rounded-[28px] border border-slate-100 bg-white p-6 transition-all hover:border-slate-200 dark:border-border dark:bg-card dark:hover:border-muted-foreground/30"
               >
                 <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center border border-slate-100 text-slate-400">
-                    <UserCheck className="w-6 h-6" />
+                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-slate-100 bg-slate-50 text-slate-400 dark:border-border dark:bg-muted dark:text-muted-foreground">
+                    <UserCheck className="h-6 w-6" />
                   </div>
                   <div className="flex flex-col">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs text-slate-700 font-bold">{membro.user_id.slice(0, 18)}...</span>
+                      <span className="font-mono text-xs font-bold text-slate-700 dark:text-foreground">{membro.user_id.slice(0, 18)}...</span>
                       {membro.papel === 'admin' && (
-                        <Badge variant="secondary" className="bg-blue-50 text-blue-600 border-none text-[9px] px-2 py-0.5 font-black tracking-widest">
+                        <Badge variant="secondary" className="border-none bg-blue-50 px-2 py-0.5 text-[9px] font-black tracking-widest text-blue-600 dark:bg-blue-950/40 dark:text-blue-300">
                           ADMIN
                         </Badge>
                       )}
                     </div>
-                    <span className="text-[10px] font-bold text-slate-400 mt-1">
+                    <span className="mt-1 text-[10px] font-bold text-slate-400 dark:text-muted-foreground">
                       Membro desde {new Date(membro.adicionado_em).toLocaleDateString()}
                     </span>
                   </div>
@@ -317,7 +317,7 @@ export default function AdminPanel({ unidadeId, papel, unidadeNome }: Props) {
                           rejeitarOuRemover(membro.user_id, false);
                         }
                       }} 
-                      className="h-10 px-4 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 text-xs font-bold transition-all"
+                      className="h-10 rounded-xl px-4 text-xs font-bold text-slate-400 transition-all hover:bg-rose-50 hover:text-rose-600 dark:text-muted-foreground dark:hover:bg-rose-950/40 dark:hover:text-rose-300"
                     >
                       Remover
                     </Button>
