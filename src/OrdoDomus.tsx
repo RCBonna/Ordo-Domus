@@ -54,7 +54,7 @@ export default function OrdoDomus() {
     declineAiConsent,
     ensureAiConsent,
   } = useAiConsent(currentUserEmail);
-  useThemePreference(currentUserEmail);
+  const themePreference = useThemePreference(currentUserEmail);
   
   // Confirmation State
   const [confirmConfig, setConfirmConfig] = useState<{
@@ -308,6 +308,9 @@ export default function OrdoDomus() {
             unidadeAtiva={unidadeAtiva}
             onClose={() => setIsAdminModalOpen(false)}
             onUnitUpdated={handleUnitUpdated}
+            themePreference={themePreference.preference}
+            resolvedTheme={themePreference.resolvedTheme}
+            onThemePreferenceChange={themePreference.setPreference}
           />
         </Suspense>
       )}

@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
-import { Building2, Loader2, Save, Settings, ShieldCheck } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { Building2, Loader2, Monitor, Moon, Save, Settings, ShieldCheck, Sun } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { supabase } from '../lib/supabaseClient';
 import { logger } from '../lib/logger';
+import type { ResolvedTheme, ThemePreference } from '../hooks/useThemePreference';
 
 interface UpdatedUnit {
   id: string;
@@ -17,6 +19,9 @@ interface UnitSettingsPanelProps {
   unidadeId: string;
   unidadeNome: string;
   onUnitUpdated: (unit: { id: string; nome: string }) => void;
+  themePreference: ThemePreference;
+  resolvedTheme: ResolvedTheme;
+  onThemePreferenceChange: (preference: ThemePreference) => void;
 }
 
 const UNIT_SETTINGS_SAVE_TIMEOUT_MS = 10_000;
@@ -41,7 +46,15 @@ function withTimeout<T>(promise: PromiseLike<T>, timeoutMs: number, onTimeout: (
   });
 }
 
-export function UnitSettingsPanel({ papel, unidadeId, unidadeNome, onUnitUpdated }: UnitSettingsPanelProps) {
+export function UnitSettingsPanel({
+  papel,
+  unidadeId,
+  unidadeNome,
+  onUnitUpdated,
+  themePreference,
+  resolvedTheme,
+  onThemePreferenceChange,
+}: UnitSettingsPanelProps) {
   const [name, setName] = useState(unidadeNome);
   const [isSaving, setIsSaving] = useState(false);
   const isAdmin = papel === 'admin';
@@ -139,6 +152,38 @@ export function UnitSettingsPanel({ papel, unidadeId, unidadeNome, onUnitUpdated
         <GovernanceTile label="Edicao" value={isAdmin ? 'Liberada' : 'Bloqueada'} />
       </div>
 
+      <div className="rounded-[28px] border border-slate-100 bg-slate-50/70 p-5">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <Monitor className="h-5 w-5 text-slate-400" />
+            <p className="text-xs font-black uppercase tracking-widest text-slate-400">Tema</p>
+          </div>
+          <span className="rounded-full bg-white px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-400">
+            {resolvedTheme === 'dark' ? 'Escuro' : 'Claro'}
+          </span>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-3" role="radiogroup" aria-label="Tema visual">
+          <ThemePreferenceButton
+            icon={<Monitor className="h-4 w-4" />}
+            isActive={themePreference === 'system'}
+            label="Automático"
+            onClick={() => onThemePreferenceChange('system')}
+          />
+          <ThemePreferenceButton
+            icon={<Sun className="h-4 w-4" />}
+            isActive={themePreference === 'light'}
+            label="Claro"
+            onClick={() => onThemePreferenceChange('light')}
+          />
+          <ThemePreferenceButton
+            icon={<Moon className="h-4 w-4" />}
+            isActive={themePreference === 'dark'}
+            label="Escuro"
+            onClick={() => onThemePreferenceChange('dark')}
+          />
+        </div>
+      </div>
+
       <div className="rounded-[28px] border border-dashed border-slate-200 bg-white p-5">
         <div className="mb-2 flex items-center gap-3">
           <ShieldCheck className="h-5 w-5 text-indigo-500" />
@@ -149,6 +194,35 @@ export function UnitSettingsPanel({ papel, unidadeId, unidadeNome, onUnitUpdated
         </p>
       </div>
     </div>
+  );
+}
+
+function ThemePreferenceButton({
+  icon,
+  isActive,
+  label,
+  onClick,
+}: {
+  icon: ReactNode;
+  isActive: boolean;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="radio"
+      aria-checked={isActive}
+      onClick={onClick}
+      className={`flex h-12 items-center justify-center gap-2 rounded-2xl border px-3 text-sm font-black transition-all ${
+        isActive
+          ? 'border-primary bg-primary text-primary-foreground shadow-lg shadow-primary/10'
+          : 'border-slate-100 bg-white text-slate-500 hover:border-primary/20 hover:bg-primary/5 hover:text-primary'
+      }`}
+    >
+      {icon}
+      {label}
+    </button>
   );
 }
 

@@ -5,15 +5,27 @@ import { UnitSettingsPanel } from './UnitSettingsPanel';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { UnitMembership } from '../types/domain';
+import type { ResolvedTheme, ThemePreference } from '../hooks/useThemePreference';
 
 interface AdminAccessModalProps {
   isOpen: boolean;
   unidadeAtiva: UnitMembership | null;
   onClose: () => void;
   onUnitUpdated: (unit: { id: string; nome: string }) => void;
+  themePreference: ThemePreference;
+  resolvedTheme: ResolvedTheme;
+  onThemePreferenceChange: (preference: ThemePreference) => void;
 }
 
-export function AdminAccessModal({ isOpen, unidadeAtiva, onClose, onUnitUpdated }: AdminAccessModalProps) {
+export function AdminAccessModal({
+  isOpen,
+  unidadeAtiva,
+  onClose,
+  onUnitUpdated,
+  themePreference,
+  resolvedTheme,
+  onThemePreferenceChange,
+}: AdminAccessModalProps) {
   return (
     <AnimatePresence>
       {isOpen && unidadeAtiva && (
@@ -49,6 +61,9 @@ export function AdminAccessModal({ isOpen, unidadeAtiva, onClose, onUnitUpdated 
                   unidadeNome={unidadeAtiva.nome}
                   papel={unidadeAtiva.papel}
                   onUnitUpdated={onUnitUpdated}
+                  themePreference={themePreference}
+                  resolvedTheme={resolvedTheme}
+                  onThemePreferenceChange={onThemePreferenceChange}
                 />
                 <div className="h-px bg-slate-100" />
                 <AdminPanel unidadeId={unidadeAtiva.id} papel={unidadeAtiva.papel} unidadeNome={unidadeAtiva.nome} />

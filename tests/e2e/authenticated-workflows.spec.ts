@@ -136,6 +136,20 @@ test.describe('fluxos autenticados com seed', () => {
     await page.getByRole('button', { name: 'Salvar' }).click();
     await expect(page.getByRole('button', { name: originalName })).toBeVisible({ timeout: 20_000 });
     await expect(page.getByRole('button', { name: 'Salvar' })).toBeDisabled();
+
+    await expect(page.getByRole('radio', { name: 'Claro' })).toHaveAttribute('aria-checked', 'true');
+    await page.getByRole('radio', { name: 'Escuro' }).click();
+    await expect(page.getByRole('radio', { name: 'Escuro' })).toHaveAttribute('aria-checked', 'true');
+    await expect(page.locator('html')).toHaveClass(/dark/);
+
+    await page.reload();
+    await expect(page.getByText('Nova Entrada')).toBeVisible({ timeout: 20_000 });
+    await page.getByRole('button', { name: 'Configurações da unidade' }).click();
+    await expect(page.getByRole('radio', { name: 'Escuro' })).toHaveAttribute('aria-checked', 'true');
+
+    await page.getByRole('radio', { name: 'Claro' }).click();
+    await expect(page.getByRole('radio', { name: 'Claro' })).toHaveAttribute('aria-checked', 'true');
+    await expect(page.locator('html')).not.toHaveClass(/dark/);
   });
 
   test('admin ve erro recuperavel quando governanca da unidade demora demais', async ({ page }) => {
