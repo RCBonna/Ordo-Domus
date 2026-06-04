@@ -12,6 +12,9 @@
 - Criado checkpoint Git `6048a3e` antes de iniciar as fases planejadas.
 - Implementada a Fase 1 do Inventario por Foto: migration `20260603213000_snapshot_import_metadata.sql` adicionou `snapshot` ao rate limit de IA e metadados de origem/confianca/local sugerido em `importacoes_pendentes`.
 - Migration da Fase 1 aplicada no Supabase e validada com `npm run supabase:migrations:dry-run`, retornando `Remote database is up to date`.
+- Implementada a Fase 2 do Inventario por Foto: Edge Function `extract-inventory` passou a aceitar `mode=snapshot`, com schema JSON estruturado, prompt especifico para foto de local, limite proprio e testes de payload.
+- Validacoes da Fase 2: `npm test -- --run supabase/functions/extract-inventory/limits.test.ts` passou com 7 testes e `npm run lint` passou.
+- Edge Function `extract-inventory` redeployada no Supabase para disponibilizar o modo `snapshot`.
 
 ## 2026-05-23
 

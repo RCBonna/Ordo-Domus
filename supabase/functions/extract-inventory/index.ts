@@ -51,6 +51,30 @@ const receiptResponseSchema = {
   },
 };
 
+const snapshotResponseSchema = {
+  type: "ARRAY",
+  items: {
+    type: "OBJECT",
+    properties: {
+      item: { type: "STRING", description: "Nome do produto ou item visivel na foto" },
+      categoria: {
+        type: "STRING",
+        description: "Categoria provável para inventário doméstico, por exemplo Bebidas, Alimentos, Limpeza, Higiene, Medicamentos, Pet, Descartáveis ou Geral",
+      },
+      quantidade: { type: "NUMBER", description: "Quantidade de unidades visiveis ou claramente identificaveis" },
+      comodo: { type: "STRING", description: "Comodo informado no contexto ou inferido quando evidente" },
+      armario: { type: "STRING", description: "Movel/eletrodomestico principal informado no contexto ou inferido quando evidente" },
+      caixa: { type: "STRING", description: "Prateleira, gaveta, caixa ou subdivisao informada no contexto ou inferida quando evidente" },
+      validade: { type: "STRING", description: "Data de validade visivel, em DD/MM/YYYY ou MM/YYYY; vazia se nao estiver legivel" },
+      marca: { type: "STRING", description: "Marca visivel, quando legivel" },
+      codigo_barras: { type: "STRING", description: "Codigo de barras visivel, quando legivel" },
+      confianca: { type: "NUMBER", description: "Confianca da identificacao entre 0 e 1" },
+      observacao: { type: "STRING", description: "Incertezas relevantes, como rotulo oculto, validade ilegivel ou quantidade estimada" },
+    },
+    required: ["item", "categoria", "quantidade", "confianca"],
+  },
+};
+
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -82,7 +106,7 @@ function envInt(name: string, fallback: number, min: number, max: number) {
   return Math.floor(value);
 }
 
-function getRateLimitPolicy(mode: "text" | "audio" | "receipt") {
+function getRateLimitPolicy(mode: "text" | "audio" | "receipt" | "snapshot") {
   if (mode === "text") {
     return {
       ...RATE_LIMIT_DEFAULTS.text,
@@ -102,11 +126,20 @@ function getRateLimitPolicy(mode: "text" | "audio" | "receipt") {
     };
   }
 
+  if (mode === "receipt") {
+    return {
+      ...RATE_LIMIT_DEFAULTS.receipt,
+      maxRequests: envInt("AI_RECEIPT_RATE_LIMIT", RATE_LIMIT_DEFAULTS.receipt.maxRequests, 1, 1000),
+      windowSeconds: envInt("AI_RECEIPT_RATE_WINDOW_SECONDS", RATE_LIMIT_DEFAULTS.receipt.windowSeconds, 60, 86_400),
+      maxPayloadBytes: envInt("AI_RECEIPT_MAX_BYTES", RATE_LIMIT_DEFAULTS.receipt.maxPayloadBytes, 1_000, 50_000_000),
+    };
+  }
+
   return {
-    ...RATE_LIMIT_DEFAULTS.receipt,
-    maxRequests: envInt("AI_RECEIPT_RATE_LIMIT", RATE_LIMIT_DEFAULTS.receipt.maxRequests, 1, 1000),
-    windowSeconds: envInt("AI_RECEIPT_RATE_WINDOW_SECONDS", RATE_LIMIT_DEFAULTS.receipt.windowSeconds, 60, 86_400),
-    maxPayloadBytes: envInt("AI_RECEIPT_MAX_BYTES", RATE_LIMIT_DEFAULTS.receipt.maxPayloadBytes, 1_000, 50_000_000),
+    ...RATE_LIMIT_DEFAULTS.snapshot,
+    maxRequests: envInt("AI_SNAPSHOT_RATE_LIMIT", RATE_LIMIT_DEFAULTS.snapshot.maxRequests, 1, 1000),
+    windowSeconds: envInt("AI_SNAPSHOT_RATE_WINDOW_SECONDS", RATE_LIMIT_DEFAULTS.snapshot.windowSeconds, 60, 86_400),
+    maxPayloadBytes: envInt("AI_SNAPSHOT_MAX_BYTES", RATE_LIMIT_DEFAULTS.snapshot.maxPayloadBytes, 1_000, 50_000_000),
   };
 }
 
@@ -117,7 +150,7 @@ async function insertAiExtractionEvent(
   event: {
     unidade_id: string;
     user_id: string;
-    mode: "text" | "audio" | "receipt";
+    mode: "text" | "audio" | "receipt" | "snapshot";
     payload_bytes: number;
     allowed: boolean;
     reason?: string;
@@ -146,7 +179,7 @@ async function countRecentAiExtractionEvents(
   authorization: string,
   unidadeId: string,
   userId: string,
-  mode: "text" | "audio" | "receipt",
+  mode: "text" | "audio" | "receipt" | "snapshot",
   windowSeconds: number,
 ) {
   const windowStart = new Date(Date.now() - windowSeconds * 1000).toISOString();
@@ -183,7 +216,7 @@ async function assertAiUsageLimit(
   authorization: string,
   unidadeId: string,
   userId: string,
-  mode: "text" | "audio" | "receipt",
+  mode: "text" | "audio" | "receipt" | "snapshot",
   payload: Record<string, unknown>,
 ) {
   const policy = getRateLimitPolicy(mode);
@@ -345,7 +378,7 @@ Deno.serve(async (req) => {
     const payload = await req.json();
     const { mode, unidadeId } = payload;
 
-    assertPayload(["text", "audio", "receipt"].includes(mode), "Modo de extração inválido.");
+    assertPayload(["text", "audio", "receipt", "snapshot"].includes(mode), "Modo de extração inválido.");
     assertPayload(typeof unidadeId === "string" && unidadeId.length > 0, "unidadeId obrigatório.");
 
     const user = await getAuthenticatedUser(supabaseUrl, anonKey, authorization);
@@ -412,6 +445,40 @@ Deno.serve(async (req) => {
     }
 
     const cleanMimeType = normalizeMimeType(payload.mimeType);
+    if (mode === "snapshot") {
+      const context = payload.context && typeof payload.context === "object" ? payload.context : {};
+      const contextText = JSON.stringify({
+        comodo: context.comodo || "",
+        armario: context.armario || "",
+        caixa: context.caixa || "",
+      });
+
+      const result = await tryGeminiModels(geminiApiKey, ["gemini-2.5-flash", "gemini-flash-latest"], () => ({
+        contents: [
+          {
+            role: "user",
+            parts: [
+              {
+                text: `Hoje é dia ${today}. Analise a foto para o fluxo Inventário por Foto. Contexto de local informado pelo usuário: ${contextText}. Liste apenas itens fisicamente visíveis. Agrupe embalagens idênticas ou claramente equivalentes. Estime quantidade pelo número de unidades visíveis, sem inferir itens escondidos. Se houver validade legível na embalagem, retorne em DD/MM/YYYY ou MM/YYYY; se não estiver legível, retorne string vazia. Use categorias curtas úteis para inventário doméstico. Use o contexto de local informado quando existir. Para cada item, informe confiança entre 0 e 1 e uma observação curta quando houver incerteza.`,
+              },
+              {
+                inlineData: {
+                  mimeType: cleanMimeType,
+                  data: payload.imageBase64,
+                },
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          responseMimeType: "application/json",
+          responseSchema: snapshotResponseSchema,
+        },
+      }));
+
+      return jsonResponse({ result });
+    }
+
     const result = await tryGeminiModels(geminiApiKey, ["gemini-2.5-flash", "gemini-flash-latest"], () => ({
       contents: [
         {

@@ -1,4 +1,4 @@
-export type ExtractionMode = 'text' | 'audio' | 'receipt';
+export type ExtractionMode = 'text' | 'audio' | 'receipt' | 'snapshot';
 
 export interface AiExtractionLimitPolicy {
   maxRequests: number;
@@ -26,6 +26,12 @@ export const RATE_LIMIT_DEFAULTS: Record<ExtractionMode, AiExtractionLimitPolicy
     maxRequests: 12,
     windowSeconds: 3600,
     maxPayloadBytes: 6_000_000,
+    allowedMimeTypes: ['image/webp', 'image/jpeg', 'image/png', 'image/heic', 'image/heif'],
+  },
+  snapshot: {
+    maxRequests: 8,
+    windowSeconds: 3600,
+    maxPayloadBytes: 8_000_000,
     allowedMimeTypes: ['image/webp', 'image/jpeg', 'image/png', 'image/heic', 'image/heif'],
   },
 };
@@ -97,17 +103,18 @@ export function evaluateAiExtractionPayload(
     }
   }
 
-  if (mode === 'receipt') {
+  if (mode === 'receipt' || mode === 'snapshot') {
     const mimeType = normalizeMimeType(payload.mimeType);
     if (typeof payload.imageBase64 !== 'string' || payload.imageBase64.length === 0) {
       return { allowed: false, payloadBytes, reason: 'missing_image', message: 'Imagem obrigatória.', status: 400 };
     }
     if (!policy.allowedMimeTypes.includes(mimeType)) {
+      const label = mode === 'snapshot' ? 'Inventário por Foto' : 'extração de cupom';
       return {
         allowed: false,
         payloadBytes,
-        reason: 'invalid_image_mime',
-        message: 'Formato de imagem não suportado para extração de cupom.',
+        reason: mode === 'snapshot' ? 'invalid_snapshot_mime' : 'invalid_image_mime',
+        message: `Formato de imagem não suportado para ${label}.`,
         status: 415,
       };
     }
