@@ -185,7 +185,7 @@ export const formatarData = (dataRaw?: string | null) => {
   return `${dia.toString().padStart(2, '0')}/${mes.toString().padStart(2, '0')}/${ano}`;
 };
 
-export const compressImage = (file: File, maxWidth = 800): Promise<string> => {
+export const compressImage = (file: File, maxWidth = 800, maxHeight = Number.POSITIVE_INFINITY): Promise<string> => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -197,9 +197,11 @@ export const compressImage = (file: File, maxWidth = 800): Promise<string> => {
         let width = img.width;
         let height = img.height;
 
-        if (width > maxWidth) {
-          height = Math.round((maxWidth * height) / width);
-          width = maxWidth;
+        const scale = Math.min(maxWidth / width, maxHeight / height, 1);
+
+        if (scale < 1) {
+          width = Math.round(width * scale);
+          height = Math.round(height * scale);
         }
 
         canvas.width = width;

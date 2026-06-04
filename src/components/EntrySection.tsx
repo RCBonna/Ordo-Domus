@@ -8,9 +8,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { 
   Mic, MicOff, Box, Loader2, Tag, MapPin, 
-  RefreshCw, PlusCircle, History, Trash2, Plus, Edit3, TrendingUp, Receipt, Package
+  RefreshCw, PlusCircle, History, Trash2, Plus, Edit3, TrendingUp, Receipt, Package, Camera
 } from 'lucide-react';
-import type { ExtractedItem } from '../services/geminiService';
+import type { ExtractedItem, SnapshotContext } from '../services/geminiService';
 import type { HistoryItem } from '../types/domain';
 
 interface EntrySectionProps {
@@ -37,6 +37,12 @@ interface EntrySectionProps {
   fileInputRef: React.RefObject<HTMLInputElement>;
   handleImportReceipt: (e: React.ChangeEvent<HTMLInputElement>) => void;
   triggerImport: () => void;
+  isSnapshotImporting: boolean;
+  snapshotFileInputRef: React.RefObject<HTMLInputElement>;
+  handleImportSnapshot: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  triggerSnapshotImport: () => void;
+  snapshotContext: SnapshotContext;
+  setSnapshotContext: (context: SnapshotContext) => void;
   pendingTriageCount: number;
   openTriageModal: () => void;
 }
@@ -65,9 +71,17 @@ export function EntrySection({
   fileInputRef,
   handleImportReceipt,
   triggerImport,
+  isSnapshotImporting,
+  snapshotFileInputRef,
+  handleImportSnapshot,
+  triggerSnapshotImport,
+  snapshotContext,
+  setSnapshotContext,
   pendingTriageCount,
   openTriageModal
 }: EntrySectionProps) {
+  const isAnyImageImporting = isImporting || isSnapshotImporting;
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
@@ -86,6 +100,29 @@ export function EntrySection({
           <CardContent className="space-y-6">
             <div className="space-y-3">
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+                <Input
+                  placeholder="Cômodo da foto"
+                  value={snapshotContext.comodo || ''}
+                  onChange={(event) => setSnapshotContext({ ...snapshotContext, comodo: event.target.value })}
+                  disabled={isExtracting || isPendingConfirmation || !isSistemaLiberado || isSnapshotImporting}
+                  className="h-10 rounded-xl bg-slate-50 text-sm font-bold"
+                />
+                <Input
+                  placeholder="Armário/local"
+                  value={snapshotContext.armario || ''}
+                  onChange={(event) => setSnapshotContext({ ...snapshotContext, armario: event.target.value })}
+                  disabled={isExtracting || isPendingConfirmation || !isSistemaLiberado || isSnapshotImporting}
+                  className="h-10 rounded-xl bg-slate-50 text-sm font-bold"
+                />
+                <Input
+                  placeholder="Prateleira/caixa"
+                  value={snapshotContext.caixa || ''}
+                  onChange={(event) => setSnapshotContext({ ...snapshotContext, caixa: event.target.value })}
+                  disabled={isExtracting || isPendingConfirmation || !isSistemaLiberado || isSnapshotImporting}
+                  className="h-10 rounded-xl bg-slate-50 text-sm font-bold"
+                />
+              </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
                 <input 
                   type="file" 
                   accept="image/*" 
@@ -94,15 +131,33 @@ export function EntrySection({
                   ref={fileInputRef} 
                   onChange={handleImportReceipt} 
                 />
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  className="hidden"
+                  ref={snapshotFileInputRef}
+                  onChange={handleImportSnapshot}
+                />
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={triggerImport}
-                  disabled={isExtracting || isPendingConfirmation || !isSistemaLiberado || isImporting}
+                  disabled={isExtracting || isPendingConfirmation || !isSistemaLiberado || isAnyImageImporting}
                   className="w-full gap-2 rounded-xl transition-all h-10 px-3 text-slate-700 hover:bg-slate-50"
                 >
                   {isImporting ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : <Receipt className="h-4 w-4 shrink-0" />}
                   <span className="truncate">{isImporting ? "Importando..." : "Importar Cupom"}</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={triggerSnapshotImport}
+                  disabled={isExtracting || isPendingConfirmation || !isSistemaLiberado || isAnyImageImporting}
+                  className="w-full gap-2 rounded-xl transition-all h-10 px-3 text-slate-700 hover:bg-slate-50"
+                >
+                  {isSnapshotImporting ? <Loader2 className="h-4 w-4 shrink-0 animate-spin" /> : <Camera className="h-4 w-4 shrink-0" />}
+                  <span className="truncate">{isSnapshotImporting ? "Lendo foto..." : "Inventário por Foto"}</span>
                 </Button>
                 {pendingTriageCount > 0 && (
                   <Button
@@ -153,11 +208,11 @@ export function EntrySection({
                 className="min-h-[140px] resize-none rounded-[20px] bg-slate-50/50 border-slate-100 focus-visible:ring-primary/20 text-base p-5"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                disabled={isExtracting || isPendingConfirmation || !isSistemaLiberado}
+                disabled={isExtracting || isPendingConfirmation || !isSistemaLiberado || isSnapshotImporting}
               />
             </div>
             {error && <p className="text-sm text-destructive font-medium bg-destructive/5 p-3 rounded-xl border border-destructive/10">{error}</p>}
-            <Button className="w-full rounded-[20px] h-14 text-lg font-bold shadow-lg shadow-primary/20" onClick={handleExtract} disabled={isExtracting || isPendingConfirmation || !input.trim() || !isSistemaLiberado || isImporting}>
+            <Button className="w-full rounded-[20px] h-14 text-lg font-bold shadow-lg shadow-primary/20" onClick={handleExtract} disabled={isExtracting || isPendingConfirmation || !input.trim() || !isSistemaLiberado || isAnyImageImporting}>
               {isExtracting ? <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Processando...</> : <><Box className="mr-2 h-5 w-5" /> Extrair Dados</>}
             </Button>
           </CardContent>

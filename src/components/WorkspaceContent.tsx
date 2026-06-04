@@ -12,6 +12,7 @@ import type { useDashboardMetrics } from '../hooks/useDashboardMetrics';
 import type { useExtraction } from '../hooks/useExtraction';
 import type { useInventory } from '../hooks/useInventory';
 import type { useReceiptImport } from '../hooks/useReceiptImport';
+import type { useSnapshotImport } from '../hooks/useSnapshotImport';
 import type { useShoppingList } from '../hooks/useShoppingList';
 import type { useTriage } from '../hooks/useTriage';
 import type { HistoryItem, UnitMembership } from '../types/domain';
@@ -43,6 +44,7 @@ type ExtractionSlice = Pick<
 >;
 type InventorySlice = ReturnType<typeof useInventory>;
 type ReceiptImportSlice = ReturnType<typeof useReceiptImport>;
+type SnapshotImportSlice = ReturnType<typeof useSnapshotImport>;
 type ShoppingSlice = ReturnType<typeof useShoppingList>;
 type TriageSlice = Pick<ReturnType<typeof useTriage>, 'pendingItems'>;
 
@@ -60,6 +62,7 @@ interface WorkspaceContentProps {
   onOnboardingSuccess: () => Promise<void>;
   onOpenTriageModal: () => void;
   receiptImport: ReceiptImportSlice;
+  snapshotImport: SnapshotImportSlice;
   setActiveTab: (tab: AppTab) => void;
   setIsConsumoMode: (value: boolean) => void;
   shopping: ShoppingSlice;
@@ -82,6 +85,7 @@ export function WorkspaceContent({
   onOnboardingSuccess,
   onOpenTriageModal,
   receiptImport,
+  snapshotImport,
   setActiveTab,
   setIsConsumoMode,
   shopping,
@@ -144,6 +148,12 @@ export function WorkspaceContent({
             fileInputRef={receiptImport.fileInputRef}
             handleImportReceipt={receiptImport.handleImportReceipt}
             triggerImport={receiptImport.triggerImport}
+            isSnapshotImporting={snapshotImport.isSnapshotImporting}
+            snapshotFileInputRef={snapshotImport.snapshotFileInputRef}
+            handleImportSnapshot={snapshotImport.handleImportSnapshot}
+            triggerSnapshotImport={snapshotImport.triggerSnapshotImport}
+            snapshotContext={snapshotImport.snapshotContext}
+            setSnapshotContext={snapshotImport.setSnapshotContext}
             pendingTriageCount={triage.pendingItems.length}
             openTriageModal={onOpenTriageModal}
           />

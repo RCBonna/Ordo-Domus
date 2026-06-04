@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 
-export type AiConsentScope = 'text' | 'audio' | 'receipt';
+export type AiConsentScope = 'text' | 'audio' | 'receipt' | 'snapshot';
 
 export interface AiConsentRequest {
   scope: AiConsentScope;
@@ -27,6 +27,10 @@ const scopeCopy: Record<AiConsentScope, Omit<AiConsentRequest, 'scope'>> = {
   receipt: {
     title: 'Uso de IA para cupom',
     description: 'A imagem do cupom será comprimida no navegador e enviada à função segura de IA para identificar os itens.',
+  },
+  snapshot: {
+    title: 'Uso de IA para Inventário por Foto',
+    description: 'A foto do local será comprimida no navegador e enviada à função segura de IA para identificar itens visíveis, quantidades e validades legíveis.',
   },
 };
 

@@ -23,7 +23,27 @@ export interface ExtractedReceiptItem {
   valor?: number;
 }
 
-type ExtractionMode = 'text' | 'audio' | 'receipt';
+export interface SnapshotContext {
+  comodo?: string;
+  armario?: string;
+  caixa?: string;
+}
+
+export interface ExtractedSnapshotItem {
+  item: string;
+  categoria?: string;
+  quantidade: number;
+  comodo?: string;
+  armario?: string;
+  caixa?: string;
+  validade?: string;
+  marca?: string;
+  codigo_barras?: string;
+  confianca?: number;
+  observacao?: string;
+}
+
+type ExtractionMode = 'text' | 'audio' | 'receipt' | 'snapshot';
 
 async function invokeExtraction<T>(mode: ExtractionMode, payload: Record<string, unknown>): Promise<T> {
   addBreadcrumb('extract-inventory invoked', { mode });
@@ -97,5 +117,19 @@ export async function extractInventoryDataFromReceipt(
     unidadeId,
     imageBase64,
     mimeType,
+  });
+}
+
+export async function extractInventoryDataFromSnapshot(
+  imageBase64: string,
+  mimeType: string,
+  unidadeId: string,
+  context: SnapshotContext,
+): Promise<ExtractedSnapshotItem[]> {
+  return invokeExtraction<ExtractedSnapshotItem[]>('snapshot', {
+    unidadeId,
+    imageBase64,
+    mimeType,
+    context,
   });
 }

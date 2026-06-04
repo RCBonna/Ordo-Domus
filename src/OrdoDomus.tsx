@@ -14,6 +14,7 @@ import { useAuth } from './hooks/useAuth';
 import { useInventory } from './hooks/useInventory';
 import { useExtraction } from './hooks/useExtraction';
 import { useReceiptImport } from './hooks/useReceiptImport';
+import { useSnapshotImport } from './hooks/useSnapshotImport';
 import { useTriage } from './hooks/useTriage';
 import { useDashboardMetrics } from './hooks/useDashboardMetrics';
 import { useShoppingList } from './hooks/useShoppingList';
@@ -91,6 +92,8 @@ export default function OrdoDomus() {
     handleImportReceipt,
     triggerImport
   } = useReceiptImport(unidadeAtiva?.id, fetchPendingItems, ensureAiConsent);
+
+  const snapshotImport = useSnapshotImport(unidadeAtiva?.id, fetchPendingItems, ensureAiConsent);
 
   // Inventory logic
 
@@ -272,6 +275,7 @@ export default function OrdoDomus() {
             handleImportReceipt,
             triggerImport,
           }}
+          snapshotImport={snapshotImport}
           setActiveTab={setActiveTab}
           setIsConsumoMode={setIsConsumoMode}
           shopping={{

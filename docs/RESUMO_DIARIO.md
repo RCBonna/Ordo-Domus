@@ -15,6 +15,9 @@
 - Implementada a Fase 2 do Inventario por Foto: Edge Function `extract-inventory` passou a aceitar `mode=snapshot`, com schema JSON estruturado, prompt especifico para foto de local, limite proprio e testes de payload.
 - Validacoes da Fase 2: `npm test -- --run supabase/functions/extract-inventory/limits.test.ts` passou com 7 testes e `npm run lint` passou.
 - Edge Function `extract-inventory` redeployada no Supabase para disponibilizar o modo `snapshot`.
+- Implementada a Fase 3 do Inventario por Foto: adicionado consentimento `snapshot`, service `extractInventoryDataFromSnapshot`, hook `useSnapshotImport`, compressao de imagem com limite 1400 x 1600 px e botao "Inventario por Foto" na tela de entrada.
+- A captura de Inventario por Foto grava candidatos em `importacoes_pendentes` com origem `snapshot`, hash/metadados de origem, confianca, validade sugerida e local sugerido.
+- Validacao da Fase 3: `npm run lint` passou.
 
 ## 2026-05-23
 
