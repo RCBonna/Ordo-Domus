@@ -35,7 +35,7 @@ export function useSnapshotImport(
     await importSnapshotFile(file);
   };
 
-  const importSnapshotFile = async (file: File) => {
+  const importSnapshotFile = async (file: File, options: { forceDuplicate?: boolean } = {}) => {
     if (!unidadeId) return;
 
     const consentAccepted = await ensureAiConsent?.('snapshot') ?? true;
@@ -72,6 +72,23 @@ export function useSnapshotImport(
         const previousImportAt = existingImport[0].source_importado_em || existingImport[0].criado_em;
         toast.warning(`Esta foto já está pendente desde ${formatImportedAt(previousImportAt)}.`, { id: 'import-snapshot' });
         return;
+      }
+
+      if (!options.forceDuplicate) {
+        const importHistory = await fetchImportSourceHistory(unidadeId, 'snapshot', sourceHash);
+        if (importHistory) {
+          toast.warning(`Esta foto já foi lida em ${formatImportedAt(importHistory.primeiro_importado_em)}.`, {
+            id: 'import-snapshot',
+            duration: 15000,
+            action: {
+              label: 'Importar novamente',
+              onClick: () => {
+                void importSnapshotFile(file, { forceDuplicate: true });
+              },
+            },
+          });
+          return;
+        }
       }
 
       toast.loading('Identificando itens com IA...', { id: 'import-snapshot' });
@@ -132,6 +149,15 @@ export function useSnapshotImport(
         return;
       }
 
+      try {
+        await recordImportSourceHistory(unidadeId, 'snapshot', sourceHash, {
+          context: normalizedContext,
+          itemCount: data.length,
+        });
+      } catch {
+        logger.warn('Falha ao registrar historico do Inventario por Foto.');
+      }
+
       logger.info('Inventario por Foto importado para triagem.');
       toast.success(`Inventário por Foto importado! ${data.length} itens aguardando triagem.`, { id: 'import-snapshot' });
       onImportSuccess?.();
@@ -169,6 +195,88 @@ function normalizeConfidence(value: unknown) {
   const confidence = Number(value);
   if (!Number.isFinite(confidence)) return null;
   return Math.max(0, Math.min(1, confidence));
+}
+
+interface ImportSourceHistory {
+  id: string;
+  primeiro_importado_em: string;
+  ultimo_importado_em: string;
+}
+
+function isMissingImportSourceHistoryTable(error: { code?: string; message?: string } | null) {
+  const message = error?.message?.toLowerCase() || '';
+  return error?.code === 'PGRST205'
+    || error?.code === 'PGRST204'
+    || message.includes('importacoes_fontes');
+}
+
+async function fetchImportSourceHistory(
+  unidadeId: string,
+  origem: 'snapshot',
+  sourceHash: string,
+): Promise<ImportSourceHistory | null> {
+  const { data, error } = await supabase
+    .from('importacoes_fontes')
+    .select('id,primeiro_importado_em,ultimo_importado_em')
+    .eq('unidade_id', unidadeId)
+    .eq('origem', origem)
+    .eq('source_hash', sourceHash)
+    .order('ultimo_importado_em', { ascending: false })
+    .limit(1);
+
+  if (error) {
+    if (isMissingImportSourceHistoryTable(error)) {
+      logger.warn('Historico de fontes importadas ainda indisponivel; seguindo sem aviso de foto ja lida.');
+      return null;
+    }
+    throw error;
+  }
+
+  return data?.[0] || null;
+}
+
+async function recordImportSourceHistory(
+  unidadeId: string,
+  origem: 'snapshot',
+  sourceHash: string,
+  metadata: Record<string, unknown>,
+) {
+  const importedAt = new Date().toISOString();
+  const existing = await fetchImportSourceHistory(unidadeId, origem, sourceHash);
+
+  if (existing) {
+    const { error } = await supabase
+      .from('importacoes_fontes')
+      .update({
+        ultimo_importado_em: importedAt,
+        atualizado_em: importedAt,
+        metadata,
+      })
+      .eq('id', existing.id);
+
+    if (error) throw error;
+    return;
+  }
+
+  const { error } = await supabase
+    .from('importacoes_fontes')
+    .insert({
+      unidade_id: unidadeId,
+      origem,
+      source_hash: sourceHash,
+      primeiro_importado_em: importedAt,
+      ultimo_importado_em: importedAt,
+      atualizado_em: importedAt,
+      metadata,
+    });
+
+  if (error) {
+    if (isMissingImportSourceHistoryTable(error)) {
+      logger.warn('Historico de fontes importadas ainda indisponivel; hash nao registrado.');
+      return;
+    }
+    throw error;
+  }
 }
 
 function formatImportedAt(value?: string | null) {

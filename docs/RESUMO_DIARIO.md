@@ -1,5 +1,14 @@
 # Resumo Diario
 
+## 2026-06-04
+
+- Criada a issue GitHub #31 para o bug em que o Inventario por Foto nao avisava quando a mesma imagem ja havia sido lida anteriormente.
+- Criada e aplicada a migration `20260604120500_create_import_source_history.sql`, adicionando a tabela `importacoes_fontes` para historico persistente por unidade, origem e hash da fonte.
+- O fluxo de Inventario por Foto passou a consultar esse historico antes de chamar a IA, exibindo o aviso `Esta foto ja foi lida em...` com acao `Importar novamente`, espelhando a protecao ja existente no fluxo de cupom.
+- Mantida a protecao de duplicata ainda pendente em `importacoes_pendentes`, avisando separadamente quando a mesma foto continua aberta na triagem.
+- Atualizado o E2E autenticado de Inventario por Foto para validar imagem unica por execucao, descarte da triagem e reimportacao do mesmo arquivo com alerta historico.
+- Validacoes: `npm run supabase:migrations:dry-run`, `npm run supabase:migrations:push`, `npm run lint`, `npm test`, `npm run build` e `npm run test:e2e` passaram; Playwright executou 13 testes com sucesso.
+
 ## 2026-06-03
 
 - Corrigido bug reportado nos inputs de local do Inventario por Foto: o autocomplete nativo do navegador foi desativado para `Cômodo da foto`, `Armário/local` e `Prateleira/caixa`, evitando sugestoes antigas/irrelevantes como nomes de produtos.

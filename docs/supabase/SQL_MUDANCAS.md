@@ -1,5 +1,46 @@
 # Mudancas SQL
 
+## Historico de Fontes Importadas - Inventario por Foto
+
+Data/hora de criacao: 2026-06-04 12:05:00 -03:00
+
+Data/hora de modificacao: 2026-06-04 12:12:00 -03:00
+
+Arquivo SQL:
+
+```text
+supabase/migrations/20260604120500_create_import_source_history.sql
+```
+
+Necessidade:
+
+- Corrigir o bug em que o Inventario por Foto so avisava duplicidade enquanto a foto ainda estava pendente em `importacoes_pendentes`.
+- Preservar memoria historica de hashes de fotos ja lidas, seguindo o mesmo principio usado em `importacoes_cupons`.
+- Avisar o usuario quando a mesma foto for importada novamente, mesmo apos a triagem anterior ter sido efetivada, descartada ou expirada.
+
+Blocos de comandos documentados:
+
+```sql
+create table if not exists public.importacoes_fontes (...);
+create index if not exists idx_importacoes_fontes_unidade_origem_hash_ultimo ...;
+alter table public.importacoes_fontes enable row level security;
+create policy "Admins gerenciam historico de fontes importadas" ...;
+comment on table public.importacoes_fontes ...;
+```
+
+Implementacao relacionada:
+
+- Issue GitHub #31 criada para o bug.
+- `src/hooks/useSnapshotImport.ts`: consulta `importacoes_fontes` antes da IA; se o hash ja existir, mostra aviso com acao `Importar novamente`.
+- `src/hooks/useSnapshotImport.ts`: registra o hash em `importacoes_fontes` apos salvar itens de foto na triagem.
+
+Status:
+
+- Criado no repositorio em 2026-06-04.
+- Validado antes da aplicacao com `npm run supabase:migrations:dry-run`: apenas `20260604120500_create_import_source_history.sql` seria enviada.
+- Aplicado no Supabase em 2026-06-04 com `npm run supabase:migrations:push`.
+- Validacao pos-aplicacao com `npm run supabase:migrations:dry-run`: `Remote database is up to date`.
+
 ## Inventario por Foto - Fase 1: Snapshot e Metadados de Triagem
 
 Data/hora de criacao: 2026-06-03 21:30:00 -03:00

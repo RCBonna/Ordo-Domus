@@ -31,7 +31,8 @@ test.describe('fluxos autenticados com seed', () => {
   });
 
   test('inventario por foto usa IA mockada e cria triagem pendente', async ({ page }) => {
-    await mockSnapshotExtraction(page);
+    const snapshotItemName = `E2E ARROZ SNAPSHOT ${Date.now()}`;
+    await mockSnapshotExtraction(page, snapshotItemName);
 
     const roomInput = page.getByPlaceholder('Cômodo da foto');
     const cabinetInput = page.getByPlaceholder('Armário/local');
@@ -53,25 +54,43 @@ test.describe('fluxos autenticados com seed', () => {
     await cabinetInput.fill('Despensa E2E');
     await boxInput.fill('Prateleira 1');
 
+    const snapshotColor = Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
+    const snapshotFile = {
+      name: 'snapshot-e2e.svg',
+      mimeType: 'image/svg+xml',
+      buffer: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="12"><rect width="16" height="12" fill="#${snapshotColor}"/></svg>`),
+    };
+
     const fileChooserPromise = page.waitForEvent('filechooser');
     await page.getByRole('button', { name: 'Inventário por Foto' }).click();
     const fileChooser = await fileChooserPromise;
-    const uniqueColor = Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
-    await fileChooser.setFiles({
-      name: 'snapshot-e2e.svg',
-      mimeType: 'image/svg+xml',
-      buffer: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="12"><rect width="16" height="12" fill="#${uniqueColor}"/></svg>`),
-    });
+    await fileChooser.setFiles(snapshotFile);
     await acceptAiConsent(page);
 
     await expect(page.getByText(/Inventário por Foto importado!/)).toBeVisible({ timeout: 20_000 });
     await page.getByRole('button', { name: /Triagem Pendente/ }).click();
 
     await expect(page.getByText('Triagem de Importações')).toBeVisible();
-    await expect(page.getByText('E2E ARROZ SNAPSHOT').first()).toBeVisible();
+    await expect(page.getByText(snapshotItemName).first()).toBeVisible();
     await expect(page.getByText('Foto').first()).toBeVisible();
     await expect(page.getByText('82% confiança').first()).toBeVisible();
     await expect(page.locator('input[value="31/12/2099"]').first()).toBeVisible();
+
+    const snapshotCard = page
+      .getByRole('heading', { name: snapshotItemName })
+      .first()
+      .locator('xpath=ancestor::div[.//button[normalize-space()="Descartar"]][1]');
+    await snapshotCard.getByRole('button', { name: 'Descartar' }).click();
+    await expect(page.getByText('Item descartado.')).toBeVisible({ timeout: 20_000 });
+
+    await page.getByRole('button', { name: 'Fechar' }).click();
+    const duplicateFileChooserPromise = page.waitForEvent('filechooser');
+    await page.getByRole('button', { name: 'Inventário por Foto' }).click();
+    const duplicateFileChooser = await duplicateFileChooserPromise;
+    await duplicateFileChooser.setFiles(snapshotFile);
+
+    await expect(page.getByText(/Esta foto já foi lida em/)).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole('button', { name: 'Importar novamente' })).toBeVisible();
   });
 
   test('lista de compras mostra alertas e item manual seed', async ({ page }) => {
@@ -163,7 +182,7 @@ async function mockReceiptExtraction(page: import('@playwright/test').Page) {
   });
 }
 
-async function mockSnapshotExtraction(page: import('@playwright/test').Page) {
+async function mockSnapshotExtraction(page: import('@playwright/test').Page, itemName = 'E2E ARROZ SNAPSHOT') {
   await page.route('**/functions/v1/extract-inventory', async (route) => {
     const body = route.request().postDataJSON() as { mode?: string };
 
@@ -178,7 +197,7 @@ async function mockSnapshotExtraction(page: import('@playwright/test').Page) {
       body: JSON.stringify({
         result: [
           {
-            item: 'E2E ARROZ SNAPSHOT',
+            item: itemName,
             categoria: 'Alimentos',
             quantidade: 2,
             comodo: 'Cozinha',
