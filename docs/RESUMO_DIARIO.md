@@ -8,6 +8,10 @@
 - Mantido o trabalho em modo diagnostico: sem implementacao de frontend, sem migration aplicada e sem atualizacao de issue no GitHub.
 - Criado `plans/Implementation_plan_images-v1.md` com plano tecnico para inventario por foto de local, reaproveitando triagem de NFC-e/cupom, adicionando modo `snapshot`, confianca por item, validade oportunista, rate limit, consentimento e alternativas futuras como video, foto+audio e codigo de barras.
 - Avaliada a versao inicial `plans/Implementation_plan_images.md`, preservando o brainstorming e recomendando a v1 como plano de execucao por separar MVP de evolucoes e detalhar banco, backend, frontend, triagem e testes.
+- Criadas as issues GitHub #25 a #29 para as fases do Inventario por Foto.
+- Criado checkpoint Git `6048a3e` antes de iniciar as fases planejadas.
+- Implementada a Fase 1 do Inventario por Foto: migration `20260603213000_snapshot_import_metadata.sql` adicionou `snapshot` ao rate limit de IA e metadados de origem/confianca/local sugerido em `importacoes_pendentes`.
+- Migration da Fase 1 aplicada no Supabase e validada com `npm run supabase:migrations:dry-run`, retornando `Remote database is up to date`.
 
 ## 2026-05-23
 

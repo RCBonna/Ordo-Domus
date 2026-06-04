@@ -1,5 +1,91 @@
 # Mudancas SQL
 
+## Inventario por Foto - Fase 1: Snapshot e Metadados de Triagem
+
+Data/hora de criacao: 2026-06-03 21:30:00 -03:00
+
+Data/hora de modificacao: 2026-06-03 21:36:00 -03:00
+
+Arquivo SQL:
+
+```text
+supabase/migrations/20260603213000_snapshot_import_metadata.sql
+```
+
+Necessidade:
+
+- Preparar o fluxo "Inventario por Foto" para usar a mesma superficie de triagem ja usada por cupom/NFC-e.
+- Permitir que a Edge Function `extract-inventory` registre rate limit/auditoria do novo modo `snapshot`.
+- Diferenciar itens pendentes por origem sem quebrar o fluxo existente de cupom.
+- Guardar metadados nao sensiveis de contexto, confianca e local sugerido pela IA, sem persistir imagem bruta.
+
+Decisoes aplicadas:
+
+- Nome funcional: Inventario por Foto.
+- MVP: foto com audio opcional, nao obrigatorio.
+- Limite de imagem planejado: 1400 x 1600 px.
+- Snapshot restrito a admin aprovado da unidade.
+
+Blocos de comandos documentados:
+
+```sql
+alter table public.ai_extraction_events
+  drop constraint if exists ai_extraction_events_mode_check;
+
+alter table public.ai_extraction_events
+  add constraint ai_extraction_events_mode_check
+  check (mode in ('text', 'audio', 'receipt', 'snapshot'));
+
+alter table public.importacoes_pendentes
+  add column if not exists origem text default 'receipt' not null;
+
+alter table public.importacoes_pendentes
+  add constraint importacoes_pendentes_origem_check
+  check (origem in ('receipt', 'snapshot', 'barcode', 'video'));
+
+alter table public.importacoes_pendentes
+  add column if not exists source_hash text;
+
+alter table public.importacoes_pendentes
+  add column if not exists source_importado_em timestamp with time zone;
+
+alter table public.importacoes_pendentes
+  add column if not exists source_metadata jsonb default '{}'::jsonb not null;
+
+alter table public.importacoes_pendentes
+  add column if not exists confianca numeric;
+
+alter table public.importacoes_pendentes
+  add column if not exists validade_sugerida text;
+
+alter table public.importacoes_pendentes
+  add column if not exists comodo_sugerido text;
+
+alter table public.importacoes_pendentes
+  add column if not exists armario_sugerido text;
+
+alter table public.importacoes_pendentes
+  add column if not exists caixa_sugerida text;
+
+create index if not exists idx_importacoes_pendentes_unidade_origem_criado ...;
+create index if not exists idx_importacoes_pendentes_unidade_source_hash ...;
+comment on column public.importacoes_pendentes.origem ...;
+comment on column public.importacoes_pendentes.source_metadata ...;
+comment on column public.importacoes_pendentes.confianca ...;
+```
+
+Implementacao relacionada:
+
+- Issue GitHub #25 criada para a Fase 1.
+- `plans/Implementation_plan_images-v1.md`: plano tecnico de execucao.
+
+Status:
+
+- Criado no repositorio em 2026-06-03.
+- Validado antes da aplicacao com `npm run supabase:migrations:dry-run`: apenas `20260603213000_snapshot_import_metadata.sql` seria enviada.
+- Aplicado no Supabase em 2026-06-03 com `npm run supabase:migrations:push`.
+- Validacao pos-aplicacao com `npm run supabase:migrations:dry-run`: `Remote database is up to date`.
+
 ## Correcao de Loading no Modal da Unidade - Issue #23
 
 Data/hora de criacao: 2026-05-23 17:50:15 -03:00
