@@ -26,8 +26,36 @@ test.describe('fluxos autenticados com seed', () => {
     await expect(page.getByText(/Cupom importado!/)).toBeVisible({ timeout: 20_000 });
     await page.getByRole('button', { name: /Triagem Pendente/ }).click();
 
-    await expect(page.getByText('Triagem de Cupom Fiscal')).toBeVisible();
+    await expect(page.getByText('Triagem de Importações')).toBeVisible();
     await expect(page.getByText('E2E BISCOITO TESTE').first()).toBeVisible();
+  });
+
+  test('inventario por foto usa IA mockada e cria triagem pendente', async ({ page }) => {
+    await mockSnapshotExtraction(page);
+
+    await page.getByPlaceholder('Cômodo da foto').fill('Cozinha');
+    await page.getByPlaceholder('Armário/local').fill('Despensa E2E');
+    await page.getByPlaceholder('Prateleira/caixa').fill('Prateleira 1');
+
+    const fileChooserPromise = page.waitForEvent('filechooser');
+    await page.getByRole('button', { name: 'Inventário por Foto' }).click();
+    const fileChooser = await fileChooserPromise;
+    const uniqueColor = Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
+    await fileChooser.setFiles({
+      name: 'snapshot-e2e.svg',
+      mimeType: 'image/svg+xml',
+      buffer: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="12"><rect width="16" height="12" fill="#${uniqueColor}"/></svg>`),
+    });
+    await acceptAiConsent(page);
+
+    await expect(page.getByText(/Inventário por Foto importado!/)).toBeVisible({ timeout: 20_000 });
+    await page.getByRole('button', { name: /Triagem Pendente/ }).click();
+
+    await expect(page.getByText('Triagem de Importações')).toBeVisible();
+    await expect(page.getByText('E2E ARROZ SNAPSHOT').first()).toBeVisible();
+    await expect(page.getByText('Foto').first()).toBeVisible();
+    await expect(page.getByText('82% confiança').first()).toBeVisible();
+    await expect(page.locator('input[value="31/12/2099"]').first()).toBeVisible();
   });
 
   test('lista de compras mostra alertas e item manual seed', async ({ page }) => {
@@ -112,6 +140,39 @@ async function mockReceiptExtraction(page: import('@playwright/test').Page) {
             categoria: 'Alimentos',
             quantidade: 1,
             valor: 4.99,
+          },
+        ],
+      }),
+    });
+  });
+}
+
+async function mockSnapshotExtraction(page: import('@playwright/test').Page) {
+  await page.route('**/functions/v1/extract-inventory', async (route) => {
+    const body = route.request().postDataJSON() as { mode?: string };
+
+    if (body.mode !== 'snapshot') {
+      await route.fallback();
+      return;
+    }
+
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        result: [
+          {
+            item: 'E2E ARROZ SNAPSHOT',
+            categoria: 'Alimentos',
+            quantidade: 2,
+            comodo: 'Cozinha',
+            armario: 'Despensa E2E',
+            caixa: 'Prateleira 1',
+            validade: '31/12/2099',
+            marca: 'E2E',
+            codigo_barras: '7890000000000',
+            confianca: 0.82,
+            observacao: 'Item visivel em teste automatizado.',
           },
         ],
       }),

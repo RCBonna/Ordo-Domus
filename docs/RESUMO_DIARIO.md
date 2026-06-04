@@ -21,6 +21,9 @@
 - Implementada a Fase 4 do Inventario por Foto: a triagem passou a exibir origem do item, confianca, observacao da IA, marca/codigo quando disponiveis, validade sugerida e local sugerido.
 - O modal foi renomeado para `Triagem de Importações`, preservando o fluxo de cupom e adicionando leitura visual clara para itens de foto.
 - Validacao da Fase 4: `npm run lint` passou.
+- Implementada a Fase 5 do Inventario por Foto: E2E autenticado passou a cobrir o fluxo mockado de `snapshot`, com criacao de triagem pendente, origem Foto, confianca e validade sugerida.
+- Ajustados testes antigos para o novo titulo `Triagem de Importações` e para evitar ambiguidade entre a aba Inventario e o botao `Inventario por Foto`.
+- Validacoes finais da Fase 5: `npm run lint`, `npm test`, `npm run build` e `npm run test:e2e` passaram; Playwright executou 13 testes com sucesso.
 
 ## 2026-05-23
 

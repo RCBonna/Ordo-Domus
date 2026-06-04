@@ -31,18 +31,31 @@ test.describe('entrada autenticada', () => {
   });
 
   test('inventario lista item seed', async ({ page }) => {
-    await page.getByRole('button', { name: 'INVENTÁRIO' }).click();
+    await page.getByRole('button', { name: 'INVENTÁRIO', exact: true }).click();
     await page.getByPlaceholder('Buscar por nome, categoria ou cômodo...').fill('E2E Cafe');
 
     await expect(page.getByText('E2E Cafe')).toBeVisible({ timeout: 20_000 });
   });
 
-  test('triagem seed abre itens pendentes', async ({ page }) => {
+  test('triagem abre item pendente criado por importacao mockada', async ({ page }) => {
+    await mockReceiptExtraction(page);
+
+    const fileChooserPromise = page.waitForEvent('filechooser');
+    await page.getByRole('button', { name: 'Importar Cupom' }).click();
+    const fileChooser = await fileChooserPromise;
+    const uniqueColor = Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
+    await fileChooser.setFiles({
+      name: 'cupom-entry-e2e.svg',
+      mimeType: 'image/svg+xml',
+      buffer: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="8" height="8"><rect width="8" height="8" fill="#${uniqueColor}"/></svg>`),
+    });
+    await acceptAiConsent(page);
+
+    await expect(page.getByText(/Cupom importado!/)).toBeVisible({ timeout: 20_000 });
     await page.getByRole('button', { name: /Triagem Pendente/ }).click();
 
-    await expect(page.getByText('Triagem de Cupom Fiscal')).toBeVisible();
-    await expect(page.getByText('E2E CAFE TORRADO 500G')).toBeVisible();
-    await expect(page.getByText('E2E DETERGENTE NEUTRO')).toBeVisible();
+    await expect(page.getByText('Triagem de Importações')).toBeVisible();
+    await expect(page.getByText('E2E CAFE TRIAGEM ENTRY').first()).toBeVisible();
   });
 });
 
@@ -69,6 +82,32 @@ async function mockTextExtraction(page: import('@playwright/test').Page) {
           quantidade: 1,
           transcricao: body.text || 'Guardei um pacote de macarrao e2e na cozinha.',
         },
+      }),
+    });
+  });
+}
+
+async function mockReceiptExtraction(page: import('@playwright/test').Page) {
+  await page.route('**/functions/v1/extract-inventory', async (route) => {
+    const body = route.request().postDataJSON() as { mode?: string };
+
+    if (body.mode !== 'receipt') {
+      await route.fallback();
+      return;
+    }
+
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        result: [
+          {
+            item: 'E2E CAFE TRIAGEM ENTRY',
+            categoria: 'Alimentos',
+            quantidade: 1,
+            valor: 9.99,
+          },
+        ],
       }),
     });
   });
