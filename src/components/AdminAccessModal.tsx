@@ -35,20 +35,20 @@ export function AdminAccessModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={onClose}
-            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm dark:bg-black/70"
           />
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative z-10 flex max-h-[calc(100dvh-2rem)] w-full max-w-3xl flex-col overflow-hidden rounded-[40px] border border-slate-200 bg-white shadow-2xl"
+            className="relative z-10 flex max-h-[calc(100dvh-2rem)] w-full max-w-3xl flex-col overflow-hidden rounded-[40px] border border-slate-200 bg-white shadow-2xl dark:border-border dark:bg-card"
           >
             <div className="absolute top-8 right-8 z-20">
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={onClose}
-                className="text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full"
+                className="text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full dark:text-muted-foreground dark:hover:bg-rose-950/40 dark:hover:text-rose-300"
               >
                 <X className="w-5 h-5" />
               </Button>
@@ -65,7 +65,7 @@ export function AdminAccessModal({
                   resolvedTheme={resolvedTheme}
                   onThemePreferenceChange={onThemePreferenceChange}
                 />
-                <div className="h-px bg-slate-100" />
+                <div className="h-px bg-slate-100 dark:bg-border" />
                 <AdminPanel unidadeId={unidadeAtiva.id} papel={unidadeAtiva.papel} unidadeNome={unidadeAtiva.nome} />
               </div>
             </ScrollArea>

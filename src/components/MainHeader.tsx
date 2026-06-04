@@ -46,20 +46,20 @@ export function MainHeader({
   };
 
   return (
-    <div className="sticky top-0 z-50 bg-slate-50/80 backdrop-blur-2xl border-b border-slate-200/50 px-4 py-3 sm:px-8 sm:py-4">
+    <div className="sticky top-0 z-50 border-b border-slate-200/50 bg-slate-50/80 px-4 py-3 backdrop-blur-2xl transition-colors dark:border-border/60 dark:bg-background/85 sm:px-8 sm:py-4">
       <div className="max-w-7xl mx-auto flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         
         {/* Lado Esquerdo: Logo e Seletor */}
         <div className="flex items-center justify-between sm:justify-start gap-4 sm:gap-8">
           <div className="flex items-center gap-3 group cursor-pointer" onClick={() => setActiveTab('dashboard')}>
             <div className="w-10 h-10 bg-primary rounded-2xl flex items-center justify-center shadow-lg shadow-primary/30 group-hover:scale-105 transition-transform">
-              <Package className="w-6 h-6 text-white" />
+              <Package className="w-6 h-6 text-primary-foreground" />
             </div>
             <div className="flex flex-col">
-              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tighter flex items-center gap-1 leading-none">
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tighter flex items-center gap-1 leading-none dark:text-foreground">
                 ORDO <span className="text-primary">DOMUS</span>
               </h1>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mt-1">Smart Home Inventory</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mt-1 dark:text-muted-foreground">Smart Home Inventory</p>
               
               {/* Seletor de Unidade Compacto (Abaixo do Nome se não selecionada) */}
               {!unidadeAtiva && unidades.length > 0 && (
@@ -75,7 +75,7 @@ export function MainHeader({
                         e.stopPropagation();
                         setUnidadeAtiva(u);
                       }}
-                      className="px-3 py-1.5 bg-white/50 hover:bg-primary/5 border border-slate-200 hover:border-primary/30 rounded-xl text-[9px] font-black text-slate-500 hover:text-primary transition-all uppercase tracking-widest shadow-sm"
+                      className="px-3 py-1.5 bg-white/50 hover:bg-primary/5 border border-slate-200 hover:border-primary/30 rounded-xl text-[9px] font-black text-slate-500 hover:text-primary transition-all uppercase tracking-widest shadow-sm dark:border-border dark:bg-card/80 dark:text-muted-foreground"
                     >
                       {u.nome}
                     </button>
@@ -87,9 +87,9 @@ export function MainHeader({
           
           {unidadeAtiva && (
             <>
-              <div className="h-8 w-px bg-slate-200 hidden sm:block" />
+              <div className="h-8 w-px bg-slate-200 hidden dark:bg-border sm:block" />
               <div className="relative flex flex-col gap-1">
-                <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest leading-none ml-1">Unidade Ativa</p>
+                <p className="text-[9px] font-black text-slate-300 uppercase tracking-widest leading-none ml-1 dark:text-muted-foreground">Unidade Ativa</p>
                 <button
                   type="button"
                   onClick={(e) => {
@@ -100,15 +100,15 @@ export function MainHeader({
                   }}
                   aria-haspopup={canSwitchUnit ? 'menu' : undefined}
                   aria-expanded={canSwitchUnit ? isUnitMenuOpen : undefined}
-                  className={`flex items-center gap-2 bg-white px-4 py-2 rounded-2xl border border-slate-100 group transition-all shadow-sm text-left ${
-                    canSwitchUnit ? 'cursor-pointer hover:border-primary/20 hover:bg-primary/5' : 'cursor-default'
+                  className={`flex items-center gap-2 bg-white px-4 py-2 rounded-2xl border border-slate-100 group transition-all shadow-sm text-left dark:border-border dark:bg-card ${
+                    canSwitchUnit ? 'cursor-pointer hover:border-primary/20 hover:bg-primary/5 dark:hover:bg-accent' : 'cursor-default'
                   }`}
                   title={canSwitchUnit ? 'Trocar unidade' : 'Unidade ativa'}
                 >
                   <MapPin className="w-3.5 h-3.5 text-primary opacity-50 group-hover:opacity-100 transition-opacity" />
-                  <span className="font-bold text-sm text-slate-700">{unidadeAtiva.nome}</span>
+                  <span className="font-bold text-sm text-slate-700 dark:text-foreground">{unidadeAtiva.nome}</span>
                   {canSwitchUnit && (
-                    <ChevronDown className={`ml-2 w-3.5 h-3.5 text-slate-400 transition-transform ${isUnitMenuOpen ? 'rotate-180 text-primary' : ''}`} />
+                    <ChevronDown className={`ml-2 w-3.5 h-3.5 text-slate-400 transition-transform dark:text-muted-foreground ${isUnitMenuOpen ? 'rotate-180 text-primary' : ''}`} />
                   )}
                 </button>
 
@@ -116,7 +116,7 @@ export function MainHeader({
                   <motion.div
                     initial={{ opacity: 0, y: -6 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="absolute left-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-2xl border border-slate-100 bg-white p-1 shadow-xl shadow-slate-200/70"
+                    className="absolute left-0 top-full z-50 mt-2 w-64 overflow-hidden rounded-2xl border border-slate-100 bg-white p-1 shadow-xl shadow-slate-200/70 dark:border-border dark:bg-popover dark:shadow-black/30"
                     role="menu"
                   >
                     {unidades.map((unidade) => {
@@ -133,7 +133,7 @@ export function MainHeader({
                           className={`flex w-full items-center justify-between gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-bold transition-colors ${
                             isActive
                               ? 'bg-primary/5 text-primary'
-                              : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                              : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900 dark:text-muted-foreground dark:hover:bg-accent dark:hover:text-foreground'
                           }`}
                           role="menuitem"
                         >
@@ -160,14 +160,14 @@ export function MainHeader({
                   variant="outline"
                   size="icon"
                   title="Configurações da unidade"
-                  className="relative w-11 h-11 rounded-2xl border-slate-200 hover:border-primary/30 hover:bg-primary/5 transition-all group"
+                  className="relative w-11 h-11 rounded-2xl border-slate-200 hover:border-primary/30 hover:bg-primary/5 transition-all group dark:border-border dark:bg-card dark:hover:bg-accent"
                 >
-                  <Settings className="w-5 h-5 text-slate-500 group-hover:text-primary transition-colors" />
+                  <Settings className="w-5 h-5 text-slate-500 group-hover:text-primary transition-colors dark:text-muted-foreground" />
                   {pendentesCount > 0 && (
                     <motion.div 
                       initial={{ scale: 0 }}
                       animate={{ scale: 1 }}
-                      className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-sm"
+                      className="absolute -top-1 -right-1 w-5 h-5 bg-rose-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-sm dark:border-card"
                     >
                       {pendentesCount}
                     </motion.div>
@@ -175,11 +175,11 @@ export function MainHeader({
                 </Button>
               )}
 
-              <div className="h-8 w-px bg-slate-200 hidden sm:block mx-1" />
+              <div className="h-8 w-px bg-slate-200 hidden dark:bg-border sm:block mx-1" />
 
               <div className="hidden sm:flex flex-col items-end">
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Usuário</p>
-                <p className="text-sm font-bold text-slate-700 max-w-[150px] truncate">{currentUserEmail}</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1 dark:text-muted-foreground">Usuário</p>
+                <p className="text-sm font-bold text-slate-700 max-w-[150px] truncate dark:text-foreground">{currentUserEmail}</p>
               </div>
 
               {isSystemAdmin && (
@@ -187,7 +187,7 @@ export function MainHeader({
                   variant="outline" 
                   size="icon" 
                   title="SaaS Admin (Métricas Globais)"
-                  className="relative w-11 h-11 rounded-2xl border-emerald-200 text-emerald-600 hover:border-emerald-400 hover:bg-emerald-50 transition-all group"
+                  className="relative w-11 h-11 rounded-2xl border-emerald-200 text-emerald-600 hover:border-emerald-400 hover:bg-emerald-50 transition-all group dark:border-emerald-900/60 dark:text-emerald-300 dark:hover:bg-emerald-950/40"
                   onClick={() => setActiveTab('saas-admin')}
                 >
                   <BarChart2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
@@ -198,7 +198,7 @@ export function MainHeader({
                 variant="ghost" 
                 size="icon" 
                 title="Sair do sistema"
-                className="w-11 h-11 rounded-2xl hover:bg-rose-50 hover:text-rose-500 text-slate-400 transition-colors"
+                className="w-11 h-11 rounded-2xl hover:bg-rose-50 hover:text-rose-500 text-slate-400 transition-colors dark:text-muted-foreground dark:hover:bg-rose-950/40 dark:hover:text-rose-300"
                 onClick={onSignOut}
               >
                 <LogOut className="w-5 h-5" />
@@ -211,14 +211,14 @@ export function MainHeader({
       {/* Tabs de Navegação - Só aparece se tiver unidade ativa */}
       {unidadeAtiva && isSistemaLiberado && (
         <div className="max-w-7xl mx-auto mt-4 sm:mt-6 overflow-x-auto">
-          <div className="flex items-center gap-1 sm:gap-2 p-1 bg-slate-100/50 w-fit rounded-[20px] border border-slate-200/30">
+          <div className="flex items-center gap-1 sm:gap-2 p-1 bg-slate-100/50 w-fit rounded-[20px] border border-slate-200/30 dark:border-border dark:bg-muted/40">
             <button 
               onClick={() => {
                 setActiveTab('entrada');
                 setIsConsumoMode(false);
               }}
               title="Adicionar novos itens ao estoque"
-              className={`flex items-center gap-2 px-4 sm:px-6 py-2.5 rounded-2xl text-xs sm:text-sm font-black transition-all whitespace-nowrap ${activeTab === 'entrada' ? 'bg-white text-primary shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+              className={`flex items-center gap-2 px-4 sm:px-6 py-2.5 rounded-2xl text-xs sm:text-sm font-black transition-all whitespace-nowrap ${activeTab === 'entrada' ? 'bg-white text-primary shadow-sm dark:bg-card' : 'text-slate-400 hover:text-slate-600 dark:text-muted-foreground dark:hover:text-foreground'}`}
             >
               <Box className="w-4 h-4" /> ENTRADA
             </button>
@@ -228,7 +228,7 @@ export function MainHeader({
                 setIsConsumoMode(false);
               }}
               title="Ver e editar lista de produtos"
-              className={`flex items-center gap-2 px-4 sm:px-6 py-2.5 rounded-2xl text-xs sm:text-sm font-black transition-all whitespace-nowrap ${activeTab === 'inventário' && !isConsumoMode ? 'bg-white text-primary shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+              className={`flex items-center gap-2 px-4 sm:px-6 py-2.5 rounded-2xl text-xs sm:text-sm font-black transition-all whitespace-nowrap ${activeTab === 'inventário' && !isConsumoMode ? 'bg-white text-primary shadow-sm dark:bg-card' : 'text-slate-400 hover:text-slate-600 dark:text-muted-foreground dark:hover:text-foreground'}`}
             >
               <TableIcon className="w-4 h-4" /> INVENTÁRIO
             </button>
@@ -238,7 +238,7 @@ export function MainHeader({
                 setIsConsumoMode(false);
               }}
               title="Ver itens faltando e estoque baixo"
-              className={`flex items-center gap-2 px-4 sm:px-6 py-2.5 rounded-2xl text-xs sm:text-sm font-black transition-all whitespace-nowrap ${activeTab === 'compras' ? 'bg-white text-primary shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+              className={`flex items-center gap-2 px-4 sm:px-6 py-2.5 rounded-2xl text-xs sm:text-sm font-black transition-all whitespace-nowrap ${activeTab === 'compras' ? 'bg-white text-primary shadow-sm dark:bg-card' : 'text-slate-400 hover:text-slate-600 dark:text-muted-foreground dark:hover:text-foreground'}`}
             >
               <ClipboardList className="w-4 h-4" /> FALTAS
             </button>
@@ -248,7 +248,7 @@ export function MainHeader({
                 setIsConsumoMode(true);
               }}
               title="Registrar saída e consumo de itens"
-              className={`flex items-center gap-2 px-4 sm:px-6 py-2.5 rounded-2xl text-xs sm:text-sm font-black transition-all whitespace-nowrap ${activeTab === 'inventário' && isConsumoMode ? 'bg-white text-primary shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+              className={`flex items-center gap-2 px-4 sm:px-6 py-2.5 rounded-2xl text-xs sm:text-sm font-black transition-all whitespace-nowrap ${activeTab === 'inventário' && isConsumoMode ? 'bg-white text-primary shadow-sm dark:bg-card' : 'text-slate-400 hover:text-slate-600 dark:text-muted-foreground dark:hover:text-foreground'}`}
             >
               <ShoppingCart className="w-4 h-4" /> CONSUMO
             </button>
@@ -258,7 +258,7 @@ export function MainHeader({
                 setIsConsumoMode(false);
               }}
               title="Ver estatísticas e histórico de movimentações"
-              className={`flex items-center gap-2 px-4 sm:px-6 py-2.5 rounded-2xl text-xs sm:text-sm font-black transition-all whitespace-nowrap ${activeTab === 'dashboard' ? 'bg-white text-primary shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+              className={`flex items-center gap-2 px-4 sm:px-6 py-2.5 rounded-2xl text-xs sm:text-sm font-black transition-all whitespace-nowrap ${activeTab === 'dashboard' ? 'bg-white text-primary shadow-sm dark:bg-card' : 'text-slate-400 hover:text-slate-600 dark:text-muted-foreground dark:hover:text-foreground'}`}
             >
               <BarChart2 className="w-4 h-4" /> DASHBOARD
             </button>

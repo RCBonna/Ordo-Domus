@@ -75,15 +75,15 @@ export default function Auth() {
 
   return (
     <div className="w-full">
-      <div className="flex gap-2 mb-6 p-1 bg-gray-100 rounded-xl">
+      <div className="flex gap-2 mb-6 p-1 bg-gray-100 rounded-xl dark:bg-muted">
         <button 
-          className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${isLogin ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}
+          className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${isLogin ? 'bg-white shadow-sm text-gray-900 dark:bg-card dark:text-foreground' : 'text-gray-500 hover:text-gray-900 dark:text-muted-foreground dark:hover:text-foreground'}`}
           onClick={() => { setIsLogin(true); setMessage(null); }}
         >
           Entrar
         </button>
         <button 
-          className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${!isLogin ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-900'}`}
+          className={`flex-1 py-2 text-sm font-medium rounded-lg transition-colors ${!isLogin ? 'bg-white shadow-sm text-gray-900 dark:bg-card dark:text-foreground' : 'text-gray-500 hover:text-gray-900 dark:text-muted-foreground dark:hover:text-foreground'}`}
           onClick={() => { setIsLogin(false); setMessage(null); }}
         >
           Criar Conta
@@ -91,7 +91,7 @@ export default function Auth() {
       </div>
 
       {message && (
-        <div className={`p-4 mb-6 rounded-xl flex items-start gap-3 text-sm font-medium ${message.type === 'error' ? 'bg-red-50 text-red-800 border border-red-100' : 'bg-green-50 text-green-800 border border-green-100'}`}>
+        <div className={`p-4 mb-6 rounded-xl flex items-start gap-3 text-sm font-medium ${message.type === 'error' ? 'bg-red-50 text-red-800 border border-red-100 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200' : 'bg-green-50 text-green-800 border border-green-100 dark:border-green-900/60 dark:bg-green-950/40 dark:text-green-200'}`}>
           {message.type === 'error' ? <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" /> : <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" />}
           <span>{message.text}</span>
         </div>
@@ -126,7 +126,7 @@ export default function Auth() {
             <button 
               type="button"
               aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:text-muted-foreground dark:hover:text-foreground"
               onClick={() => setShowPassword(!showPassword)}
             >
               {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}

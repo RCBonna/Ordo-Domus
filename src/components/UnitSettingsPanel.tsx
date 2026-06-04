@@ -105,22 +105,22 @@ export function UnitSettingsPanel({
   return (
     <div className="space-y-6">
       <div className="flex items-start gap-4">
-        <div className="rounded-2xl bg-emerald-50 p-3 text-emerald-600">
+        <div className="rounded-2xl bg-emerald-50 p-3 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300">
           <Settings className="h-6 w-6" />
         </div>
         <div>
-          <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-emerald-500">Configuracoes</p>
-          <h3 className="text-xl font-black leading-tight text-slate-900">Unidade</h3>
-          <p className="mt-1 text-sm font-medium leading-relaxed text-slate-500">
+          <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-emerald-500 dark:text-emerald-300">Configuracoes</p>
+          <h3 className="text-xl font-black leading-tight text-slate-900 dark:text-foreground">Unidade</h3>
+          <p className="mt-1 text-sm font-medium leading-relaxed text-slate-500 dark:text-muted-foreground">
             Dados basicos, governanca e espaco para preferencias futuras.
           </p>
         </div>
       </div>
 
-      <div className="rounded-[28px] border border-slate-100 bg-slate-50/70 p-5">
+      <div className="rounded-[28px] border border-slate-100 bg-slate-50/70 p-5 dark:border-border dark:bg-muted/40">
         <div className="mb-4 flex items-center gap-3">
-          <Building2 className="h-5 w-5 text-slate-400" />
-          <p className="text-xs font-black uppercase tracking-widest text-slate-400">Dados basicos</p>
+          <Building2 className="h-5 w-5 text-slate-400 dark:text-muted-foreground" />
+          <p className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-muted-foreground">Dados basicos</p>
         </div>
         <div className="space-y-2">
           <Label htmlFor="unit-name">Nome da unidade</Label>
@@ -131,7 +131,7 @@ export function UnitSettingsPanel({
               onChange={(event) => setName(event.target.value)}
               disabled={!isAdmin || isSaving}
               maxLength={120}
-              className="h-11 rounded-2xl bg-white"
+              className="h-11 rounded-2xl bg-white dark:bg-card"
             />
             <Button
               type="button"
@@ -152,13 +152,13 @@ export function UnitSettingsPanel({
         <GovernanceTile label="Edicao" value={isAdmin ? 'Liberada' : 'Bloqueada'} />
       </div>
 
-      <div className="rounded-[28px] border border-slate-100 bg-slate-50/70 p-5">
+      <div className="rounded-[28px] border border-slate-100 bg-slate-50/70 p-5 dark:border-border dark:bg-muted/40">
         <div className="mb-4 flex items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <Monitor className="h-5 w-5 text-slate-400" />
-            <p className="text-xs font-black uppercase tracking-widest text-slate-400">Tema</p>
+            <Monitor className="h-5 w-5 text-slate-400 dark:text-muted-foreground" />
+            <p className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-muted-foreground">Tema</p>
           </div>
-          <span className="rounded-full bg-white px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-400">
+          <span className="rounded-full bg-white px-3 py-1 text-[10px] font-black uppercase tracking-widest text-slate-400 dark:bg-card dark:text-muted-foreground">
             {resolvedTheme === 'dark' ? 'Escuro' : 'Claro'}
           </span>
         </div>
@@ -184,12 +184,12 @@ export function UnitSettingsPanel({
         </div>
       </div>
 
-      <div className="rounded-[28px] border border-dashed border-slate-200 bg-white p-5">
+      <div className="rounded-[28px] border border-dashed border-slate-200 bg-white p-5 dark:border-border dark:bg-card">
         <div className="mb-2 flex items-center gap-3">
           <ShieldCheck className="h-5 w-5 text-indigo-500" />
-          <p className="text-xs font-black uppercase tracking-widest text-slate-400">Proximas configuracoes</p>
+          <p className="text-xs font-black uppercase tracking-widest text-slate-400 dark:text-muted-foreground">Proximas configuracoes</p>
         </div>
-        <p className="text-sm font-medium leading-relaxed text-slate-500">
+        <p className="text-sm font-medium leading-relaxed text-slate-500 dark:text-muted-foreground">
           Permissoes por papel, locais padrao, preferencias de convite e politicas da unidade ficam reservadas para evolucoes futuras.
         </p>
       </div>
@@ -217,7 +217,7 @@ function ThemePreferenceButton({
       className={`flex h-12 items-center justify-center gap-2 rounded-2xl border px-3 text-sm font-black transition-all ${
         isActive
           ? 'border-primary bg-primary text-primary-foreground shadow-lg shadow-primary/10'
-          : 'border-slate-100 bg-white text-slate-500 hover:border-primary/20 hover:bg-primary/5 hover:text-primary'
+          : 'border-slate-100 bg-white text-slate-500 hover:border-primary/20 hover:bg-primary/5 hover:text-primary dark:border-border dark:bg-card dark:text-muted-foreground dark:hover:bg-accent dark:hover:text-foreground'
       }`}
     >
       {icon}
@@ -228,9 +228,9 @@ function ThemePreferenceButton({
 
 function GovernanceTile({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-slate-100 bg-white p-4">
-      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</p>
-      <p className="mt-1 truncate text-sm font-black text-slate-800">{value}</p>
+    <div className="rounded-2xl border border-slate-100 bg-white p-4 dark:border-border dark:bg-card">
+      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-muted-foreground">{label}</p>
+      <p className="mt-1 truncate text-sm font-black text-slate-800 dark:text-foreground">{value}</p>
     </div>
   );
 }

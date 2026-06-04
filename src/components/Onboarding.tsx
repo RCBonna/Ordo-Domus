@@ -107,12 +107,12 @@ export default function Onboarding({ onSuccess }: OnboardingProps) {
   return (
     <div className="max-w-4xl mx-auto my-12">
       <div className="text-center mb-8">
-        <h2 className="text-3xl font-bold tracking-tight text-gray-900 mb-2">Bem-vindo(a) ao Ordo Domus!</h2>
+        <h2 className="text-3xl font-bold tracking-tight text-gray-900 mb-2 dark:text-foreground">Bem-vindo(a) ao Ordo Domus!</h2>
         <p className="text-muted-foreground text-lg">Para começar, você precisa criar uma Unidade nova ou entrar em uma existente.</p>
       </div>
 
       {message && (
-        <div className={`p-4 mb-8 rounded-xl flex items-start gap-3 text-sm font-medium max-w-2xl mx-auto ${message.type === 'error' ? 'bg-red-50 text-red-800 border border-red-100' : 'bg-green-50 text-green-800 border border-green-100'}`}>
+        <div className={`p-4 mb-8 rounded-xl flex items-start gap-3 text-sm font-medium max-w-2xl mx-auto ${message.type === 'error' ? 'bg-red-50 text-red-800 border border-red-100 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-200' : 'bg-green-50 text-green-800 border border-green-100 dark:border-green-900/60 dark:bg-green-950/40 dark:text-green-200'}`}>
           {message.type === 'error' ? <AlertCircle className="w-5 h-5 shrink-0 mt-0.5" /> : <CheckCircle2 className="w-5 h-5 shrink-0 mt-0.5" />}
           <span>{message.text}</span>
         </div>
@@ -120,7 +120,7 @@ export default function Onboarding({ onSuccess }: OnboardingProps) {
 
       <div className="grid md:grid-cols-2 gap-8">
         {/* CARD 1: Criar Unidade */}
-        <Card className="border-none shadow-md rounded-[24px]">
+        <Card className="border-none shadow-md rounded-[24px] dark:border dark:border-border dark:bg-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Plus className="w-5 h-5 text-primary" />
@@ -152,7 +152,7 @@ export default function Onboarding({ onSuccess }: OnboardingProps) {
         </Card>
 
         {/* CARD 2: Entrar via Código */}
-        <Card className="border-none shadow-md rounded-[24px]">
+        <Card className="border-none shadow-md rounded-[24px] dark:border dark:border-border dark:bg-card">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <LogIn className="w-5 h-5 text-primary" />
