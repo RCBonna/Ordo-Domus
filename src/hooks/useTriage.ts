@@ -40,6 +40,22 @@ export interface TriageItem {
   quantidade: number;
   valor_unitario: number | null;
   categoria_sugerida?: string | null;
+  origem?: 'receipt' | 'snapshot' | 'barcode' | 'video' | string;
+  source_metadata?: {
+    marca?: string | null;
+    codigo_barras?: string | null;
+    observacao?: string | null;
+    context?: {
+      comodo?: string | null;
+      armario?: string | null;
+      caixa?: string | null;
+    } | null;
+  } | null;
+  confianca?: number | null;
+  validade_sugerida?: string | null;
+  comodo_sugerido?: string | null;
+  armario_sugerido?: string | null;
+  caixa_sugerida?: string | null;
   match_id: string | null;
   criado_em: string;
   // Smart Match fields (preenchido pelo dicionário)
@@ -55,10 +71,10 @@ export function buildTriageDraft(item: TriageItem): ReceiptTriageDraft {
   return {
     nome: item.dictMatch?.nome_oficial_inventario || inventoryMatch?.nome || item.nome_bruto,
     categoria: normalizarCategoria(item.dictMatch?.categoria || inventoryMatch?.categoria || item.categoria_sugerida || inferCategoryFromName(item.nome_bruto)),
-    comodo: item.dictMatch?.comodo || inventoryMatch?.comodo || '',
-    armario: inventoryMatch?.armario || '',
-    caixa: inventoryMatch?.caixa || '',
-    validade: inventoryMatch?.validade || '',
+    comodo: item.comodo_sugerido || item.dictMatch?.comodo || inventoryMatch?.comodo || '',
+    armario: item.armario_sugerido || inventoryMatch?.armario || '',
+    caixa: item.caixa_sugerida || inventoryMatch?.caixa || '',
+    validade: item.validade_sugerida || inventoryMatch?.validade || '',
     quantidade: Math.max(1, Number(item.quantidade) || 1),
   };
 }

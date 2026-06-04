@@ -18,6 +18,9 @@
 - Implementada a Fase 3 do Inventario por Foto: adicionado consentimento `snapshot`, service `extractInventoryDataFromSnapshot`, hook `useSnapshotImport`, compressao de imagem com limite 1400 x 1600 px e botao "Inventario por Foto" na tela de entrada.
 - A captura de Inventario por Foto grava candidatos em `importacoes_pendentes` com origem `snapshot`, hash/metadados de origem, confianca, validade sugerida e local sugerido.
 - Validacao da Fase 3: `npm run lint` passou.
+- Implementada a Fase 4 do Inventario por Foto: a triagem passou a exibir origem do item, confianca, observacao da IA, marca/codigo quando disponiveis, validade sugerida e local sugerido.
+- O modal foi renomeado para `Triagem de Importações`, preservando o fluxo de cupom e adicionando leitura visual clara para itens de foto.
+- Validacao da Fase 4: `npm run lint` passou.
 
 ## 2026-05-23
 

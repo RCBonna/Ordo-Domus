@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
-import { X, Trash2, Loader2, Package, Sparkles, Save, AlertTriangle } from 'lucide-react';
+import { X, Trash2, Loader2, Package, Sparkles, Save, AlertTriangle, Camera } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -152,7 +152,7 @@ export function TriageModal({ isOpen, onClose, unidadeId, onItemFinalized, onTri
             <div>
               <h2 className="flex items-center gap-2 text-xl font-bold text-gray-900">
                 <Package className="h-5 w-5 text-indigo-600" />
-                Triagem de Cupom Fiscal
+                Triagem de Importações
               </h2>
               <p className="mt-1 text-sm text-gray-500">
                 Corrija os dados e efetive os itens sem sair da triagem.
@@ -306,25 +306,48 @@ export function TriageModal({ isOpen, onClose, unidadeId, onItemFinalized, onTri
                 const isReady = isDraftReady(draft);
                 const isSaving = savingItemId === item.id;
                 const tone = getMatchTone(item.matchLevel);
+                const origin = getOriginMeta(item.origem);
+                const confidence = typeof item.confianca === 'number' ? item.confianca : null;
+                const isLowConfidenceSnapshot = item.origem === 'snapshot' && confidence !== null && confidence < 0.6;
+                const observation = item.source_metadata?.observacao;
+                const barcode = item.source_metadata?.codigo_barras;
+                const brand = item.source_metadata?.marca;
 
                 return (
                   <div
                     key={item.id}
-                    className={`rounded-xl border p-4 shadow-sm transition-shadow hover:shadow-md ${tone.card}`}
+                    className={`rounded-xl border p-4 shadow-sm transition-shadow hover:shadow-md ${isLowConfidenceSnapshot ? 'border-amber-300 bg-amber-50/70 ring-1 ring-amber-100' : tone.card}`}
                   >
                     <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <h3 className="font-semibold text-gray-900">{item.nome_bruto}</h3>
+                          <Badge className={`px-1.5 py-0 text-[10px] font-bold ${origin.badge}`}>
+                            {origin.icon}
+                            {origin.label}
+                          </Badge>
                           <Badge className={`px-1.5 py-0 text-[10px] font-bold ${tone.badge}`}>
                             <Sparkles className="mr-0.5 h-3 w-3" />
                             {tone.label}
                           </Badge>
+                          {confidence !== null && (
+                            <Badge className={`px-1.5 py-0 text-[10px] font-bold ${confidence < 0.6 ? 'border border-amber-200 bg-white text-amber-700' : 'border border-emerald-200 bg-white text-emerald-700'}`}>
+                              {Math.round(confidence * 100)}% confiança
+                            </Badge>
+                          )}
                           <span className={`text-xs font-bold ${tone.reason}`}>{item.matchReason}</span>
                           {item.valor_unitario && (
                             <span className="text-xs font-bold text-gray-400">R$ {item.valor_unitario}</span>
                           )}
                         </div>
+                        {(observation || brand || barcode || item.validade_sugerida) && (
+                          <div className="mt-2 flex flex-wrap gap-2 text-xs font-bold text-slate-500">
+                            {brand && <span>Marca: {brand}</span>}
+                            {barcode && <span>Codigo: {barcode}</span>}
+                            {item.validade_sugerida && <span>Validade sugerida: {item.validade_sugerida}</span>}
+                            {observation && <span className="text-amber-700">Obs.: {observation}</span>}
+                          </div>
+                        )}
                       </div>
                       <div className="flex shrink-0 gap-2">
                         <Button
@@ -455,6 +478,38 @@ function getMatchTone(level: TriageMatchLevel) {
     badge: 'border border-slate-200 bg-slate-50 text-slate-500',
     button: 'bg-slate-700 hover:bg-slate-800',
     reason: 'text-slate-400',
+  };
+}
+
+function getOriginMeta(origin?: string) {
+  if (origin === 'snapshot') {
+    return {
+      label: 'Foto',
+      badge: 'border border-indigo-200 bg-white text-indigo-700',
+      icon: <Camera className="mr-0.5 h-3 w-3" />,
+    };
+  }
+
+  if (origin === 'barcode') {
+    return {
+      label: 'Codigo',
+      badge: 'border border-slate-200 bg-white text-slate-600',
+      icon: <Package className="mr-0.5 h-3 w-3" />,
+    };
+  }
+
+  if (origin === 'video') {
+    return {
+      label: 'Video',
+      badge: 'border border-purple-200 bg-white text-purple-700',
+      icon: <Camera className="mr-0.5 h-3 w-3" />,
+    };
+  }
+
+  return {
+    label: 'Cupom',
+    badge: 'border border-slate-200 bg-white text-slate-500',
+    icon: <Package className="mr-0.5 h-3 w-3" />,
   };
 }
 
