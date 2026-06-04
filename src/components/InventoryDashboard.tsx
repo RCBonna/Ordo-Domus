@@ -238,15 +238,15 @@ export function InventoryDashboard({
           <motion.div
             key={idx}
             whileHover={{ y: -4 }}
-            className="relative overflow-hidden rounded-[24px] bg-white p-5 shadow-sm border border-slate-100"
+            className="relative overflow-hidden rounded-[24px] bg-white p-5 shadow-sm border border-slate-100 dark:border-border dark:bg-card"
           >
             <div className="flex items-start justify-between">
               <div>
-                <p className="text-xs font-black text-slate-400 uppercase tracking-[0.1em] mb-1">{kpi.label}</p>
-                <h3 className="text-3xl font-black text-slate-900 tracking-tight">{kpi.value}</h3>
-                <p className="text-xs font-bold text-slate-400 mt-1">{kpi.sub}</p>
+                <p className="text-xs font-black text-slate-400 uppercase tracking-[0.1em] mb-1 dark:text-muted-foreground">{kpi.label}</p>
+                <h3 className="text-3xl font-black text-slate-900 tracking-tight dark:text-foreground">{kpi.value}</h3>
+                <p className="text-xs font-bold text-slate-400 mt-1 dark:text-muted-foreground">{kpi.sub}</p>
               </div>
-              <div className={`p-3 rounded-2xl bg-gradient-to-br ${kpi.color} text-white shadow-lg shadow-indigo-100`}>
+              <div className={`p-3 rounded-2xl bg-gradient-to-br ${kpi.color} text-white shadow-lg shadow-indigo-100 dark:shadow-black/20`}>
                 <kpi.icon className="w-5 h-5" />
               </div>
             </div>
@@ -263,14 +263,14 @@ export function InventoryDashboard({
           
           {/* Charts Row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card className="border-none shadow-sm rounded-[32px] bg-white overflow-hidden border border-slate-100">
+            <Card className="border-none shadow-sm rounded-[32px] bg-white overflow-hidden border border-slate-100 dark:border-border dark:bg-card">
               <div className="p-6 pb-0 flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">Cômodos</h3>
-                  <p className="text-xs text-slate-400 font-bold">Distribuição por ambiente</p>
+                  <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider dark:text-foreground">Cômodos</h3>
+                  <p className="text-xs text-slate-400 font-bold dark:text-muted-foreground">Distribuição por ambiente</p>
                 </div>
-                <div className="p-2 bg-slate-50 rounded-xl">
-                  <MapPin className="w-4 h-4 text-slate-400" />
+                <div className="p-2 bg-slate-50 rounded-xl dark:bg-muted">
+                  <MapPin className="w-4 h-4 text-slate-400 dark:text-muted-foreground" />
                 </div>
               </div>
               <div className="h-[280px] w-full p-4">
@@ -305,14 +305,14 @@ export function InventoryDashboard({
               </div>
             </Card>
 
-            <Card className="border-none shadow-sm rounded-[32px] bg-white overflow-hidden border border-slate-100">
+            <Card className="border-none shadow-sm rounded-[32px] bg-white overflow-hidden border border-slate-100 dark:border-border dark:bg-card">
               <div className="p-6 pb-0 flex items-center justify-between">
                 <div>
-                  <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider">Mix de Categorias</h3>
-                  <p className="text-xs text-slate-400 font-bold">Variedade do inventário</p>
+                  <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider dark:text-foreground">Mix de Categorias</h3>
+                  <p className="text-xs text-slate-400 font-bold dark:text-muted-foreground">Variedade do inventário</p>
                 </div>
-                <div className="p-2 bg-slate-50 rounded-xl">
-                  <PieChartIcon className="w-4 h-4 text-slate-400" />
+                <div className="p-2 bg-slate-50 rounded-xl dark:bg-muted">
+                  <PieChartIcon className="w-4 h-4 text-slate-400 dark:text-muted-foreground" />
                 </div>
               </div>
               <div className="h-[280px] w-full p-4">
@@ -344,16 +344,16 @@ export function InventoryDashboard({
           </div>
 
           {/* Expiry Radar (Radar de Validade) */}
-          <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm">
+          <div className="bg-white rounded-[32px] p-8 border border-slate-100 shadow-sm dark:border-border dark:bg-card">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="text-lg font-black text-slate-800 flex items-center gap-2">
+                <h3 className="text-lg font-black text-slate-800 flex items-center gap-2 dark:text-foreground">
                   <Calendar className="w-5 h-5 text-amber-500" />
                   Próximos Vencimentos
                 </h3>
-                <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">Itens que precisam de atenção</p>
+                <p className="text-xs text-slate-400 font-bold uppercase tracking-wider dark:text-muted-foreground">Itens que precisam de atenção</p>
               </div>
-              <Badge variant="outline" className="rounded-full px-3 py-1 text-xs font-black border-amber-100 text-amber-600 bg-amber-50">
+              <Badge variant="outline" className="rounded-full px-3 py-1 text-xs font-black border-amber-100 text-amber-600 bg-amber-50 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300">
                 {expiringThirtyDaysCount} alertas
               </Badge>
             </div>
@@ -367,16 +367,16 @@ export function InventoryDashboard({
                   <div 
                     key={idx} 
                     onClick={() => onNavigateToItem?.(item.nome)}
-                    className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 group hover:border-amber-200 hover:bg-amber-50/30 transition-all cursor-pointer"
+                    className="flex items-center gap-4 p-4 rounded-2xl bg-slate-50 border border-slate-100 group hover:border-amber-200 hover:bg-amber-50/30 transition-all cursor-pointer dark:border-border dark:bg-muted/50 dark:hover:border-amber-900/60 dark:hover:bg-amber-950/30"
                   >
-                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isUrgent ? 'bg-orange-100 text-orange-500' : 'bg-amber-100 text-amber-500'}`}>
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${isUrgent ? 'bg-orange-100 text-orange-500 dark:bg-orange-950/50 dark:text-orange-300' : 'bg-amber-100 text-amber-500 dark:bg-amber-950/50 dark:text-amber-300'}`}>
                       <Clock className="w-5 h-5" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="font-bold text-slate-700 text-sm truncate group-hover:text-amber-700 transition-colors">{item.nome}</p>
+                      <p className="font-bold text-slate-700 text-sm truncate group-hover:text-amber-700 transition-colors dark:text-foreground dark:group-hover:text-amber-200">{item.nome}</p>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-slate-400 font-bold uppercase">{item.comodo}</span>
-                        <span className="text-xs text-slate-300">•</span>
+                        <span className="text-xs text-slate-400 font-bold uppercase dark:text-muted-foreground">{item.comodo}</span>
+                        <span className="text-xs text-slate-300 dark:text-muted-foreground">•</span>
                         <span className={`text-xs font-black ${isUrgent ? 'text-orange-500' : 'text-amber-500'}`}>
                           {days === 0 ? 'Vence HOJE' : `Em ${days} dias`}
                         </span>
@@ -387,7 +387,7 @@ export function InventoryDashboard({
                 );
               })}
               {[...visibleUrgentExpiryItems, ...visibleExpiringSoon].length === 0 && (
-                <div className="col-span-full py-10 flex flex-col items-center justify-center text-slate-300">
+                <div className="col-span-full py-10 flex flex-col items-center justify-center text-slate-300 dark:text-muted-foreground">
                   <Clock className="w-12 h-12 mb-2 opacity-20" />
                   <p className="italic text-sm font-bold">Nenhum item vencendo em breve.</p>
                 </div>
@@ -400,8 +400,8 @@ export function InventoryDashboard({
         <div className="space-y-8">
           
           {/* Suggested Replenishment */}
-          <div className="bg-white border border-indigo-100 rounded-[32px] p-8 shadow-sm">
-            <h3 className="text-lg font-black mb-6 flex items-center gap-2 text-indigo-900">
+          <div className="bg-white border border-indigo-100 rounded-[32px] p-8 shadow-sm dark:border-indigo-900/50 dark:bg-card">
+            <h3 className="text-lg font-black mb-6 flex items-center gap-2 text-indigo-900 dark:text-indigo-200">
               <ShoppingCart className="w-5 h-5 text-indigo-500" />
               Reposição Sugerida
             </h3>
@@ -410,14 +410,14 @@ export function InventoryDashboard({
                 <div 
                   key={idx} 
                   onClick={() => onNavigateToItem?.(item.nome)}
-                  className="flex items-center justify-between p-3 bg-indigo-50/50 rounded-2xl border border-indigo-100/50 group hover:bg-indigo-50 hover:border-indigo-200 transition-all cursor-pointer"
+                  className="flex items-center justify-between p-3 bg-indigo-50/50 rounded-2xl border border-indigo-100/50 group hover:bg-indigo-50 hover:border-indigo-200 transition-all cursor-pointer dark:border-indigo-900/50 dark:bg-indigo-950/25 dark:hover:bg-indigo-950/40"
                 >
                   <div className="flex flex-col">
-                    <span className="font-bold text-sm leading-tight text-slate-700 group-hover:text-indigo-700 transition-colors">{item.nome}</span>
-                    <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">{item.comodo}</span>
+                    <span className="font-bold text-sm leading-tight text-slate-700 group-hover:text-indigo-700 transition-colors dark:text-foreground dark:group-hover:text-indigo-200">{item.nome}</span>
+                    <span className="text-xs text-slate-400 font-bold uppercase tracking-wider dark:text-muted-foreground">{item.comodo}</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <div className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded-lg text-xs font-black">
+                    <div className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded-lg text-xs font-black dark:bg-indigo-900/60 dark:text-indigo-200">
                       {item.quantidade} un
                     </div>
                     <ArrowRight className="w-4 h-4 text-indigo-300 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all" />
@@ -425,13 +425,13 @@ export function InventoryDashboard({
                 </div>
               ))}
               {criticalStock.length === 0 && (
-                <div className="text-center py-8 opacity-50 text-indigo-900">
+                <div className="text-center py-8 opacity-50 text-indigo-900 dark:text-indigo-200">
                   <Package className="w-8 h-8 mx-auto mb-2" />
                   <p className="text-xs font-bold">Tudo em ordem!</p>
                 </div>
               )}
               {criticalStockCount > 8 && (
-                <p className="text-xs text-center text-slate-400 font-bold uppercase mt-2">
+                <p className="text-xs text-center text-slate-400 font-bold uppercase mt-2 dark:text-muted-foreground">
                   + {criticalStockCount - 8} itens críticos
                 </p>
               )}
@@ -439,9 +439,9 @@ export function InventoryDashboard({
           </div>
 
           {/* Activity Feed */}
-          <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm flex flex-col h-[520px]">
-            <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-6 flex items-center gap-2 shrink-0">
-              <History className="w-4 h-4 text-slate-400" />
+          <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm flex flex-col h-[520px] dark:border-border dark:bg-card">
+            <h3 className="text-sm font-black text-slate-800 uppercase tracking-widest mb-6 flex items-center gap-2 shrink-0 dark:text-foreground">
+              <History className="w-4 h-4 text-slate-400 dark:text-muted-foreground" />
               Linha do Tempo
             </h3>
             <div className="flex-1 overflow-y-auto -mr-2 pr-2">
@@ -473,7 +473,7 @@ export function InventoryDashboard({
                     label = `Saída de ${item.comodo}`;
                     sign = '-';
                   } else if (isExclusao) {
-                    colorClass = 'bg-slate-50 text-slate-500 border-slate-200';
+                    colorClass = 'bg-slate-50 text-slate-500 border-slate-200 dark:bg-muted dark:text-muted-foreground dark:border-border';
                     icon = <Trash2 className="w-3.5 h-3.5" />;
                     label = `Removido`;
                     sign = '';
@@ -485,17 +485,17 @@ export function InventoryDashboard({
                   }
 
                   return (
-                    <div key={idx} className="relative pl-6 pb-4 border-l border-slate-100 last:pb-0">
-                      <div className={`absolute -left-[7px] top-1 w-3.5 h-3.5 rounded-full border-2 border-white flex items-center justify-center ${colorClass.split(' ')[0]}`}>
+                    <div key={idx} className="relative pl-6 pb-4 border-l border-slate-100 last:pb-0 dark:border-border">
+                      <div className={`absolute -left-[7px] top-1 w-3.5 h-3.5 rounded-full border-2 border-white flex items-center justify-center dark:border-card ${colorClass.split(' ')[0]}`}>
                         <div className={`w-1 h-1 rounded-full ${colorClass.split(' ')[1].replace('text-', 'bg-')}`} />
                       </div>
                       <div className="flex flex-col gap-1">
                         <div className="flex items-center justify-between">
-                          <span className="font-bold text-slate-700 text-xs truncate max-w-[120px]">{item.item}</span>
-                          <span className="text-xs text-slate-300 font-black">{dataFormatada}</span>
+                          <span className="font-bold text-slate-700 text-xs truncate max-w-[120px] dark:text-foreground">{item.item}</span>
+                          <span className="text-xs text-slate-300 font-black dark:text-muted-foreground">{dataFormatada}</span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-xs text-slate-400 font-bold uppercase tracking-tight">{label}</span>
+                          <span className="text-xs text-slate-400 font-bold uppercase tracking-tight dark:text-muted-foreground">{label}</span>
                           <span className={`text-xs font-black ${colorClass.split(' ')[1]}`}>
                             {sign}{item.quantidade}
                           </span>
@@ -505,7 +505,7 @@ export function InventoryDashboard({
                   );
                 })}
                 {visibleHistory.length === 0 && (
-                  <p className="text-slate-300 text-center py-10 italic text-sm font-bold">Sem atividades registradas.</p>
+                  <p className="text-slate-300 text-center py-10 italic text-sm font-bold dark:text-muted-foreground">Sem atividades registradas.</p>
                 )}
               </div>
             </div>

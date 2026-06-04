@@ -59,11 +59,11 @@ export function ShoppingList({
     >
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-400">Reposicao</p>
-          <h2 className="mt-1 text-3xl font-black tracking-tight text-slate-900">Lista de Compras</h2>
+          <p className="text-xs font-black uppercase tracking-[0.2em] text-slate-400 dark:text-muted-foreground">Reposicao</p>
+          <h2 className="mt-1 text-3xl font-black tracking-tight text-slate-900 dark:text-foreground">Lista de Compras</h2>
         </div>
         <div className="flex items-center gap-3">
-          <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3 text-sm font-black text-slate-500 shadow-sm">
+          <div className="rounded-2xl border border-slate-100 bg-white px-4 py-3 text-sm font-black text-slate-500 shadow-sm dark:border-border dark:bg-card dark:text-muted-foreground">
             {items.length + manualItems.length} itens na compra
           </div>
           <Button
@@ -97,12 +97,12 @@ export function ShoppingList({
         />
 
         {!hasAutomaticAlerts ? (
-          <div className="rounded-[32px] border border-dashed border-slate-200 bg-white p-12 text-center">
-            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-3xl bg-emerald-50">
-              <CheckCircle2 className="h-8 w-8 text-emerald-500" />
+          <div className="rounded-[32px] border border-dashed border-slate-200 bg-white p-12 text-center dark:border-border dark:bg-card">
+            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-3xl bg-emerald-50 dark:bg-emerald-950/40">
+              <CheckCircle2 className="h-8 w-8 text-emerald-500 dark:text-emerald-300" />
             </div>
-            <h3 className="mb-2 text-xl font-black text-slate-800">Sem alertas automáticos</h3>
-            <p className="font-medium text-slate-400">Itens reponíveis entram aqui quando a soma total do produto fica crítica.</p>
+            <h3 className="mb-2 text-xl font-black text-slate-800 dark:text-foreground">Sem alertas automáticos</h3>
+            <p className="font-medium text-slate-400 dark:text-muted-foreground">Itens reponíveis entram aqui quando a soma total do produto fica crítica.</p>
           </div>
         ) : (
           <>
@@ -189,18 +189,18 @@ function ManualShoppingSection({
   const isPurchaseFormReady = purchaseForm.categoria.trim().length > 0 && purchaseForm.comodo.trim().length > 0;
 
   return (
-    <section className="rounded-[28px] border border-slate-100 bg-white p-5 shadow-sm">
+    <section className="rounded-[28px] border border-slate-100 bg-white p-5 shadow-sm dark:border-border dark:bg-card">
       <div className="mb-5 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-emerald-100 bg-emerald-50 text-emerald-600">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-emerald-100 bg-emerald-50 text-emerald-600 dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300">
             <Plus className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-lg font-black text-slate-900">Itens manuais</h3>
-            <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Adicionados diretamente na lista</p>
+            <h3 className="text-lg font-black text-slate-900 dark:text-foreground">Itens manuais</h3>
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-muted-foreground">Adicionados diretamente na lista</p>
           </div>
         </div>
-        <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-black text-slate-400">
+        <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-black text-slate-400 dark:bg-muted dark:text-muted-foreground">
           {items.length}
         </span>
       </div>
@@ -210,20 +210,20 @@ function ManualShoppingSection({
           value={manualName}
           onChange={(event) => setManualName(event.target.value)}
           placeholder="Adicionar item manual..."
-          className="h-12 rounded-2xl bg-slate-50 border-slate-100 font-bold"
+          className="h-12 rounded-2xl bg-slate-50 border-slate-100 font-bold dark:border-border dark:bg-muted"
         />
         <Input
           type="number"
           min={1}
           value={manualQuantity}
           onChange={(event) => setManualQuantity(Math.max(1, Number(event.target.value)))}
-          className="h-12 rounded-2xl bg-slate-50 border-slate-100 font-bold"
+          className="h-12 rounded-2xl bg-slate-50 border-slate-100 font-bold dark:border-border dark:bg-muted"
         />
         <Input
           value={manualNote}
           onChange={(event) => setManualNote(event.target.value)}
           placeholder="Observação opcional"
-          className="h-12 rounded-2xl bg-slate-50 border-slate-100 font-bold"
+          className="h-12 rounded-2xl bg-slate-50 border-slate-100 font-bold dark:border-border dark:bg-muted"
         />
         <Button type="submit" disabled={isSaving} className="h-12 rounded-2xl font-black">
           <Plus className="mr-2 h-4 w-4" />
@@ -234,11 +234,11 @@ function ManualShoppingSection({
       {items.length > 0 && (
         <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
           {items.map((item) => (
-            <div key={item.id} className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4">
+            <div key={item.id} className="rounded-2xl border border-slate-100 bg-slate-50/60 p-4 dark:border-border dark:bg-muted/50">
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-black text-slate-800">{formatarTexto(item.nome)}</p>
-                  <p className="mt-1 truncate text-xs font-bold text-slate-400">
+                  <p className="truncate text-sm font-black text-slate-800 dark:text-foreground">{formatarTexto(item.nome)}</p>
+                  <p className="mt-1 truncate text-xs font-bold text-slate-400 dark:text-muted-foreground">
                     Qtd. {item.quantidade}{item.observacao ? ` - ${item.observacao}` : ''}
                   </p>
                 </div>
@@ -246,7 +246,7 @@ function ManualShoppingSection({
                   <button
                     type="button"
                     onClick={() => startPurchase(item)}
-                    className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-600 shadow-sm transition-colors hover:bg-emerald-100"
+                    className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-black text-emerald-600 shadow-sm transition-colors hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:hover:bg-emerald-900/50"
                     title="Registrar compra no inventário"
                   >
                     <Check className="mr-1 inline h-4 w-4" />
@@ -255,7 +255,7 @@ function ManualShoppingSection({
                   <button
                     type="button"
                     onClick={() => onCancelItem(item.id)}
-                    className="rounded-xl bg-white p-2 text-slate-400 shadow-sm transition-colors hover:text-rose-500"
+                    className="rounded-xl bg-white p-2 text-slate-400 shadow-sm transition-colors hover:text-rose-500 dark:bg-card dark:text-muted-foreground dark:hover:text-rose-300"
                     title="Remover item manual"
                   >
                     <X className="h-4 w-4" />
@@ -264,45 +264,45 @@ function ManualShoppingSection({
               </div>
 
               {editingPurchaseId === item.id && (
-                <div className="mt-4 grid grid-cols-1 gap-3 rounded-2xl border border-emerald-100 bg-white p-4 md:grid-cols-2">
+                <div className="mt-4 grid grid-cols-1 gap-3 rounded-2xl border border-emerald-100 bg-white p-4 md:grid-cols-2 dark:border-emerald-900/60 dark:bg-card">
                   <Input
                     value={purchaseForm.categoria}
                     onChange={(event) => setPurchaseForm({ ...purchaseForm, categoria: event.target.value })}
                     placeholder="Categoria"
                     required
-                    className="h-11 rounded-xl bg-slate-50 border-slate-100 font-bold"
+                    className="h-11 rounded-xl bg-slate-50 border-slate-100 font-bold dark:border-border dark:bg-muted"
                   />
                   <Input
                     value={purchaseForm.comodo}
                     onChange={(event) => setPurchaseForm({ ...purchaseForm, comodo: event.target.value })}
                     placeholder="Cômodo"
                     required
-                    className="h-11 rounded-xl bg-slate-50 border-slate-100 font-bold"
+                    className="h-11 rounded-xl bg-slate-50 border-slate-100 font-bold dark:border-border dark:bg-muted"
                   />
                   <Input
                     value={purchaseForm.armario}
                     onChange={(event) => setPurchaseForm({ ...purchaseForm, armario: event.target.value })}
                     placeholder="Armário/prateleira"
-                    className="h-11 rounded-xl bg-slate-50 border-slate-100 font-bold"
+                    className="h-11 rounded-xl bg-slate-50 border-slate-100 font-bold dark:border-border dark:bg-muted"
                   />
                   <Input
                     value={purchaseForm.caixa}
                     onChange={(event) => setPurchaseForm({ ...purchaseForm, caixa: event.target.value })}
                     placeholder="Caixa/gaveta"
-                    className="h-11 rounded-xl bg-slate-50 border-slate-100 font-bold"
+                    className="h-11 rounded-xl bg-slate-50 border-slate-100 font-bold dark:border-border dark:bg-muted"
                   />
                   <Input
                     value={purchaseForm.validade}
                     onChange={(event) => setPurchaseForm({ ...purchaseForm, validade: event.target.value })}
                     placeholder="Validade opcional"
-                    className="h-11 rounded-xl bg-slate-50 border-slate-100 font-bold"
+                    className="h-11 rounded-xl bg-slate-50 border-slate-100 font-bold dark:border-border dark:bg-muted"
                   />
                   <Input
                     type="number"
                     min={1}
                     value={purchaseForm.quantidade}
                     onChange={(event) => setPurchaseForm({ ...purchaseForm, quantidade: Math.max(1, Number(event.target.value)) })}
-                    className="h-11 rounded-xl bg-slate-50 border-slate-100 font-bold"
+                    className="h-11 rounded-xl bg-slate-50 border-slate-100 font-bold dark:border-border dark:bg-muted"
                   />
                   <div className="flex gap-2 md:col-span-2">
                     <Button
@@ -340,24 +340,24 @@ interface ZeroStockLocationGroupProps {
 
 function ZeroStockLocationGroup({ locations, onNavigateToItem }: ZeroStockLocationGroupProps) {
   return (
-    <section className="rounded-[28px] border border-slate-100 bg-white p-5 shadow-sm">
+    <section className="rounded-[28px] border border-slate-100 bg-white p-5 shadow-sm dark:border-border dark:bg-card">
       <div className="mb-5 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-sky-100 bg-sky-50 text-sky-600">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-sky-100 bg-sky-50 text-sky-600 dark:border-sky-900/60 dark:bg-sky-950/40 dark:text-sky-300">
             <MapPin className="h-5 w-5" />
           </div>
           <div>
-            <h3 className="text-lg font-black text-slate-900">Locais zerados</h3>
-            <p className="text-xs font-bold uppercase tracking-widest text-slate-400">Controle de posicoes sem saldo</p>
+            <h3 className="text-lg font-black text-slate-900 dark:text-foreground">Locais zerados</h3>
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-muted-foreground">Controle de posicoes sem saldo</p>
           </div>
         </div>
-        <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-black text-slate-400">
+        <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-black text-slate-400 dark:bg-muted dark:text-muted-foreground">
           {locations.length}
         </span>
       </div>
 
       {locations.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-100 p-8 text-center text-sm font-bold text-slate-300">
+        <div className="rounded-2xl border border-dashed border-slate-100 p-8 text-center text-sm font-bold text-slate-300 dark:border-border dark:text-muted-foreground">
           Nenhum local zerado.
         </div>
       ) : (
@@ -367,19 +367,19 @@ function ZeroStockLocationGroup({ locations, onNavigateToItem }: ZeroStockLocati
               key={location.id}
               type="button"
               onClick={() => onNavigateToItem(location.nome)}
-              className="flex w-full items-start justify-between gap-4 rounded-2xl border border-slate-100 bg-slate-50/60 p-4 text-left transition-all hover:border-sky-200 hover:bg-sky-50"
+              className="flex w-full items-start justify-between gap-4 rounded-2xl border border-slate-100 bg-slate-50/60 p-4 text-left transition-all hover:border-sky-200 hover:bg-sky-50 dark:border-border dark:bg-muted/50 dark:hover:border-sky-900/60 dark:hover:bg-sky-950/30"
             >
               <div className="min-w-0">
-                <p className="truncate text-sm font-black text-slate-800">{formatarTexto(location.nome)}</p>
-                <p className="mt-1 truncate text-xs font-bold text-slate-400">
+                <p className="truncate text-sm font-black text-slate-800 dark:text-foreground">{formatarTexto(location.nome)}</p>
+                <p className="mt-1 truncate text-xs font-bold text-slate-400 dark:text-muted-foreground">
                   {formatarTexto(location.categoria || 'Sem categoria')} - {formatarTexto(location.comodo)}
                 </p>
-                <p className="mt-2 flex items-center gap-1 truncate text-[11px] font-bold text-slate-400">
+                <p className="mt-2 flex items-center gap-1 truncate text-[11px] font-bold text-slate-400 dark:text-muted-foreground">
                   <Archive className="h-3 w-3 shrink-0" />
                   {[location.armario, location.caixa].filter(Boolean).map(formatarTexto).join(' / ') || 'Local interno nao informado'}
                 </p>
               </div>
-              <div className="shrink-0 rounded-xl bg-white px-3 py-2 text-xs font-black text-sky-600 shadow-sm">
+              <div className="shrink-0 rounded-xl bg-white px-3 py-2 text-xs font-black text-sky-600 shadow-sm dark:bg-card dark:text-sky-300">
                 Qtd. 0
               </div>
             </button>
@@ -401,28 +401,28 @@ interface ShoppingGroupProps {
 
 function ShoppingGroup({ title, description, icon, tone, items, onNavigateToItem }: ShoppingGroupProps) {
   const toneClasses = tone === 'rose'
-    ? 'bg-rose-50 text-rose-600 border-rose-100'
-    : 'bg-amber-50 text-amber-600 border-amber-100';
+    ? 'bg-rose-50 text-rose-600 border-rose-100 dark:border-rose-900/60 dark:bg-rose-950/40 dark:text-rose-300'
+    : 'bg-amber-50 text-amber-600 border-amber-100 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300';
 
   return (
-    <section className="rounded-[28px] border border-slate-100 bg-white p-5 shadow-sm">
+    <section className="rounded-[28px] border border-slate-100 bg-white p-5 shadow-sm dark:border-border dark:bg-card">
       <div className="mb-5 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div className={`flex h-11 w-11 items-center justify-center rounded-2xl border ${toneClasses}`}>
             {icon}
           </div>
           <div>
-            <h3 className="text-lg font-black text-slate-900">{title}</h3>
-            <p className="text-xs font-bold uppercase tracking-widest text-slate-400">{description}</p>
+            <h3 className="text-lg font-black text-slate-900 dark:text-foreground">{title}</h3>
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-400 dark:text-muted-foreground">{description}</p>
           </div>
         </div>
-        <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-black text-slate-400">
+        <span className="rounded-full bg-slate-50 px-3 py-1 text-xs font-black text-slate-400 dark:bg-muted dark:text-muted-foreground">
           {items.length}
         </span>
       </div>
 
       {items.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-slate-100 p-8 text-center text-sm font-bold text-slate-300">
+        <div className="rounded-2xl border border-dashed border-slate-100 p-8 text-center text-sm font-bold text-slate-300 dark:border-border dark:text-muted-foreground">
           Sem itens nesta faixa.
         </div>
       ) : (
@@ -432,20 +432,20 @@ function ShoppingGroup({ title, description, icon, tone, items, onNavigateToItem
               key={item.id}
               type="button"
               onClick={() => onNavigateToItem(item.nome)}
-              className="flex w-full items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-slate-50/60 p-4 text-left transition-all hover:border-primary/20 hover:bg-primary/5"
+              className="flex w-full items-center justify-between gap-4 rounded-2xl border border-slate-100 bg-slate-50/60 p-4 text-left transition-all hover:border-primary/20 hover:bg-primary/5 dark:border-border dark:bg-muted/50 dark:hover:bg-accent"
             >
               <div className="min-w-0">
-                <p className="truncate text-sm font-black text-slate-800">{formatarTexto(item.nome)}</p>
-                <p className="mt-1 truncate text-xs font-bold text-slate-400">
+                <p className="truncate text-sm font-black text-slate-800 dark:text-foreground">{formatarTexto(item.nome)}</p>
+                <p className="mt-1 truncate text-xs font-bold text-slate-400 dark:text-muted-foreground">
                   {formatarTexto(item.categoria || 'Sem categoria')} - {formatarComodos(item.comodos)}
                 </p>
                 {item.totalRegistros > 1 && (
-                  <p className="mt-1 text-[11px] font-black uppercase tracking-widest text-slate-300">
+                  <p className="mt-1 text-[11px] font-black uppercase tracking-widest text-slate-300 dark:text-muted-foreground">
                     Soma de {item.totalRegistros} registros
                   </p>
                 )}
               </div>
-              <div className="shrink-0 rounded-xl bg-white px-3 py-2 text-xs font-black text-slate-500 shadow-sm">
+              <div className="shrink-0 rounded-xl bg-white px-3 py-2 text-xs font-black text-slate-500 shadow-sm dark:bg-card dark:text-muted-foreground">
                 Total {item.quantidade}
               </div>
             </button>

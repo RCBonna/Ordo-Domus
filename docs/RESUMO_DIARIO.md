@@ -9,6 +9,7 @@
 - Iniciada a Fase 0 da issue #33: criado `useThemePreference` com suporte a `light`, `dark` e `system`, persistencia local por usuario, deteccao de `prefers-color-scheme` e aplicacao controlada da classe `.dark`, mantendo `light` como padrao seguro enquanto a UI nao foi convertida.
 - Implementada a Fase 1 da issue #33: adicionado seletor de tema `Automatico`, `Claro` e `Escuro` no painel de configuracoes da unidade, reaproveitando a persistencia local da Fase 0 e validando persistencia por reload no E2E.
 - Implementada a Fase 2 da issue #33: convertidos shell global, header, login, onboarding, estados iniciais, entrada, historico recente e configuracoes minimas do modal para suporte visual a tema escuro.
+- Implementada a Fase 3 da issue #33: convertidos cards/lista de inventario, filtros, paginacao, lista de compras, locais zerados, grupos de reposicao e dashboard operacional para suporte visual a tema escuro.
 - Criada a issue GitHub #31 para o bug em que o Inventario por Foto nao avisava quando a mesma imagem ja havia sido lida anteriormente.
 - Criada e aplicada a migration `20260604120500_create_import_source_history.sql`, adicionando a tabela `importacoes_fontes` para historico persistente por unidade, origem e hash da fonte.
 - O fluxo de Inventario por Foto passou a consultar esse historico antes de chamar a IA, exibindo o aviso `Esta foto ja foi lida em...` com acao `Importar novamente`, espelhando a protecao ja existente no fluxo de cupom.
