@@ -15,7 +15,7 @@
 
 ## Resumo
 
-O banco e PostgreSQL via Supabase. O schema consolidado esta principalmente em `CriarSQL.sql`. Ha scripts auxiliares em `sql/` para RLS, upsert, soft delete e performance.
+O banco e PostgreSQL via Supabase. O schema reproduzivel esta em `supabase/migrations/`, iniciando pela baseline `20260501000000_initial_schema_baseline.sql`. `CriarSQL.sql` e `sql/*.sql` permanecem como historico auxiliar legado.
 
 ## Entidades
 
@@ -204,5 +204,5 @@ Pontos de atencao:
 1. Converter ou duplicar `validade` em campo `date`.
 2. Adicionar `criado_por`/`atualizado_por` em itens e `user_id` em movimentacoes.
 3. Adicionar checks para `papel`, `status` e `tipo`.
-4. Criar migration unica consolidada e arquivar scripts antigos divergentes.
+4. ✅ Criar baseline inicial versionada para substituir bootstrap manual de schema em ambientes novos.
 5. Criar views/RPCs agregadas para dashboard quando volume crescer.

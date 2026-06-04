@@ -117,6 +117,6 @@ Atualizacao 2026-05-20:
 ## Pendencias
 
 1. Validar a tela de inventario contra o banco remoto apos a aplicacao.
-2. Reconciliar historico de migrations quando o `supabase db push` estiver estavel.
+2. ✅ Historico de migrations reconciliado em 2026-05-23 com baseline inicial e `migration list` alinhado.
 3. Evoluir para filtros por selecao de valores distintos, se o volume de categorias/comodos crescer.
 4. Adicionar testes automatizados para `inventoryRepository` com mock de Supabase.

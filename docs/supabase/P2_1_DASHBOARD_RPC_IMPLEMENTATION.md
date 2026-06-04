@@ -148,6 +148,6 @@ Racional:
 ## Pendencias
 
 1. Validar o dashboard no app conectado ao banco remoto.
-2. Reconciliar historico de migrations quando o `supabase db push` estiver estavel.
+2. ✅ Historico de migrations reconciliado em 2026-05-23 com baseline inicial e `migration list` alinhado.
 3. Implementar paginacao/filtros server-side no inventario.
 4. Criar testes de repository com mocks do Supabase.

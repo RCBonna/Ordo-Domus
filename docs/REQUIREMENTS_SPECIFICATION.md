@@ -45,7 +45,7 @@ Sistema web para controle de inventario por unidade, com entrada assistida por I
 | RNF-001 | Isolamento multi-tenant por unidade. | Implementado por RLS, revisar convidados. |
 | RNF-002 | Baixa latencia em inventario domestico. | Adequado para MVP. |
 | RNF-003 | Alta disponibilidade. | Dependente de Supabase/Gemini/hospedagem. |
-| RNF-004 | Privacidade de cupom fiscal. | Imagem nao persistida; falta consentimento formal. |
+| RNF-004 | Privacidade de cupom fiscal. | Imagem nao persistida; consentimento local de IA implementado. |
 | RNF-005 | Auditabilidade de alteracoes. | Parcial; falta `user_id` na movimentacao. |
 | RNF-006 | Manutenibilidade. | Media; precisa tipos e migrations. |
 | RNF-007 | Testabilidade. | Baixa; sem testes. |
@@ -77,6 +77,7 @@ Sistema web para controle de inventario por unidade, com entrada assistida por I
 3. Itens por unidade cabem inicialmente em carregamento client-side.
 4. O usuario revisa dados extraidos pela IA antes de persistir.
 5. Cupom fiscal nao precisa ser armazenado como prova documental.
+6. Consentimento local no navegador e suficiente para o MVP; registro auditavel server-side fica para politica de privacidade formal.
 
 ## Restricoes
 
@@ -86,4 +87,3 @@ Sistema web para controle de inventario por unidade, com entrada assistida por I
 4. Chamadas Gemini expostas no cliente.
 5. `validade` armazenada como texto.
 6. Sem observabilidade remota.
-

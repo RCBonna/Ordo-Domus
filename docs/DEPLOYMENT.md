@@ -58,7 +58,7 @@ Config Vite:
 Passos recomendados:
 
 1. Criar projeto Supabase.
-2. Executar migration consolidada derivada de `CriarSQL.sql`.
+2. Executar as migrations versionadas em `supabase/migrations/`, iniciando pela baseline `20260501000000_initial_schema_baseline.sql`.
 3. Validar que tabelas usam `membros_unidades`, nao `membros_unidade`.
 4. Aplicar indices de `sql/optimize_performance.sql`, revisando nomes.
 5. Criar system admin inicial manualmente:

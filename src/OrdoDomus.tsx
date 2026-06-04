@@ -1,14 +1,13 @@
-import { useState, useEffect } from 'react';
+import { lazy, Suspense, useState, useEffect } from 'react';
 import { Toaster } from 'sonner';
 import { AuthOverlay } from './components/AuthOverlay';
 import { AuthLoadingState } from './components/AppStatusStates';
-import { AdminAccessModal } from './components/AdminAccessModal';
 import { WorkspaceContent } from './components/WorkspaceContent';
+import { AiConsentModal } from './components/AiConsentModal';
 
 // Components
 import { MainHeader, type AppTab } from './components/MainHeader';
 import { ConfirmModal } from './components/ConfirmModal';
-import { TriageModal } from './components/TriageModal';
 
 // Hooks
 import { useAuth } from './hooks/useAuth';
@@ -18,8 +17,12 @@ import { useReceiptImport } from './hooks/useReceiptImport';
 import { useTriage } from './hooks/useTriage';
 import { useDashboardMetrics } from './hooks/useDashboardMetrics';
 import { useShoppingList } from './hooks/useShoppingList';
+import { useAiConsent } from './hooks/useAiConsent';
 
 import { supabase } from './lib/supabaseClient';
+
+const AdminAccessModal = lazy(() => import('./components/AdminAccessModal').then((module) => ({ default: module.AdminAccessModal })));
+const TriageModal = lazy(() => import('./components/TriageModal').then((module) => ({ default: module.TriageModal })));
 
 export default function OrdoDomus() {
   // Auth state
@@ -43,6 +46,12 @@ export default function OrdoDomus() {
   const [isTriageModalOpen, setIsTriageModalOpen] = useState(false);
   const isDashboardTabActive = activeTab === 'dashboard';
   const isShoppingTabActive = activeTab === 'compras';
+  const {
+    aiConsentRequest,
+    acceptAiConsent,
+    declineAiConsent,
+    ensureAiConsent,
+  } = useAiConsent(currentUserEmail);
   
   // Confirmation State
   const [confirmConfig, setConfirmConfig] = useState<{
@@ -67,7 +76,7 @@ export default function OrdoDomus() {
     mergeStatus, error,
     history, handleClearHistory,
     addHistoryItem
-  } = useExtraction(unidadeAtiva?.id);
+  } = useExtraction(unidadeAtiva?.id, ensureAiConsent);
 
   // Triage logic
   const {
@@ -81,7 +90,7 @@ export default function OrdoDomus() {
     fileInputRef,
     handleImportReceipt,
     triggerImport
-  } = useReceiptImport(unidadeAtiva?.id, fetchPendingItems);
+  } = useReceiptImport(unidadeAtiva?.id, fetchPendingItems, ensureAiConsent);
 
   // Inventory logic
 
@@ -148,6 +157,16 @@ export default function OrdoDomus() {
     const lista = await carregarUnidades(session.user.id);
     setUnidades(lista);
     if (lista.length === 1) setUnidadeAtiva(lista[0]);
+  };
+
+  const handleUnitUpdated = (unit: { id: string; nome: string }) => {
+    setUnidades(prev => prev.map(item => (
+      item.id === unit.id ? { ...item, nome: unit.nome } : item
+    )));
+
+    if (unidadeAtiva?.id === unit.id) {
+      setUnidadeAtiva({ ...unidadeAtiva, nome: unit.nome });
+    }
   };
 
   // Carregar inventário ao mudar de aba
@@ -276,19 +295,28 @@ export default function OrdoDomus() {
         />
       </main>
 
-      <AdminAccessModal
-        isOpen={isAdminModalOpen}
-        unidadeAtiva={unidadeAtiva}
-        onClose={() => setIsAdminModalOpen(false)}
-      />
+      {isAdminModalOpen && (
+        <Suspense fallback={null}>
+          <AdminAccessModal
+            isOpen={isAdminModalOpen}
+            unidadeAtiva={unidadeAtiva}
+            onClose={() => setIsAdminModalOpen(false)}
+            onUnitUpdated={handleUnitUpdated}
+          />
+        </Suspense>
+      )}
 
-      <TriageModal 
-        isOpen={isTriageModalOpen}
-        onClose={() => setIsTriageModalOpen(false)}
-        unidadeId={unidadeAtiva?.id}
-        onItemFinalized={addHistoryItem}
-        onTriageChanged={fetchPendingItems}
-      />
+      {isTriageModalOpen && (
+        <Suspense fallback={null}>
+          <TriageModal
+            isOpen={isTriageModalOpen}
+            onClose={() => setIsTriageModalOpen(false)}
+            unidadeId={unidadeAtiva?.id}
+            onItemFinalized={addHistoryItem}
+            onTriageChanged={fetchPendingItems}
+          />
+        </Suspense>
+      )}
 
       <ConfirmModal 
         isOpen={confirmConfig.isOpen}
@@ -296,6 +324,12 @@ export default function OrdoDomus() {
         message={confirmConfig.message}
         onConfirm={confirmConfig.onConfirm}
         onCancel={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
+      />
+
+      <AiConsentModal
+        request={aiConsentRequest}
+        onAccept={acceptAiConsent}
+        onDecline={declineAiConsent}
       />
 
       <Toaster position="bottom-right" richColors />

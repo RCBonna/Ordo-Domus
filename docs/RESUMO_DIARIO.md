@@ -1,5 +1,62 @@
 # Resumo Diario
 
+## 2026-06-03
+
+- Revisado o plano inicial `plans/implementation_plan_name.md` da issue GitHub #24 (`Melhoria - Exibir nome e e-mail dos membros da unidade`).
+- Atualizado `plans/implementation_plan_name-v1.md` como revisao consolidada, comparando o plano inicial com o estado atual de `AdminPanel`, `Onboarding`, `useAuth`, tipos de dominio e RPCs `listar_membros`/`listar_pendentes`.
+- Recomendado fechar a decisao de nomenclatura em `public.perfis`, restringir leitura de perfis por proprio usuario/unidade em comum/RPC autorizada e evitar leitura global autenticada de todos os perfis.
+- Mantido o trabalho em modo diagnostico: sem implementacao de frontend, sem migration aplicada e sem atualizacao de issue no GitHub.
+- Criado `plans/Implementation_plan_images-v1.md` com plano tecnico para inventario por foto de local, reaproveitando triagem de NFC-e/cupom, adicionando modo `snapshot`, confianca por item, validade oportunista, rate limit, consentimento e alternativas futuras como video, foto+audio e codigo de barras.
+- Avaliada a versao inicial `plans/Implementation_plan_images.md`, preservando o brainstorming e recomendando a v1 como plano de execucao por separar MVP de evolucoes e detalhar banco, backend, frontend, triagem e testes.
+
+## 2026-05-23
+
+- Continuada a issue GitHub #15 (`P0 - Consolidar migrations Supabase`).
+- Criada a migration inicial idempotente `20260501000000_initial_schema_baseline.sql` para substituir `CriarSQL.sql` como bootstrap manual de ambientes novos.
+- A baseline cria tabelas, view, indices, constraint base, RLS e policies minimas sem recriar as policies legadas de escrita ampla que foram endurecidas em `20260519150000_harden_rls_roles.sql`.
+- Validadas as migrations Supabase: antes da aplicacao, `migration list` mostrava `20260501000000` apenas em Local e `db push --dry-run` bloqueava por migration local anterior a ultima remota.
+- Aplicada a baseline no Supabase com `supabase db push --include-all`; a execucao foi idempotente e reportou objetos existentes como `skipping`.
+- Apos aplicacao, `npm run supabase:migrations:list` mostrou `20260501000000` e todas as migrations posteriores alinhadas em Local e Remote.
+- Validacao final pos-reconciliacao: `npm run supabase:migrations:dry-run` retornou `Remote database is up to date`.
+- Atualizadas as docs operacionais de Supabase e o arquivo unico `docs/supabase/SQL_MUDANCAS.md` com comandos, estado e observacoes da consolidacao.
+- Iniciada a issue GitHub #16 (`P1 - Adicionar rate limit na Edge Function de IA`).
+- Criada migration `20260523100000_ai_extraction_rate_limits.sql` com tabela `ai_extraction_events`, RLS para admins aprovados, indices de janela e limpeza operacional de eventos antigos.
+- Edge Function `extract-inventory` passou a validar tamanho, MIME e limite por usuario/unidade/modo antes de chamar Gemini; limites padrao: texto 20/10min e 4000 caracteres, audio 8/h e 7.5 MB, cupom 12/h e 6 MB.
+- Frontend ajustado para preservar mensagens especificas de limite, formato e payload retornadas pela Edge Function.
+- Adicionados testes unitarios para caminho feliz de cupom, bloqueio de MIME de audio invalido, bloqueio de texto acima do limite, normalizacao de MIME e tamanho base64.
+- Migration de rate limit aplicada no Supabase, Edge Function redeployada e `npm run supabase:migrations:list` confirmou `20260523100000` alinhada em Local e Remote.
+- Iniciada a issue GitHub #17 (`P1 - Ativar E2E autenticado com seed no ambiente local/CI`).
+- Playwright passou a carregar `.env.local` e `.env.e2e.local`, mantendo testes autenticados skipados explicitamente quando `E2E_USER_EMAIL`/`E2E_USER_PASSWORD` nao existem.
+- Seed E2E ampliado para Lista de Compras, incluindo item manual `E2E Pilha AA` alem dos dados de inventario, dicionario e triagem.
+- Criado helper de login autenticado e nova spec `authenticated-workflows.spec.ts`, cobrindo Cupom com IA mockada, Triagem criada, Lista de Compras e insercao manual.
+- CI passou a instalar Chromium e rodar Playwright quando variaveis publicas Supabase estiverem presentes; seed autenticado roda apenas com `E2E_SUPABASE_SERVICE_ROLE_KEY` e `E2E_USER_PASSWORD`.
+- Documentado o fluxo local/CI em `docs/testing/E2E_AUTHENTICATED.md`, com variaveis, comandos, dados seed e comportamento de skip.
+- Validacao sem credenciais autenticadas: `npm run test:e2e` passou com 3 testes publicos e 7 skips autenticados explicitos.
+- Corrigida a validacao autenticada local da issue #17: `npm run test:e2e:seed` agora usa `node --use-system-ca`, aceita schema sem `unidades.codigo_convite` via fallback por nome/id e remove fisicamente itens seed `E2E %` do inventario para evitar colisao com `unique_item_location`.
+- Ajustados testes E2E autenticados para seletores menos frageis, arquivo de cupom com imagem unica por execucao e item manual unico por execucao.
+- Validacao autenticada real executada com `.env.e2e.local`: `npm run test:e2e:seed` passou e `npm run test:e2e` passou com 10 testes.
+- Iniciada a issue GitHub #20 (`P2 - Implementar consentimento e privacidade para IA`).
+- Adicionado consentimento local antes de enviar texto, audio ou imagem de cupom para a Edge Function de IA, com aceite persistido por usuario no `localStorage`.
+- Documentada a retencao dos fluxos de IA em `docs/security/AI_PRIVACY_CONSENT.md` e atualizadas as analises de seguranca/requisitos.
+- Iniciada a issue GitHub #21 (`No Dashboard SAAS`).
+- Criada e aplicada a migration `20260523143000_saas_admin_dashboard_details.sql` com RPCs globais restritas a `system_admins` para snapshot SaaS, ativacao/inativacao de usuarios e aprovacao de convites.
+- Dashboard SaaS passou a ter cards clicaveis e modais para unidades/membros, usuarios ativos, usuarios inativos, inventario global com filtros e convites pendentes com acao de aceite.
+- Validado estado remoto das migrations: `npm run supabase:migrations:dry-run` retornou `Remote database is up to date` e `migration list` mostrou `20260523143000` em Local/Remote.
+- Iniciada a issue GitHub #19 (`P2 - Criar tela de configurações da unidade`).
+- Criada e aplicada a migration `20260523150000_unit_settings.sql` com RPC `atualizar_configuracao_unidade`, restrita a admins aprovados da unidade.
+- Modal de administracao passou a incluir configuracoes basicas da unidade, edicao de nome, dados de governanca e espaco para preferencias futuras.
+- Edicao de nome atualiza `unidadeAtiva`, lista de unidades e persistencia local sem recarregar o app.
+- Iniciada a issue GitHub #18 (`P2 - Aplicar lazy load em telas pesadas`).
+- Aplicado `React.lazy`/`Suspense` para `InventoryDashboard`, `SaasAdminDashboard`, `TriageModal` e `AdminAccessModal`.
+- Build passou a separar chunks para dashboard operacional, dashboard SaaS e modais administrativos, reduzindo o JS inicial carregado.
+- Criada a issue GitHub #23 para o bug em que o modal de configuracoes da unidade podia ficar preso em carregamento na area de acessos/membros.
+- Corrigidos `AdminPanel` e `UnitSettingsPanel` com timeout, `try/catch/finally` e retorno visual acionavel, evitando spinner infinito e botao `Salvar` preso em processamento.
+- Atualizado o E2E autenticado da configuracao da unidade para validar carregamento do painel de acessos e retorno do botao `Salvar` ao estado habilitado.
+- Reaberta a issue #23 apos novo relato de spinner persistente; o timeout foi reforcado com `Promise.race` independente da propagacao de abort do Supabase.
+- Adicionado E2E autenticado simulando `listar_membros` pendurado, validando que o spinner some e aparece a acao `Tentar novamente`.
+- Ajustado o modal de administracao/configuracoes da unidade para ter scroll vertical real limitado a `100dvh`, evitando que o conteudo inferior fique fora da viewport em telas menores.
+- Criada a issue GitHub #24 para melhoria funcional: capturar/gerenciar nome de usuario e exibir nome/e-mail dos membros e solicitantes no modal de acesso da unidade.
+
 ## 2026-05-22
 
 - Corrigida normalizacao de validade antes da persistencia: entradas como `31/12` agora sao gravadas como data brasileira completa com o ano atual nos fluxos de entrada manual, triagem de cupom e RPCs de inventario.

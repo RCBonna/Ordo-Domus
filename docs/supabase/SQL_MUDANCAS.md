@@ -1,5 +1,354 @@
 # Mudancas SQL
 
+## Correcao de Loading no Modal da Unidade - Issue #23
+
+Data/hora de criacao: 2026-05-23 17:50:15 -03:00
+
+Data/hora de modificacao: 2026-05-23 18:07:46 -03:00
+
+Arquivo SQL:
+
+```text
+Nao houve migration SQL.
+```
+
+Necessidade:
+
+- Corrigir comportamento reportado em que o modal de configuracoes da unidade ficava carregando indefinidamente na area de acessos/membros.
+- Garantir que chamadas para RPCs de governanca (`listar_membros`, fallback `listar_pendentes`) liberem a UI em sucesso, erro ou timeout.
+- Garantir que a RPC de salvamento (`atualizar_configuracao_unidade`) nao deixe o botao `Salvar` preso em estado de processamento se houver falha inesperada.
+
+Blocos de comandos documentados:
+
+```sql
+-- Nenhum comando SQL necessario.
+-- RPCs existentes mantidas: public.listar_membros, public.listar_pendentes e public.atualizar_configuracao_unidade.
+```
+
+Implementacao relacionada:
+
+- `src/components/AdminPanel.tsx`: adicionados timeout externo de 6s com `Promise.race`, `AbortController`, `try/catch/finally`, estado de erro e acao de tentar novamente no carregamento de acessos.
+- `src/components/UnitSettingsPanel.tsx`: adicionados timeout externo de 10s com `Promise.race`, `AbortController` e `try/catch/finally` no salvamento do nome da unidade.
+- `src/components/AdminAccessModal.tsx`: modal passa a limitar altura a `100dvh` e expor scroll vertical interno para o conteudo de configuracoes/acessos.
+- `tests/e2e/authenticated-workflows.spec.ts`: fluxo autenticado passa a validar que o painel de acessos carrega, que o botao `Salvar` volta ao estado correto e que uma RPC de membros pendurada nao deixa spinner infinito.
+
+Status:
+
+- Issue GitHub #23 criada para documentar o bug; reaberta em 2026-05-23 18:00 -03:00 apos novo relato de spinner ainda indefinido.
+- Sem alteracao de schema, policies, RPCs ou dados no Supabase.
+
+## Configuracoes da Unidade - Issue #19
+
+Data/hora de criacao: 2026-05-23 14:48:44 -03:00
+
+Data/hora de modificacao: 2026-05-23 14:48:44 -03:00
+
+Arquivo SQL:
+
+```text
+supabase/migrations/20260523150000_unit_settings.sql
+```
+
+Necessidade:
+
+- Permitir que admins da unidade editem o nome da unidade dentro do app.
+- Evitar update direto em `unidades` pelo frontend.
+- Garantir que apenas admins aprovados possam alterar configuracoes basicas.
+- Atualizar a UI local sem recarregar a aplicacao.
+
+Blocos de comandos documentados:
+
+```sql
+create or replace function public.atualizar_configuracao_unidade(
+  p_unidade_id uuid,
+  p_nome text
+) returns table (id uuid, nome text) ...;
+
+revoke execute on function public.atualizar_configuracao_unidade(uuid, text) from public, anon;
+grant execute on function public.atualizar_configuracao_unidade(uuid, text) to authenticated;
+```
+
+Comandos operacionais executados:
+
+```powershell
+npm run supabase:migrations:dry-run
+npm run supabase:migrations:push
+npm run supabase:migrations:list
+```
+
+Implementacao relacionada:
+
+- `src/components/UnitSettingsPanel.tsx`: formulario de nome, dados de governanca e espaco para preferencias futuras.
+- `src/components/AdminAccessModal.tsx`: passa a agrupar configuracoes da unidade e governanca de acessos.
+- `src/OrdoDomus.tsx`: atualiza `unidadeAtiva`, lista de unidades e `localStorage` apos mudanca.
+- `tests/e2e/authenticated-workflows.spec.ts`: cobre edicao e restauracao do nome da unidade sem recarregar.
+
+Status:
+
+- Criado no repositorio.
+- Aplicado no Supabase em 2026-05-23 via `npm run supabase:migrations:push`.
+- `npm run supabase:migrations:list` mostrou `20260523150000` alinhada em Local e Remote.
+- Observacao: apos aplicacao, `npm run supabase:migrations:dry-run` falhou por autenticacao do CLI `cli_login_postgres` e pediu `SUPABASE_DB_PASSWORD`; a listagem confirmou a migration remota.
+
+## Dashboard SaaS Administrativo - Issue #21
+
+Data/hora de criacao: 2026-05-23 14:34:26 -03:00
+
+Data/hora de modificacao: 2026-05-23 14:34:26 -03:00
+
+Arquivo SQL:
+
+```text
+supabase/migrations/20260523143000_saas_admin_dashboard_details.sql
+```
+
+Necessidade:
+
+- Permitir drill-down global no Dashboard SaaS sem expor tabelas administrativas diretamente ao cliente.
+- Listar unidades com administradores e usuarios normais.
+- Listar usuarios ativos e permitir torna-los inativos no app.
+- Listar usuarios inativos e permitir reativacao.
+- Listar itens de inventario por unidade/categoria.
+- Listar convites pendentes e permitir aprovacao por system-admin.
+
+Blocos de comandos documentados:
+
+```sql
+create or replace function public.get_saas_admin_snapshot() returns jsonb ...;
+create or replace function public.set_saas_user_active(p_user_id uuid, p_active boolean) returns void ...;
+create or replace function public.aprovar_convite_saas(p_unidade_id uuid, p_user_id uuid) returns void ...;
+
+revoke execute on function public.get_saas_admin_snapshot() from public, anon;
+revoke execute on function public.set_saas_user_active(uuid, boolean) from public, anon;
+revoke execute on function public.aprovar_convite_saas(uuid, uuid) from public, anon;
+
+grant execute on function public.get_saas_admin_snapshot() to authenticated;
+grant execute on function public.set_saas_user_active(uuid, boolean) to authenticated;
+grant execute on function public.aprovar_convite_saas(uuid, uuid) to authenticated;
+```
+
+Comandos operacionais executados:
+
+```powershell
+npm run supabase:migrations:dry-run
+npm run supabase:migrations:push
+npm run supabase:migrations:dry-run
+npm run supabase:migrations:list
+```
+
+Implementacao relacionada:
+
+- `src/components/SaasAdminDashboard.tsx`: cards clicaveis para unidades, usuarios ativos, usuarios inativos, itens e convites; modais com listas, filtros e acoes.
+- `public.get_saas_admin_snapshot()`: snapshot global restrito a `system_admins`.
+- `public.set_saas_user_active(uuid, boolean)`: alterna acessos aprovados/inativos no app.
+- `public.aprovar_convite_saas(uuid, uuid)`: aprova solicitacao pendente de unidade.
+
+Status:
+
+- Criado no repositorio.
+- Aplicado no Supabase em 2026-05-23 via `npm run supabase:migrations:push`.
+- `npm run supabase:migrations:dry-run` retornou `Remote database is up to date`.
+- `npm run supabase:migrations:list` mostrou `20260523143000` alinhada em Local e Remote.
+
+## Compatibilidade do Seed E2E Autenticado - Issues #17/#22
+
+Data/hora de criacao: 2026-05-23 14:17:10 -03:00
+
+Data/hora de modificacao: 2026-05-23 14:17:10 -03:00
+
+Arquivos relacionados:
+
+```text
+scripts/e2e/seed.ts
+package.json
+tests/e2e/authenticated-entry.spec.ts
+tests/e2e/authenticated-workflows.spec.ts
+docs/testing/E2E_AUTHENTICATED.md
+docs/TESTING_STRATEGY.md
+```
+
+Necessidade:
+
+- Validar o E2E autenticado real contra Supabase com `.env.e2e.local`.
+- Corrigir falha local de certificado TLS no Windows/Node durante chamadas Auth Admin.
+- Corrigir incompatibilidade entre o seed e ambientes cujo schema remoto nao possui `unidades.codigo_convite`.
+- Tornar o seed idempotente diante da constraint `unique_item_location` em `itens_inventario`.
+- Evitar flakiness por cupom e item manual repetidos em execucoes sucessivas do Playwright.
+
+Blocos de comandos documentados:
+
+```powershell
+npm run test:e2e:seed
+npm run test:e2e
+```
+
+Mudancas aplicadas:
+
+- `package.json`: `test:e2e:seed` passa a executar `node --use-system-ca --import tsx scripts/e2e/seed.ts`.
+- `scripts/e2e/seed.ts`: tenta usar `unidades.codigo_convite`; quando o PostgREST retorna `42703`, usa fallback por nome/id da unidade seed.
+- `scripts/e2e/seed.ts`: remove fisicamente itens de inventario `E2E %` controlados pelo teste antes de reinserir, evitando colisao com `unique_item_location`.
+- `tests/e2e/authenticated-workflows.spec.ts`: cupom mockado usa imagem SVG unica por execucao para nao colidir com historico de hash de cupom.
+- `tests/e2e/authenticated-workflows.spec.ts`: item manual criado pelo teste recebe nome unico por execucao.
+- `tests/e2e/authenticated-entry.spec.ts`: seletor do campo de produto acompanha o valor normalizado exibido pela UI.
+
+Status:
+
+- Nao houve nova migration SQL nesta etapa.
+- `npm run test:e2e:seed` passou em ambiente local autenticado.
+- `npm run test:e2e` passou em ambiente local autenticado com 10 testes.
+
+## Rate Limit da Edge Function de IA - Issue #16
+
+Data/hora de criacao: 2026-05-23 07:12:24 -03:00
+
+Data/hora de modificacao: 2026-05-23 07:12:24 -03:00
+
+Arquivo SQL:
+
+```text
+supabase/migrations/20260523100000_ai_extraction_rate_limits.sql
+```
+
+Necessidade:
+
+- Proteger custo e disponibilidade da Edge Function `extract-inventory` antes de chamar Gemini.
+- Registrar tentativas aceitas e bloqueadas por usuario/unidade/modo.
+- Permitir contagem de uso por janela para texto, audio e cupom.
+- Reter auditoria operacional de limite sem expor dados brutos de entrada.
+
+Blocos de comandos documentados:
+
+```sql
+create table if not exists public.ai_extraction_events (...);
+
+create index if not exists idx_ai_extraction_events_rate_window
+  on public.ai_extraction_events(unidade_id, user_id, mode, created_at desc);
+
+alter table public.ai_extraction_events enable row level security;
+
+create policy "Admins registram tentativas de IA" ...;
+create policy "Admins leem suas tentativas de IA" ...;
+
+create or replace function public.cleanup_ai_extraction_events(
+  p_reference_time timestamptz default now(),
+  p_retention_days integer default 30,
+  p_batch_size integer default 5000
+) returns integer ...;
+
+revoke execute on function public.cleanup_ai_extraction_events(timestamptz, integer, integer) from public, anon, authenticated;
+grant execute on function public.cleanup_ai_extraction_events(timestamptz, integer, integer) to service_role;
+
+select cron.schedule(
+  'cleanup-ai-extraction-events',
+  '43 3 * * *',
+  'select public.cleanup_ai_extraction_events();'
+);
+```
+
+Implementacao relacionada:
+
+- `supabase/functions/extract-inventory/index.ts`: valida limite por modo antes do Gemini, registra eventos aceitos/bloqueados e retorna mensagens especificas.
+- `supabase/functions/extract-inventory/limits.ts`: regras puras de tamanho, MIME e payload.
+- `supabase/functions/extract-inventory/limits.test.ts`: cobertura de caminho feliz e bloqueios.
+- `src/services/geminiService.ts`: preserva mensagens de erro retornadas pela Edge Function.
+- `src/hooks/useExtraction.ts`: exibe mensagens especificas de limite/formato/tamanho nos fluxos texto/audio.
+- `.env.example`: documenta variaveis opcionais da Edge Function.
+- `docs/supabase/P1_AI_RATE_LIMIT_IMPLEMENTATION.md`: documentacao operacional da issue #16.
+
+Comandos operacionais executados:
+
+```powershell
+npm run supabase:migrations:dry-run
+npm run supabase:migrations:push
+supabase functions deploy extract-inventory
+npm run lint
+npm test
+```
+
+Status:
+
+- Criado no repositorio.
+- Aplicado no Supabase em 2026-05-23 via `npm run supabase:migrations:push`.
+- Edge Function `extract-inventory` redeployada no Supabase apos a mudanca.
+- `npm run supabase:migrations:list` mostrou `20260523100000` alinhada em Local e Remote.
+- Testes automatizados cobrem bloqueio de MIME invalido, bloqueio de texto acima do limite e caminho feliz de cupom.
+
+## Consolidacao do Historico de Migrations Supabase - Issue #15
+
+Data/hora de criacao: 2026-05-23 07:01:04 -03:00
+
+Data/hora de modificacao: 2026-05-23 07:08:00 -03:00
+
+Arquivo SQL:
+
+```text
+supabase/migrations/20260501000000_initial_schema_baseline.sql
+```
+
+Necessidade:
+
+- Tornar um ambiente Supabase novo reproduzivel somente a partir de `supabase/migrations/`.
+- Remover a dependencia operacional de `CriarSQL.sql` como bootstrap manual do schema.
+- Reconciliar o historico remoto com uma migration inicial anterior as migrations de hardening e features ja aplicadas.
+- Preservar o hardening atual: a baseline nao recria policies antigas que permitiam escrita ampla por qualquer membro aprovado em inventario, movimentacoes, importacoes pendentes ou dicionario.
+
+Blocos de comandos documentados:
+
+```sql
+create extension if not exists pgcrypto with schema extensions;
+
+create table if not exists public.unidades (...);
+create table if not exists public.membros_unidades (...);
+create table if not exists public.itens_inventario (...);
+create table if not exists public.movimentacoes_inventario (...);
+create table if not exists public.importacoes_pendentes (...);
+create table if not exists public.dicionario_produtos (...);
+create table if not exists public.system_admins (...);
+
+create or replace view public.membros_unidades_view as ...;
+
+create index if not exists idx_membros_unidades_user_id ...;
+create index if not exists idx_itens_upsert_lookup ...;
+create index if not exists idx_importacoes_pendentes_unidade_id ...;
+create index if not exists idx_dicionario_unidade_nome ...;
+
+alter table public.unidades enable row level security;
+alter table public.membros_unidades enable row level security;
+alter table public.itens_inventario enable row level security;
+alter table public.movimentacoes_inventario enable row level security;
+alter table public.importacoes_pendentes enable row level security;
+alter table public.dicionario_produtos enable row level security;
+alter table public.system_admins enable row level security;
+
+create policy "Permitir inserção de unidades para usuários autenticados" ...;
+create policy "Permitir leitura de unidades que o usuário é membro" ...;
+create policy "Ver membros da unidade" ...;
+create policy "Inserir membros" ...;
+create policy "System admins can read their own status" ...;
+```
+
+Comandos operacionais executados:
+
+```powershell
+npm run supabase:migrations:list
+npm run supabase:migrations:dry-run
+supabase db push --dry-run --include-all
+supabase db push --include-all
+npm run supabase:migrations:list
+npm run supabase:migrations:dry-run
+```
+
+Status:
+
+- Criado no repositorio.
+- Aplicado no Supabase em 2026-05-23 07:01 -03:00 via `supabase db push --include-all`.
+- Antes da aplicacao, `npm run supabase:migrations:list` mostrava `20260501000000` apenas em Local; o `db push --dry-run` normal bloqueava com `Found local migration files to be inserted before the last migration on remote database`.
+- `supabase db push --dry-run --include-all` confirmou que somente `20260501000000_initial_schema_baseline.sql` seria enviada.
+- A aplicacao remota foi idempotente: o Supabase reportou objetos ja existentes como `skipping`, sem recriar schema destrutivamente.
+- Apos aplicacao, `npm run supabase:migrations:list` mostrou `20260501000000` e todas as migrations posteriores alinhadas em Local e Remote.
+- Validacao final: `npm run supabase:migrations:dry-run` retornou `Remote database is up to date`.
+- Observacao operacional: se o CLI retornar erro de autenticacao para `cli_login_postgres` em outra sessao, exportar `SUPABASE_DB_PASSWORD` com a senha atual do banco antes de repetir `db push`, `db push --dry-run` ou comandos equivalentes.
+
 ## Retencao de Importacoes Pendentes Expiradas
 
 Data/hora de criacao: 2026-05-22 20:49:15 -03:00

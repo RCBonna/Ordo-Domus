@@ -11,6 +11,14 @@ jobs:
     runs-on: ubuntu-latest
     env:
       NODE_OPTIONS: --use-system-ca
+      VITE_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+      VITE_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
+      E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
+      E2E_SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.E2E_SUPABASE_SERVICE_ROLE_KEY }}
+      E2E_USER_EMAIL: ${{ vars.E2E_USER_EMAIL || 'ordo.e2e@example.com' }}
+      E2E_USER_PASSWORD: ${{ secrets.E2E_USER_PASSWORD }}
+      E2E_UNIT_NAME: ${{ vars.E2E_UNIT_NAME || 'Ordo E2E' }}
+      E2E_UNIT_CODE: ${{ vars.E2E_UNIT_CODE || 'ORDO-E2E' }}
 
     steps:
       - name: Checkout
@@ -33,6 +41,17 @@ jobs:
 
       - name: Build
         run: npm run build
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Seed authenticated E2E
+        if: ${{ env.E2E_SUPABASE_SERVICE_ROLE_KEY != '' && env.E2E_USER_PASSWORD != '' }}
+        run: npm run test:e2e:seed
+
+      - name: E2E tests
+        if: ${{ env.VITE_SUPABASE_URL != '' && env.VITE_SUPABASE_ANON_KEY != '' }}
+        run: npm run test:e2e
 
       - name: Dependency audit
         run: npm audit --audit-level=high

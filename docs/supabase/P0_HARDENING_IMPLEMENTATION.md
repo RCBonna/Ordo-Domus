@@ -73,7 +73,7 @@ Aplicacao planejada via CLI:
 supabase db push
 ```
 
-Status real: aplicado manualmente no Supabase SQL Editor, pois o `supabase db push` estava falhando por autenticacao/conexao do banco remoto.
+Status real atualizado: aplicado no Supabase e reconciliado no historico de migrations. Em 2026-05-23, `supabase migration list` mostrou a baseline `20260501000000` e esta migration `20260519150000` alinhadas em Local e Remote.
 
 Efeito principal:
 
@@ -104,7 +104,7 @@ Resultado:
 - O frontend agora invoca `supabase.functions.invoke('extract-inventory')`.
 - A Edge Function valida sessao Supabase e exige que o usuario seja admin aprovado da unidade.
 - A migration foi aplicada manualmente ao banco remoto pelo Supabase SQL Editor.
-- Como o SQL foi aplicado fora do historico de migrations do CLI, um futuro `supabase db push` ainda pode listar `20260519150000_harden_rls_roles.sql` como pendente. Antes de usar `db push`, reconciliar o historico de migrations ou confirmar que o SQL e idempotente para reaplicacao.
+- O historico remoto/local foi reconciliado em 2026-05-23. Se o CLI retornar erro de autenticacao em `db push` ou `db push --dry-run`, configurar `SUPABASE_DB_PASSWORD` na sessao antes de repetir a validacao.
 
 ## Status de Producao
 

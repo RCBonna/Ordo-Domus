@@ -135,8 +135,8 @@ Racional:
 
 ## Pendencias P2
 
-1. Reconciliar historico de migrations quando o `supabase db push` estiver estavel.
+1. ✅ Historico de migrations reconciliado em 2026-05-23 com baseline inicial e `migration list` alinhado.
 2. Criar filtros server-side para inventario grande.
 3. Criar RPCs de dashboard para KPIs por unidade.
 4. Reduzir `console.log` com payload operacional em `useExtraction`.
-5. Avaliar lazy loading de telas pesadas, especialmente dashboard SaaS e graficos.
+5. ✅ Lazy loading aplicado para telas pesadas: dashboard operacional, dashboard SaaS, triagem e modal administrativo.

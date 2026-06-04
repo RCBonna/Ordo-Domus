@@ -41,7 +41,8 @@ async function invokeExtraction<T>(mode: ExtractionMode, payload: Record<string,
   );
 
   if (error) {
-    throw new Error(error.message || 'Falha ao chamar extração por IA.');
+    const edgeMessage = await getEdgeFunctionErrorMessage(error);
+    throw new Error(edgeMessage || error.message || 'Falha ao chamar extração por IA.');
   }
 
   if (data?.error) {
@@ -53,6 +54,19 @@ async function invokeExtraction<T>(mode: ExtractionMode, payload: Record<string,
   }
 
   return data.result as T;
+}
+
+async function getEdgeFunctionErrorMessage(error: unknown): Promise<string | null> {
+  const response = (error as { context?: unknown })?.context;
+  if (!(response instanceof Response)) return null;
+
+  try {
+    const cloned = response.clone();
+    const body = await cloned.json();
+    return typeof body?.error === 'string' ? body.error : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function extractInventoryData(text: string, unidadeId: string): Promise<ExtractedItem> {

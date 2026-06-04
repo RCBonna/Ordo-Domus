@@ -13,7 +13,7 @@
 | Prioridade | Tema | Motivo |
 | --- | --- | --- |
 | P0 | Proteger Gemini | Evitar vazamento/abuso de chave. |
-| P0 | Consolidar migrations | Evitar divergencia de schema. |
+| P0 | ✅ Consolidar migrations | Evitar divergencia de schema. |
 | P1 | RLS por papel | Garantir regra real para convidados. |
 | P1 | Testes criticos | Reduzir regressao. |
 | P2 | Tipagem de dominio | Melhorar manutencao. |
@@ -23,7 +23,7 @@
 
 1. Criar Supabase Edge Function para Gemini.
 2. Remover `VITE_GEMINI_API_KEY` do frontend. Status: implementado no repositorio, pendente limpeza do ambiente depois do deploy da Edge Function.
-3. Consolidar `CriarSQL.sql` em migrations Supabase.
+3. Consolidar `CriarSQL.sql` em migrations Supabase. Status: implementado com baseline `20260501000000_initial_schema_baseline.sql` e historico remoto reconciliado em 2026-05-23.
 4. Corrigir referencias antigas `membros_unidade`.
 5. Revisar policies por papel.
 6. Adicionar `user_id` em movimentacoes.

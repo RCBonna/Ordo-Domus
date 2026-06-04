@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Users, Loader2, Share2, Check, Copy, ShieldCheck, UserMinus, UserCheck } from 'lucide-react';
+import { AlertCircle, Users, Loader2, Share2, Check, Copy, ShieldCheck, UserMinus, UserCheck } from 'lucide-react';
 import { toast } from 'sonner';
+import { logger } from '../lib/logger';
 
 interface Props {
   unidadeId: string;
@@ -19,30 +20,81 @@ interface UnitMember {
   adicionado_em: string;
 }
 
+const MEMBERS_LOAD_TIMEOUT_MS = 6_000;
+
+function withTimeout<T>(promise: PromiseLike<T>, timeoutMs: number, onTimeout: () => void): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timeoutId = window.setTimeout(() => {
+      onTimeout();
+      reject(new Error('Tempo limite excedido.'));
+    }, timeoutMs);
+
+    Promise.resolve(promise).then(
+      (value) => {
+        window.clearTimeout(timeoutId);
+        resolve(value);
+      },
+      (error) => {
+        window.clearTimeout(timeoutId);
+        reject(error);
+      }
+    );
+  });
+}
+
 export default function AdminPanel({ unidadeId, papel, unidadeNome }: Props) {
   const [membros, setMembros] = useState<UnitMember[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [copiado, setCopiado] = useState(false);
 
   const carregarMembros = async () => {
     if (papel !== 'admin') {
       setLoading(false);
+      setLoadError(null);
       return;
     }
     
     setLoading(true);
-    // Tenta usar a nova função listar_membros, faz fallback se não existir
-    const { data, error } = await supabase
-      .rpc('listar_membros', { p_unidade_id: unidadeId });
-      
-    if (!error && data) {
-      setMembros(data);
-    } else {
-      const { data: dataOld } = await supabase
-        .rpc('listar_pendentes', { p_unidade_id: unidadeId });
-      if (dataOld) setMembros(dataOld);
+    setLoadError(null);
+
+    const abortController = new AbortController();
+
+    try {
+      // Tenta usar a nova função listar_membros, faz fallback se não existir
+      const { data, error } = await withTimeout(
+        supabase
+          .rpc('listar_membros', { p_unidade_id: unidadeId })
+          .abortSignal(abortController.signal),
+        MEMBERS_LOAD_TIMEOUT_MS,
+        () => abortController.abort()
+      );
+        
+      if (!error && data) {
+        setMembros(data);
+        return;
+      }
+
+      if (error) logger.warn('RPC listar_membros indisponivel para o painel administrativo.');
+
+      const fallbackController = new AbortController();
+      const { data: dataOld, error: fallbackError } = await withTimeout(
+        supabase
+          .rpc('listar_pendentes', { p_unidade_id: unidadeId })
+          .abortSignal(fallbackController.signal),
+        MEMBERS_LOAD_TIMEOUT_MS,
+        () => fallbackController.abort()
+      );
+
+      if (fallbackError) throw fallbackError;
+      setMembros(dataOld || []);
+    } catch {
+      logger.warn('Falha ao carregar membros da unidade.');
+      setMembros([]);
+      setLoadError('Não foi possível carregar os acessos agora. Tente novamente em instantes.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
@@ -81,7 +133,7 @@ export default function AdminPanel({ unidadeId, papel, unidadeNome }: Props) {
   };
 
   if (loading) return (
-    <div className="flex items-center justify-center p-12">
+    <div className="flex items-center justify-center p-12" data-testid="admin-panel-loading">
       <Loader2 className="animate-spin w-8 h-8 text-slate-200" />
     </div>
   );
@@ -91,6 +143,23 @@ export default function AdminPanel({ unidadeId, papel, unidadeNome }: Props) {
 
   return (
     <div className="space-y-10">
+      {loadError && (
+        <div className="flex items-start gap-3 rounded-2xl border border-amber-100 bg-amber-50 p-4 text-amber-800">
+          <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
+          <div className="space-y-3">
+            <p className="text-sm font-bold leading-relaxed">{loadError}</p>
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={carregarMembros}
+              className="h-9 rounded-xl bg-white px-4 text-xs font-black text-amber-700 hover:bg-amber-100"
+            >
+              Tentar novamente
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* SEÇÃO: CONVITE */}
       <div className="space-y-6">
         <div className="flex items-center justify-between">

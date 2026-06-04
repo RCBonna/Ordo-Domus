@@ -78,4 +78,3 @@ Com multiplos fallbacks, a latencia maxima percebida pode ser alta se modelos fa
 5. Reduzir fallbacks Gemini em producao ou observar falhas por modelo.
 6. Criar limpeza automatica de pendencias expiradas.
 7. Monitorar tempo de RPC `upsert_inventario`.
-

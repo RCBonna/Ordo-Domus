@@ -5,6 +5,12 @@ import { resolve } from 'node:path';
 
 type EnvMap = Record<string, string>;
 
+interface UnitRecord {
+  id: string;
+  nome: string;
+  codigo_convite?: string | null;
+}
+
 interface SeedContext {
   supabaseUrl: string;
   serviceRoleKey: string;
@@ -29,6 +35,7 @@ const user = await ensureUser(context.userEmail, context.userPassword);
 const unit = await ensureUnit(context.unitName, context.unitCode);
 await ensureMembership(unit.id, user.id);
 await seedInventory(unit.id);
+await seedShoppingList(unit.id);
 await seedTriage(unit.id);
 
 console.log(`E2E seed pronto: ${context.userEmail} / unidade ${context.unitName} (${unit.id})`);
@@ -130,21 +137,60 @@ async function findUserByEmail(email: string): Promise<User | null> {
   return null;
 }
 
-async function ensureUnit(name: string, code: string) {
-  const { data: existing, error: selectError } = await admin
+async function ensureUnit(name: string, code: string): Promise<UnitRecord> {
+  const byInviteCode = await admin
     .from('unidades')
     .select('id,nome,codigo_convite')
     .eq('codigo_convite', code)
     .maybeSingle();
 
-  if (selectError) throw selectError;
+  if (!byInviteCode.error) {
+    if (byInviteCode.data) {
+      const { data, error } = await admin
+        .from('unidades')
+        .update({ nome: name })
+        .eq('id', byInviteCode.data.id)
+        .select('id,nome,codigo_convite')
+        .single();
 
-  if (existing) {
+      if (error) throw error;
+      return data;
+    }
+
+    const { data, error } = await admin
+      .from('unidades')
+      .insert({
+        nome: name,
+        codigo_convite: code,
+      })
+      .select('id,nome,codigo_convite')
+      .single();
+
+    if (error) throw error;
+    return data;
+  }
+
+  if (!isMissingInviteCodeColumn(byInviteCode.error)) {
+    throw byInviteCode.error;
+  }
+
+  console.warn('Coluna unidades.codigo_convite ausente; seed E2E usando nome/id da unidade como fallback.');
+
+  const { data: existingByName, error: selectByNameError } = await admin
+    .from('unidades')
+    .select('id,nome')
+    .eq('nome', name)
+    .limit(1)
+    .maybeSingle();
+
+  if (selectByNameError) throw selectByNameError;
+
+  if (existingByName) {
     const { data, error } = await admin
       .from('unidades')
       .update({ nome: name })
-      .eq('id', existing.id)
-      .select('id,nome,codigo_convite')
+      .eq('id', existingByName.id)
+      .select('id,nome')
       .single();
 
     if (error) throw error;
@@ -155,13 +201,16 @@ async function ensureUnit(name: string, code: string) {
     .from('unidades')
     .insert({
       nome: name,
-      codigo_convite: code,
     })
-    .select('id,nome,codigo_convite')
+    .select('id,nome')
     .single();
 
   if (error) throw error;
   return data;
+}
+
+function isMissingInviteCodeColumn(error: { code?: string; message?: string } | null) {
+  return error?.code === '42703' && error.message?.includes('codigo_convite');
 }
 
 async function ensureMembership(unitId: string, userId: string) {
@@ -182,9 +231,7 @@ async function seedInventory(unitId: string) {
 
   const { error: cleanupError } = await admin
     .from('itens_inventario')
-    .update({
-      deletado_em: new Date().toISOString(),
-    })
+    .delete()
     .eq('unidade_id', unitId)
     .in('nome', seedNames);
 
@@ -279,4 +326,29 @@ async function seedTriage(unitId: string) {
     ]);
 
   if (pendingError) throw pendingError;
+}
+
+async function seedShoppingList(unitId: string) {
+  const { error: cleanupError } = await admin
+    .from('lista_compras')
+    .delete()
+    .eq('unidade_id', unitId)
+    .like('nome', 'E2E %');
+
+  if (cleanupError) throw cleanupError;
+
+  const { error } = await admin
+    .from('lista_compras')
+    .insert([
+      {
+        unidade_id: unitId,
+        nome: 'E2E Pilha AA',
+        quantidade: 2,
+        observacao: 'Seed E2E lista de compras',
+        status: 'pendente',
+        origem: 'manual',
+      },
+    ]);
+
+  if (error) throw error;
 }

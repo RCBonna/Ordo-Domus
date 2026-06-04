@@ -1,23 +1,12 @@
 import { expect, test } from '@playwright/test';
-import { failOnConsoleErrors } from './helpers/console';
-import { gotoApp } from './helpers/navigation';
-
-const email = process.env.E2E_USER_EMAIL;
-const password = process.env.E2E_USER_PASSWORD;
+import { acceptAiConsent } from './helpers/ai-consent';
+import { hasAuthenticatedE2eEnv, loginWithSeedUser } from './helpers/auth';
 
 test.describe('entrada autenticada', () => {
-  test.skip(!email || !password, 'Defina E2E_USER_EMAIL e E2E_USER_PASSWORD para rodar o fluxo autenticado.');
+  test.skip(!hasAuthenticatedE2eEnv, 'Defina E2E_USER_EMAIL e E2E_USER_PASSWORD para rodar o fluxo autenticado.');
 
   test.beforeEach(async ({ page }) => {
-    const getConsoleErrors = failOnConsoleErrors(page);
-
-    await gotoApp(page);
-    await page.getByLabel('E-mail').fill(email!);
-    await page.getByRole('textbox', { name: 'Senha' }).fill(password!);
-    await page.getByRole('button', { name: 'Acessar Sistema' }).click();
-
-    await expect(page.getByText('Nova Entrada')).toBeVisible({ timeout: 20_000 });
-    expect(getConsoleErrors()).toEqual([]);
+    await loginWithSeedUser(page);
   });
 
   test('login abre a entrada operacional da unidade seed', async ({ page }) => {
@@ -32,9 +21,10 @@ test.describe('entrada autenticada', () => {
     await page.getByPlaceholder('Ex: Guardei 2 pacotes de café no armário superior da cozinha...')
       .fill('Guardei um pacote de macarrao e2e na cozinha.');
     await page.getByRole('button', { name: 'Extrair Dados' }).click();
+    await acceptAiConsent(page);
 
     await expect(page.getByText('Item Identificado')).toBeVisible();
-    await expect(page.locator('input[value="E2E Macarrao"]')).toBeVisible();
+    await expect(page.locator('input[value="E2e macarrao"]')).toBeVisible();
 
     await page.getByRole('button', { name: 'Confirmar' }).click();
     await expect(page.getByText('Item gravado com sucesso no inventário!').or(page.getByText('A quantidade foi somada a um item existente!'))).toBeVisible({ timeout: 20_000 });

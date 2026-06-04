@@ -29,7 +29,7 @@ Nao foi encontrado servidor Express, API REST propria, middleware HTTP proprio o
 | Hooks de dominio | `src/hooks/*.ts` | Encapsular efeitos, estado e chamadas Supabase/Gemini. |
 | Servicos externos | `src/services/geminiService.ts`, `src/lib/supabaseClient.ts` | Clientes de IA e Supabase. |
 | Utilitarios | `src/lib/utils.ts` | Formatacao, classificacao e compressao de imagem. |
-| Banco/RPC/RLS | `CriarSQL.sql`, `sql/*.sql` | Schema, indices, politicas e funcoes PL/pgSQL. |
+| Banco/RPC/RLS | `supabase/migrations/`, `CriarSQL.sql`, `sql/*.sql` | Schema versionado, indices, politicas e funcoes PL/pgSQL; scripts raiz/`sql` sao historico auxiliar legado. |
 
 ## Entrypoints
 

@@ -1,6 +1,11 @@
 // @ts-nocheck
 // Supabase Edge Function: authenticated Gemini extraction endpoint.
 // Required secret: GEMINI_API_KEY
+import {
+  RATE_LIMIT_DEFAULTS,
+  evaluateAiExtractionPayload,
+  normalizeMimeType,
+} from "./limits.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -62,6 +67,172 @@ function assertPayload(condition: boolean, message: string, status = 400) {
     error.status = status;
     throw error;
   }
+}
+
+function envInt(name: string, fallback: number, min: number, max: number) {
+  const raw = Deno.env.get(name);
+  if (!raw) return fallback;
+
+  const value = Number(raw);
+  if (!Number.isFinite(value) || value < min || value > max) {
+    console.warn(`[extract-inventory] Variável ${name} inválida; usando padrão ${fallback}.`);
+    return fallback;
+  }
+
+  return Math.floor(value);
+}
+
+function getRateLimitPolicy(mode: "text" | "audio" | "receipt") {
+  if (mode === "text") {
+    return {
+      ...RATE_LIMIT_DEFAULTS.text,
+      maxRequests: envInt("AI_TEXT_RATE_LIMIT", RATE_LIMIT_DEFAULTS.text.maxRequests, 1, 1000),
+      windowSeconds: envInt("AI_TEXT_RATE_WINDOW_SECONDS", RATE_LIMIT_DEFAULTS.text.windowSeconds, 60, 86_400),
+      maxChars: envInt("AI_TEXT_MAX_CHARS", RATE_LIMIT_DEFAULTS.text.maxChars, 1, 20_000),
+      maxPayloadBytes: envInt("AI_TEXT_MAX_BYTES", RATE_LIMIT_DEFAULTS.text.maxPayloadBytes, 1, 200_000),
+    };
+  }
+
+  if (mode === "audio") {
+    return {
+      ...RATE_LIMIT_DEFAULTS.audio,
+      maxRequests: envInt("AI_AUDIO_RATE_LIMIT", RATE_LIMIT_DEFAULTS.audio.maxRequests, 1, 1000),
+      windowSeconds: envInt("AI_AUDIO_RATE_WINDOW_SECONDS", RATE_LIMIT_DEFAULTS.audio.windowSeconds, 60, 86_400),
+      maxPayloadBytes: envInt("AI_AUDIO_MAX_BYTES", RATE_LIMIT_DEFAULTS.audio.maxPayloadBytes, 1_000, 50_000_000),
+    };
+  }
+
+  return {
+    ...RATE_LIMIT_DEFAULTS.receipt,
+    maxRequests: envInt("AI_RECEIPT_RATE_LIMIT", RATE_LIMIT_DEFAULTS.receipt.maxRequests, 1, 1000),
+    windowSeconds: envInt("AI_RECEIPT_RATE_WINDOW_SECONDS", RATE_LIMIT_DEFAULTS.receipt.windowSeconds, 60, 86_400),
+    maxPayloadBytes: envInt("AI_RECEIPT_MAX_BYTES", RATE_LIMIT_DEFAULTS.receipt.maxPayloadBytes, 1_000, 50_000_000),
+  };
+}
+
+async function insertAiExtractionEvent(
+  supabaseUrl: string,
+  anonKey: string,
+  authorization: string,
+  event: {
+    unidade_id: string;
+    user_id: string;
+    mode: "text" | "audio" | "receipt";
+    payload_bytes: number;
+    allowed: boolean;
+    reason?: string;
+  },
+) {
+  const response = await fetch(`${supabaseUrl}/rest/v1/ai_extraction_events`, {
+    method: "POST",
+    headers: {
+      apikey: anonKey,
+      authorization,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal",
+    },
+    body: JSON.stringify(event),
+  });
+
+  if (!response.ok) {
+    const raw = await response.text();
+    console.warn(`[extract-inventory] Falha ao registrar tentativa de IA: ${response.status} ${raw.slice(0, 300)}`);
+  }
+}
+
+async function countRecentAiExtractionEvents(
+  supabaseUrl: string,
+  anonKey: string,
+  authorization: string,
+  unidadeId: string,
+  userId: string,
+  mode: "text" | "audio" | "receipt",
+  windowSeconds: number,
+) {
+  const windowStart = new Date(Date.now() - windowSeconds * 1000).toISOString();
+  const params = new URLSearchParams({
+    select: "id",
+    unidade_id: `eq.${unidadeId}`,
+    user_id: `eq.${userId}`,
+    mode: `eq.${mode}`,
+    created_at: `gte.${windowStart}`,
+  });
+
+  const response = await fetch(`${supabaseUrl}/rest/v1/ai_extraction_events?${params.toString()}`, {
+    method: "HEAD",
+    headers: {
+      apikey: anonKey,
+      authorization,
+      Prefer: "count=exact",
+    },
+  });
+
+  if (!response.ok) {
+    const raw = await response.text();
+    throw Object.assign(new Error(`Não foi possível validar limite de uso da IA: ${raw.slice(0, 300)}`), { status: 503 });
+  }
+
+  const contentRange = response.headers.get("content-range") || "";
+  const total = Number(contentRange.split("/")[1]);
+  return Number.isFinite(total) ? total : 0;
+}
+
+async function assertAiUsageLimit(
+  supabaseUrl: string,
+  anonKey: string,
+  authorization: string,
+  unidadeId: string,
+  userId: string,
+  mode: "text" | "audio" | "receipt",
+  payload: Record<string, unknown>,
+) {
+  const policy = getRateLimitPolicy(mode);
+  const payloadCheck = evaluateAiExtractionPayload(mode, payload, policy);
+  const payloadBytes = payloadCheck.payloadBytes;
+
+  const block = async (reason: string, message: string, status = 429) => {
+    await insertAiExtractionEvent(supabaseUrl, anonKey, authorization, {
+      unidade_id: unidadeId,
+      user_id: userId,
+      mode,
+      payload_bytes: payloadBytes,
+      allowed: false,
+      reason,
+    });
+    throw Object.assign(new Error(message), { status });
+  };
+
+  if (!payloadCheck.allowed) {
+    await block(payloadCheck.reason, payloadCheck.message, payloadCheck.status);
+  }
+
+  const recentCount = await countRecentAiExtractionEvents(
+    supabaseUrl,
+    anonKey,
+    authorization,
+    unidadeId,
+    userId,
+    mode,
+    policy.windowSeconds,
+  );
+
+  if (recentCount >= policy.maxRequests) {
+    const waitMinutes = Math.max(1, Math.ceil(policy.windowSeconds / 60));
+    await block(
+      "rate_limited",
+      `Limite de uso da IA atingido para este modo. Tente novamente em até ${waitMinutes} minutos.`,
+      429,
+    );
+  }
+
+  await insertAiExtractionEvent(supabaseUrl, anonKey, authorization, {
+    unidade_id: unidadeId,
+    user_id: userId,
+    mode,
+    payload_bytes: payloadBytes,
+    allowed: true,
+    reason: "accepted",
+  });
 }
 
 async function getAuthenticatedUser(supabaseUrl: string, anonKey: string, authorization: string) {
@@ -179,13 +350,11 @@ Deno.serve(async (req) => {
 
     const user = await getAuthenticatedUser(supabaseUrl, anonKey, authorization);
     await assertApprovedAdminMembership(supabaseUrl, anonKey, authorization, unidadeId, user.id);
+    await assertAiUsageLimit(supabaseUrl, anonKey, authorization, unidadeId, user.id, mode, payload);
 
     const today = new Date().toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
 
     if (mode === "text") {
-      assertPayload(typeof payload.text === "string" && payload.text.trim().length > 0, "Texto obrigatório.");
-      assertPayload(payload.text.length <= 4000, "Texto excede o limite de 4000 caracteres.");
-
       const result = await tryGeminiModels(
         geminiApiKey,
         ["gemini-2.5-flash", "gemini-flash-latest", "gemini-2.0-flash-lite", "gemini-pro-latest"],
@@ -210,11 +379,7 @@ Deno.serve(async (req) => {
     }
 
     if (mode === "audio") {
-      assertPayload(typeof payload.audioBase64 === "string" && payload.audioBase64.length > 0, "Áudio obrigatório.");
-      assertPayload(payload.audioBase64.length <= 10_000_000, "Áudio excede o limite permitido.");
-      assertPayload(typeof payload.mimeType === "string" && payload.mimeType.startsWith("audio/"), "MIME de áudio inválido.");
-
-      const cleanMimeType = payload.mimeType.split(";")[0];
+      const cleanMimeType = normalizeMimeType(payload.mimeType);
       const result = await tryGeminiModels(
         geminiApiKey,
         ["gemini-2.5-flash", "gemini-flash-latest", "gemini-2.0-flash-lite", "gemini-pro-latest"],
@@ -246,11 +411,7 @@ Deno.serve(async (req) => {
       return jsonResponse({ result });
     }
 
-    assertPayload(typeof payload.imageBase64 === "string" && payload.imageBase64.length > 0, "Imagem obrigatória.");
-    assertPayload(payload.imageBase64.length <= 8_000_000, "Imagem excede o limite permitido.");
-    assertPayload(typeof payload.mimeType === "string" && payload.mimeType.startsWith("image/"), "MIME de imagem inválido.");
-
-    const cleanMimeType = payload.mimeType.split(";")[0];
+    const cleanMimeType = normalizeMimeType(payload.mimeType);
     const result = await tryGeminiModels(geminiApiKey, ["gemini-2.5-flash", "gemini-flash-latest"], () => ({
       contents: [
         {

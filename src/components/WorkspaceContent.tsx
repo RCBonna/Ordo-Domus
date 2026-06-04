@@ -1,11 +1,10 @@
+import { lazy, Suspense } from 'react';
 import { AnimatePresence } from 'motion/react';
 import GuestView from './GuestView';
 import Onboarding from './Onboarding';
 import { EntrySection } from './EntrySection';
-import { InventoryDashboard } from './InventoryDashboard';
 import { InventoryList } from './InventoryList';
 import { PendingApprovalState, UnitSelectionPrompt } from './AppStatusStates';
-import { SaasAdminDashboard } from './SaasAdminDashboard';
 import { ShoppingList } from './ShoppingList';
 import { isConsumivel, formatarTexto } from '../lib/utils';
 import type { AppTab } from './MainHeader';
@@ -16,6 +15,9 @@ import type { useReceiptImport } from '../hooks/useReceiptImport';
 import type { useShoppingList } from '../hooks/useShoppingList';
 import type { useTriage } from '../hooks/useTriage';
 import type { HistoryItem, UnitMembership } from '../types/domain';
+
+const InventoryDashboard = lazy(() => import('./InventoryDashboard').then((module) => ({ default: module.InventoryDashboard })));
+const SaasAdminDashboard = lazy(() => import('./SaasAdminDashboard').then((module) => ({ default: module.SaasAdminDashboard })));
 
 type DashboardSlice = Pick<ReturnType<typeof useDashboardMetrics>, 'dashboardMetrics' | 'isDashboardMetricsLoading'>;
 type ExtractionSlice = Pick<
@@ -202,25 +204,36 @@ export function WorkspaceContent({
         )}
 
         {activeTab === 'dashboard' && (
-          <InventoryDashboard
-            key="tab-dashboard"
-            fullInventory={inventory.fullInventory}
-            history={extraction.history as HistoryItem[]}
-            dashboardMetrics={dashboard.dashboardMetrics}
-            isDashboardMetricsLoading={dashboard.isDashboardMetricsLoading}
-            isConsumivel={isConsumivel}
-            formatarTexto={formatarTexto}
-            onNavigateToItem={(nome) => {
-              inventory.setSearchTerm(nome);
-              setActiveTab('inventário');
-            }}
-          />
+          <Suspense key="tab-dashboard" fallback={<LazySectionFallback label="Carregando dashboard..." />}>
+            <InventoryDashboard
+              fullInventory={inventory.fullInventory}
+              history={extraction.history as HistoryItem[]}
+              dashboardMetrics={dashboard.dashboardMetrics}
+              isDashboardMetricsLoading={dashboard.isDashboardMetricsLoading}
+              isConsumivel={isConsumivel}
+              formatarTexto={formatarTexto}
+              onNavigateToItem={(nome) => {
+                inventory.setSearchTerm(nome);
+                setActiveTab('inventário');
+              }}
+            />
+          </Suspense>
         )}
 
         {activeTab === 'saas-admin' && isSystemAdmin && (
-          <SaasAdminDashboard key="tab-saas-admin" />
+          <Suspense key="tab-saas-admin" fallback={<LazySectionFallback label="Carregando painel SaaS..." />}>
+            <SaasAdminDashboard />
+          </Suspense>
         )}
       </AnimatePresence>
+    </div>
+  );
+}
+
+function LazySectionFallback({ label }: { label: string }) {
+  return (
+    <div className="flex min-h-[360px] items-center justify-center rounded-3xl border border-slate-100 bg-white text-sm font-black text-slate-400 shadow-sm">
+      {label}
     </div>
   );
 }

@@ -20,6 +20,7 @@ O Ordo Domus e um sistema web de inventario domestico multiunidade, com autentic
 | [SECURITY_ANALISE.md](SECURITY_ANALISE.md) | Avaliacao de autenticacao, autorizacao, secrets, LGPD, OWASP e riscos. |
 | [DEPLOYMENT.md](DEPLOYMENT.md) | Variaveis de ambiente, build, publicacao, rollback e operacao. |
 | [TESTING_STRATEGY.md](TESTING_STRATEGY.md) | Testes existentes, lacunas, recomendacoes unitarias/integracao/E2E. |
+| [testing/E2E_AUTHENTICATED.md](testing/E2E_AUTHENTICATED.md) | Configuracao local/CI dos testes Playwright autenticados com seed controlado. |
 | [REQUIREMENTS_SPECIFICATION.md](REQUIREMENTS_SPECIFICATION.md) | Requisitos funcionais, nao funcionais, tecnicos, premissas e restricoes. |
 | [INTEGRATIONS.md](INTEGRATIONS.md) | Integracoes externas: Supabase, Gemini, browser APIs e hospedagem. |
 
@@ -54,11 +55,13 @@ O Ordo Domus e um sistema web de inventario domestico multiunidade, com autentic
 | [supabase](supabase/README.md) | Setup seguro do Supabase CLI e fluxo de migrations versionadas. |
 | [supabase/P0_HARDENING_IMPLEMENTATION.md](supabase/P0_HARDENING_IMPLEMENTATION.md) | Status da implementacao P0: Edge Function Gemini e RLS por papel. |
 | [supabase/P1_RELIABILITY_IMPLEMENTATION.md](supabase/P1_RELIABILITY_IMPLEMENTATION.md) | Status da implementacao P1: auditabilidade, CI, testes e supply chain. |
+| [supabase/P1_AI_RATE_LIMIT_IMPLEMENTATION.md](supabase/P1_AI_RATE_LIMIT_IMPLEMENTATION.md) | Status da implementacao P1: rate limit e validacao de payload da Edge Function de IA. |
 | [supabase/P2_TYPES_PERFORMANCE_IMPLEMENTATION.md](supabase/P2_TYPES_PERFORMANCE_IMPLEMENTATION.md) | Status da implementacao P2: tipagem, memoizacao e validade normalizada. |
 | [supabase/P2_1_DASHBOARD_RPC_IMPLEMENTATION.md](supabase/P2_1_DASHBOARD_RPC_IMPLEMENTATION.md) | Status da implementacao P2.1: RPCs server-side para dashboard. |
 | [supabase/P2_2_INVENTORY_SERVER_SIDE_PAGINATION.md](supabase/P2_2_INVENTORY_SERVER_SIDE_PAGINATION.md) | Status da implementacao P2.2: paginacao e filtros server-side no inventario. |
 | [supabase/P2_3_REPOSITORY_SERVICE_LAYER.md](supabase/P2_3_REPOSITORY_SERVICE_LAYER.md) | Status da implementacao P2.3: camada inicial de repository/service. |
 | [supabase/P2_4_SAFE_LOGGING.md](supabase/P2_4_SAFE_LOGGING.md) | Status da implementacao P2.4: remocao de logs sensiveis. |
+| [security/AI_PRIVACY_CONSENT.md](security/AI_PRIVACY_CONSENT.md) | Consentimento local e retencao dos fluxos de IA por texto, audio e cupom. |
 
 ## Diagramas Mermaid
 
@@ -80,3 +83,4 @@ O Ordo Domus e um sistema web de inventario domestico multiunidade, com autentic
 - P2.2 adicionou paginacao e filtros server-side no inventario. A migration de indices foi aplicada manualmente no Supabase.
 - P2.3 iniciou a camada de repository/service no dominio de inventario, separando hooks, persistencia e regras com auditoria.
 - P2.4 removeu logs sensiveis de hooks/componentes e centralizou logs dev-only em `src/lib/logger.ts`.
+- P2 de privacidade adicionou consentimento local antes de chamadas de IA por texto, audio ou cupom.

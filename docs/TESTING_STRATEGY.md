@@ -91,6 +91,7 @@ Cobertura inicial implementada:
 | --- | --- | --- |
 | `tests/e2e/auth-public.spec.ts` | Implementado | Login publico, alternancia cadastro/login e visibilidade de senha. |
 | `tests/e2e/authenticated-entry.spec.ts` | Implementado opcional | Roda somente com `E2E_USER_EMAIL` e `E2E_USER_PASSWORD`; valida entrada operacional, Entrada com IA mockada, Inventario e Triagem seed. |
+| `tests/e2e/authenticated-workflows.spec.ts` | Implementado opcional | Roda com usuario seed; valida Cupom com IA mockada, Triagem criada, Lista de Compras e insercao manual. |
 
 ### Seed E2E autenticado
 
@@ -105,11 +106,11 @@ Variaveis:
 | Variavel | Obrigatoria | Uso |
 | --- | --- | --- |
 | `VITE_SUPABASE_URL` ou `E2E_SUPABASE_URL` | Sim | Projeto Supabase alvo. |
-| `E2E_SUPABASE_SERVICE_ROLE_KEY` | Sim | Criar/atualizar usuario Auth e dados seed. Nunca versionar. |
+| `E2E_SUPABASE_SERVICE_ROLE_KEY` | Sim | Criar/atualizar usuario Auth e dados seed. Usar legacy `service_role` JWT; nunca versionar. |
 | `E2E_USER_EMAIL` | Sim | Usuario de teste para Playwright. |
 | `E2E_USER_PASSWORD` | Sim | Senha do usuario de teste. Nunca versionar. |
 | `E2E_UNIT_NAME` | Nao | Nome da unidade seed. |
-| `E2E_UNIT_CODE` | Nao | Codigo de convite deterministico da unidade seed. |
+| `E2E_UNIT_CODE` | Nao | Codigo de convite deterministico da unidade seed quando `unidades.codigo_convite` existe. |
 
 Comandos:
 
@@ -118,13 +119,22 @@ npm run test:e2e:seed
 npm run test:e2e
 ```
 
+O script `test:e2e:seed` usa `node --use-system-ca --import tsx` para evitar falhas TLS em Windows com certificados raiz instalados na store do sistema. Em schemas sem `unidades.codigo_convite`, o seed usa fallback por nome/id da unidade `Ordo E2E`.
+
 O seed cria/atualiza:
 
 - usuario Auth confirmado;
 - unidade `Ordo E2E`;
 - membro admin aprovado;
 - itens de inventario `E2E Cafe`, `E2E Arroz`, `E2E Sabao`;
-- dicionario e pendencias de triagem `E2E CAFE TORRADO 500G` e `E2E DETERGENTE NEUTRO`.
+- dicionario e pendencias de triagem `E2E CAFE TORRADO 500G` e `E2E DETERGENTE NEUTRO`;
+- item manual de lista de compras `E2E Pilha AA`.
+
+Documentacao operacional completa:
+
+```text
+docs/testing/E2E_AUTHENTICATED.md
+```
 
 ## Testes de Banco/RLS
 
@@ -160,4 +170,4 @@ Validar:
 4. ✅ Adicionar seed de auth/unidade/dados para Playwright.
 5. Mockar `supabaseClient` e testar hooks.
 6. Criar Supabase local/migrations versionadas.
-7. Colocar `npm run test` e `npm run test:e2e` no CI.
+7. ✅ Colocar `npm run test` e `npm run test:e2e` no CI, com E2E autenticado condicionado a secrets.

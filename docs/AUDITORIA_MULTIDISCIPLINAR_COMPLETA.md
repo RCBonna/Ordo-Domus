@@ -165,7 +165,7 @@ Correcao:
 | --- | --- | --- |
 | P0 | ✅ Criar Edge Function `extract-inventory` para Gemini | Remove segredo do cliente e permite controle de abuso. |
 | P0 | ✅ Revisar RLS por papel | Garante permissao real coerente com UX. |
-| P0 | Consolidar migrations Supabase | Ambientes reproduziveis. |
+| P0 | ✅ Consolidar migrations Supabase | Baseline versionada criada e historico remoto/local reconciliado em 2026-05-23. |
 | P1 | ✅ Atualizar dependencias vulneraveis | Reduz risco supply chain. |
 | P1 | ✅ Adicionar `user_id` em movimentacoes | Auditoria real. |
 | P1 | Configurar Vitest + Playwright | Base minima de QA. |
@@ -536,7 +536,7 @@ supabase functions deploy extract-inventory
 supabase db push
 ```
 
-Observacao: como o SQL foi aplicado manualmente, o historico local/remoto de migrations pode ficar fora de sincronia ate reconciliacao posterior.
+Observacao atualizada em 2026-05-23: o historico local/remoto foi reconciliado. A baseline `20260501000000_initial_schema_baseline.sql` substitui `CriarSQL.sql` como bootstrap de ambientes novos e aparece alinhada em Local e Remote no `supabase migration list`.
 
 ## Atualizacao P1 Implementada no Repositorio
 

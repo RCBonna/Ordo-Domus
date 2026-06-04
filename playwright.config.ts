@@ -1,4 +1,7 @@
 import { defineConfig, devices } from '@playwright/test';
+import { loadE2eEnv } from './tests/e2e/helpers/env';
+
+loadE2eEnv();
 
 export default defineConfig({
   testDir: './tests/e2e',

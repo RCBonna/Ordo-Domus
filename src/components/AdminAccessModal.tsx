@@ -1,6 +1,7 @@
 import { AnimatePresence, motion } from 'motion/react';
 import { X } from 'lucide-react';
 import AdminPanel from './AdminPanel';
+import { UnitSettingsPanel } from './UnitSettingsPanel';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { UnitMembership } from '../types/domain';
@@ -9,13 +10,14 @@ interface AdminAccessModalProps {
   isOpen: boolean;
   unidadeAtiva: UnitMembership | null;
   onClose: () => void;
+  onUnitUpdated: (unit: { id: string; nome: string }) => void;
 }
 
-export function AdminAccessModal({ isOpen, unidadeAtiva, onClose }: AdminAccessModalProps) {
+export function AdminAccessModal({ isOpen, unidadeAtiva, onClose, onUnitUpdated }: AdminAccessModalProps) {
   return (
     <AnimatePresence>
       {isOpen && unidadeAtiva && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[100] flex items-start justify-center overflow-y-auto p-4 sm:items-center">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -27,7 +29,7 @@ export function AdminAccessModal({ isOpen, unidadeAtiva, onClose }: AdminAccessM
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative z-10 w-full max-w-xl bg-white border border-slate-200 rounded-[40px] shadow-2xl overflow-hidden"
+            className="relative z-10 flex max-h-[calc(100dvh-2rem)] w-full max-w-3xl flex-col overflow-hidden rounded-[40px] border border-slate-200 bg-white shadow-2xl"
           >
             <div className="absolute top-8 right-8 z-20">
               <Button
@@ -40,8 +42,15 @@ export function AdminAccessModal({ isOpen, unidadeAtiva, onClose }: AdminAccessM
               </Button>
             </div>
 
-            <ScrollArea className="max-h-[85vh]">
-              <div className="p-10">
+            <ScrollArea className="min-h-0 flex-1 overflow-y-auto">
+              <div className="space-y-10 p-6 pr-8 sm:p-10 sm:pr-12">
+                <UnitSettingsPanel
+                  unidadeId={unidadeAtiva.id}
+                  unidadeNome={unidadeAtiva.nome}
+                  papel={unidadeAtiva.papel}
+                  onUnitUpdated={onUnitUpdated}
+                />
+                <div className="h-px bg-slate-100" />
                 <AdminPanel unidadeId={unidadeAtiva.id} papel={unidadeAtiva.papel} unidadeNome={unidadeAtiva.nome} />
               </div>
             </ScrollArea>

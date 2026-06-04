@@ -79,11 +79,12 @@ Medidas positivas:
 - apenas itens extraidos sao salvos;
 - dados isolados por unidade.
 - `importacoes_pendentes` possui rotina de retencao automatizada para remover registros expirados via `pg_cron`.
+- consentimento local para IA implementado antes de enviar texto, audio ou imagem de cupom para `extract-inventory`.
 
 Lacunas:
 
 - nao ha tela/exportacao/exclusao de dados pessoais;
-- nao ha registro de consentimento para envio a Gemini;
+- nao ha registro server-side/auditavel de consentimento para envio a IA;
 - logs client-side sensiveis foram removidos/sanitizados em P2.4;
 - observabilidade remota opcional via Sentry possui scrubber formal antes do envio de eventos e nao envia email do usuario para `setUser`.
 
@@ -131,5 +132,5 @@ Lacunas:
    - `papel in ('admin','convidado')`
    - `status in ('pendente','aprovado')`
    - `tipo in ('entrada','consumo','ajuste','exclusao')`
-6. Criar politica de privacidade e consentimento para IA.
+6. Formalizar politica de privacidade e evoluir consentimento local de IA para registro auditavel quando necessario.
 7. Configurar DSN, alertas e ownership no Sentry por ambiente.

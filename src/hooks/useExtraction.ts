@@ -7,11 +7,14 @@ import { getCurrentUserId } from '../repositories/authRepository';
 import { finalizeReceiptImportItem, upsertInventoryItem } from '../repositories/inventoryRepository';
 import { fetchRecentInventoryMovements, insertInventoryMovement } from '../repositories/movementRepository';
 import type { HistoryItem } from '../types/domain';
+import type { AiConsentScope } from './useAiConsent';
 
 const MAX_RECORDING_SECONDS = 60;
 const MIN_AUDIO_BYTES = 1000;
 
-export function useExtraction(unidadeId: string | undefined) {
+type EnsureAiConsent = (scope: AiConsentScope) => Promise<boolean>;
+
+export function useExtraction(unidadeId: string | undefined, ensureAiConsent?: EnsureAiConsent) {
   const [input, setInput] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
@@ -56,6 +59,12 @@ export function useExtraction(unidadeId: string | undefined) {
     }
 
     try {
+      const consentAccepted = await ensureAiConsent?.('audio') ?? true;
+      if (!consentAccepted) {
+        setError('Para usar áudio com IA, aceite o consentimento de envio.');
+        return;
+      }
+
       if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
         setIsAudioCaptureSupported(false);
         setError('Captura de áudio não suportada neste navegador.');
@@ -150,9 +159,9 @@ export function useExtraction(unidadeId: string | undefined) {
 
       const dataRaw = await extractInventoryDataFromAudio(base64Data, mimeType, unidadeId);
       await processExtractionResult(dataRaw);
-    } catch {
+    } catch (err: unknown) {
       logger.warn('Falha ao processar extracao por audio.');
-      setError("Erro ao processar áudio. Tente falar de forma mais clara ou usar texto.");
+      setError(getExtractionErrorMessage(err, "Erro ao processar áudio. Tente falar de forma mais clara ou usar texto."));
     } finally {
       setIsExtracting(false);
     }
@@ -329,6 +338,12 @@ export function useExtraction(unidadeId: string | undefined) {
 
   const handleExtract = async () => {
     if (!input.trim() || !unidadeId) return;
+    const consentAccepted = await ensureAiConsent?.('text') ?? true;
+    if (!consentAccepted) {
+      setError('Para usar texto com IA, aceite o consentimento de envio.');
+      return;
+    }
+
     setIsExtracting(true);
     setError(null);
     setCurrentResult(null);
@@ -340,8 +355,7 @@ export function useExtraction(unidadeId: string | undefined) {
       // Removed setInput('') from here because processExtractionResult now handles it.
     } catch (err: unknown) {
       logger.warn('Falha ao extrair dados de inventario.');
-      const message = getErrorMessage(err, '');
-      setError(message.includes('503') ? 'IA ocupada. Tente novamente em instantes.' : 'Erro ao processar. Verifique a conexão.');
+      setError(getExtractionErrorMessage(err, 'Erro ao processar. Verifique a conexão.'));
     } finally {
       setIsExtracting(false);
     }
@@ -412,6 +426,23 @@ export function useExtraction(unidadeId: string | undefined) {
     addHistoryItem,
     carregarHistorico
   };
+}
+
+function getExtractionErrorMessage(error: unknown, fallback: string) {
+  const message = getErrorMessage(error, '');
+  if (!message) return fallback;
+
+  if (
+    message.includes('Limite de uso') ||
+    message.includes('Payload excede') ||
+    message.includes('Formato de') ||
+    message.includes('Texto excede') ||
+    message.includes('obrigatório')
+  ) {
+    return message;
+  }
+
+  return message.includes('503') ? 'IA ocupada. Tente novamente em instantes.' : fallback;
 }
 
 function getSupportedAudioMimeType() {

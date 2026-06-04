@@ -172,10 +172,87 @@ Uso recomendado:
 2. `npm run supabase:migrations:dry-run`: mostra o que seria aplicado sem alterar o banco remoto.
 3. `npm run supabase:migrations:push`: aplica as migrations pendentes no projeto Supabase linkado.
 
-Estado validado em 2026-05-21:
+Estado validado em 2026-05-23:
 
 ```text
-Remote database is up to date.
+20260501000000 | 20260501000000
+20260519150000 | 20260519150000
+20260519162000 | 20260519162000
+20260519173000 | 20260519173000
+20260519183000 | 20260519183000
+20260519190000 | 20260519190000
+20260520200000 | 20260520200000
+20260520211500 | 20260520211500
+20260521100000 | 20260521100000
+20260521103000 | 20260521103000
+20260521110000 | 20260521110000
+20260522113000 | 20260522113000
+20260522205000 | 20260522205000
 ```
 
 Isso significa que as migrations locais em `supabase/migrations/` estavam reconciliadas com o historico remoto no momento da validacao.
+
+## 12. Baseline Inicial e Ambientes Novos
+
+A migration `supabase/migrations/20260501000000_initial_schema_baseline.sql` e a primeira migration oficial do projeto. Ela substitui o uso de `CriarSQL.sql` como bootstrap manual e cria os objetos base exigidos pelas migrations posteriores:
+
+- tabelas `unidades`, `membros_unidades`, `itens_inventario`, `movimentacoes_inventario`, `importacoes_pendentes`, `dicionario_produtos` e `system_admins`;
+- view `membros_unidades_view`;
+- indices base e constraint `unique_item_location`;
+- RLS habilitado nas tabelas base;
+- policies minimas para `unidades`, `membros_unidades` e `system_admins`.
+
+Essa baseline nao recria as policies legadas de escrita ampla em inventario, movimentacoes, importacoes pendentes ou dicionario. O hardening por papel continua centralizado em `20260519150000_harden_rls_roles.sql`.
+
+Para um ambiente Supabase novo, o fluxo esperado e:
+
+```powershell
+npm run supabase:migrations:list
+npm run supabase:migrations:dry-run
+npm run supabase:migrations:push
+```
+
+Se uma migration anterior a ultima remota precisar ser reconciliada em um banco ja existente, use primeiro:
+
+```powershell
+supabase db push --dry-run --include-all
+supabase db push --include-all
+```
+
+Use `--include-all` apenas quando o `migration list` mostrar uma migration local antiga ausente no remoto e o SQL tiver sido revisado como idempotente para o banco alvo.
+
+Observacao: se o CLI retornar erro de autenticacao para `cli_login_postgres`, configure `SUPABASE_DB_PASSWORD` na sessao do PowerShell com a senha atual do banco antes de rodar `db push`, `db push --dry-run` ou comandos que conectem diretamente ao Postgres.
+
+## 13. Rate Limit da Edge Function de IA
+
+A Edge Function `extract-inventory` possui protecao de uso por usuario/unidade/modo. A implementacao completa esta em:
+
+```text
+docs/supabase/P1_AI_RATE_LIMIT_IMPLEMENTATION.md
+supabase/migrations/20260523100000_ai_extraction_rate_limits.sql
+```
+
+Limites padrao:
+
+| Modo | Limite |
+| --- | --- |
+| Texto | 20 requisicoes a cada 600s, ate 4000 caracteres |
+| Audio | 8 requisicoes a cada 3600s, ate 7.5 MB decodificados |
+| Cupom | 12 requisicoes a cada 3600s, ate 6 MB decodificados |
+
+Variaveis opcionais da function:
+
+```text
+AI_TEXT_RATE_LIMIT
+AI_TEXT_RATE_WINDOW_SECONDS
+AI_TEXT_MAX_CHARS
+AI_TEXT_MAX_BYTES
+AI_AUDIO_RATE_LIMIT
+AI_AUDIO_RATE_WINDOW_SECONDS
+AI_AUDIO_MAX_BYTES
+AI_RECEIPT_RATE_LIMIT
+AI_RECEIPT_RATE_WINDOW_SECONDS
+AI_RECEIPT_MAX_BYTES
+```
+
+Essas variaveis sao secrets/config da Supabase Edge Function e nao devem ser prefixadas com `VITE_`.

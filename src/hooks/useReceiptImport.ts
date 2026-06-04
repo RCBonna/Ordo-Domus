@@ -4,8 +4,15 @@ import { extractInventoryDataFromReceipt } from '../services/geminiService';
 import { compressImage, getErrorMessage } from '../lib/utils';
 import { logger } from '../lib/logger';
 import { toast } from 'sonner';
+import type { AiConsentScope } from './useAiConsent';
 
-export function useReceiptImport(unidadeId: string | undefined, onImportSuccess?: () => void) {
+type EnsureAiConsent = (scope: AiConsentScope) => Promise<boolean>;
+
+export function useReceiptImport(
+  unidadeId: string | undefined,
+  onImportSuccess?: () => void,
+  ensureAiConsent?: EnsureAiConsent,
+) {
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -21,6 +28,12 @@ export function useReceiptImport(unidadeId: string | undefined, onImportSuccess?
 
   const importReceiptFile = async (file: File, options: { forceDuplicate?: boolean } = {}) => {
     if (!unidadeId) return;
+
+    const consentAccepted = await ensureAiConsent?.('receipt') ?? true;
+    if (!consentAccepted) {
+      toast.warning('Para importar cupom com IA, aceite o consentimento de envio.', { id: 'import-receipt' });
+      return;
+    }
 
     setIsImporting(true);
     try {
