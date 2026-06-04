@@ -119,6 +119,7 @@ test.describe('fluxos autenticados com seed', () => {
 
     const input = page.getByLabel('Nome da unidade');
     await expect(input).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Fechar painel administrativo' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Acesso à Unidade' })).toBeVisible({ timeout: 20_000 });
     await expect(page.getByTestId('admin-panel-loading')).toHaveCount(0);
 
@@ -149,6 +150,20 @@ test.describe('fluxos autenticados com seed', () => {
 
     await page.getByRole('radio', { name: 'Claro' }).click();
     await expect(page.getByRole('radio', { name: 'Claro' })).toHaveAttribute('aria-checked', 'true');
+    await expect(page.locator('html')).not.toHaveClass(/dark/);
+
+    await page.emulateMedia({ colorScheme: 'dark' });
+    await page.getByRole('radio', { name: 'Automático' }).click();
+    await expect(page.getByRole('radio', { name: 'Automático' })).toHaveAttribute('aria-checked', 'true');
+    await expect(page.locator('html')).toHaveClass(/dark/);
+
+    await page.reload();
+    await expect(page.getByText('Nova Entrada')).toBeVisible({ timeout: 20_000 });
+    await expect(page.locator('html')).toHaveClass(/dark/);
+    await page.getByRole('button', { name: 'Configurações da unidade' }).click();
+    await expect(page.getByRole('radio', { name: 'Automático' })).toHaveAttribute('aria-checked', 'true');
+
+    await page.getByRole('radio', { name: 'Claro' }).click();
     await expect(page.locator('html')).not.toHaveClass(/dark/);
   });
 

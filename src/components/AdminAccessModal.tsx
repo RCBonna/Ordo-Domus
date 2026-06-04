@@ -48,6 +48,7 @@ export function AdminAccessModal({
                 variant="ghost"
                 size="icon"
                 onClick={onClose}
+                aria-label="Fechar painel administrativo"
                 className="text-slate-400 hover:text-rose-500 hover:bg-rose-50 rounded-full dark:text-muted-foreground dark:hover:bg-rose-950/40 dark:hover:text-rose-300"
               >
                 <X className="w-5 h-5" />

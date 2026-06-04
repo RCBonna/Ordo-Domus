@@ -289,7 +289,7 @@ function normalizeSuggestionKey(value?: string | null) {
 
 function LazySectionFallback({ label }: { label: string }) {
   return (
-    <div className="flex min-h-[360px] items-center justify-center rounded-3xl border border-slate-100 bg-white text-sm font-black text-slate-400 shadow-sm">
+    <div className="flex min-h-[360px] items-center justify-center rounded-3xl border border-slate-100 bg-white text-sm font-black text-slate-400 shadow-sm dark:border-border dark:bg-card dark:text-muted-foreground dark:shadow-none">
       {label}
     </div>
   );
