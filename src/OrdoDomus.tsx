@@ -19,6 +19,7 @@ import { useTriage } from './hooks/useTriage';
 import { useDashboardMetrics } from './hooks/useDashboardMetrics';
 import { useShoppingList } from './hooks/useShoppingList';
 import { useAiConsent } from './hooks/useAiConsent';
+import { useThemePreference } from './hooks/useThemePreference';
 
 import { supabase } from './lib/supabaseClient';
 
@@ -53,6 +54,7 @@ export default function OrdoDomus() {
     declineAiConsent,
     ensureAiConsent,
   } = useAiConsent(currentUserEmail);
+  useThemePreference(currentUserEmail);
   
   // Confirmation State
   const [confirmConfig, setConfirmConfig] = useState<{
