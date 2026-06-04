@@ -1,8 +1,8 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useMemo } from 'react';
 import { AnimatePresence } from 'motion/react';
 import GuestView from './GuestView';
 import Onboarding from './Onboarding';
-import { EntrySection } from './EntrySection';
+import { EntrySection, type SnapshotLocationSuggestions } from './EntrySection';
 import { InventoryList } from './InventoryList';
 import { PendingApprovalState, UnitSelectionPrompt } from './AppStatusStates';
 import { ShoppingList } from './ShoppingList';
@@ -93,6 +93,15 @@ export function WorkspaceContent({
   unidadeAtiva,
   unidades,
 }: WorkspaceContentProps) {
+  const snapshotLocationSuggestions = useMemo(
+    () => buildSnapshotLocationSuggestions(
+      inventory.fullInventory,
+      snapshotImport.snapshotContext.comodo,
+      snapshotImport.snapshotContext.armario,
+    ),
+    [inventory.fullInventory, snapshotImport.snapshotContext.comodo, snapshotImport.snapshotContext.armario],
+  );
+
   if (!currentUserEmail || isAuthLoading) return null;
 
   if (!unidadeAtiva) {
@@ -154,6 +163,7 @@ export function WorkspaceContent({
             triggerSnapshotImport={snapshotImport.triggerSnapshotImport}
             snapshotContext={snapshotImport.snapshotContext}
             setSnapshotContext={snapshotImport.setSnapshotContext}
+            snapshotLocationSuggestions={snapshotLocationSuggestions}
             pendingTriageCount={triage.pendingItems.length}
             openTriageModal={onOpenTriageModal}
           />
@@ -238,6 +248,43 @@ export function WorkspaceContent({
       </AnimatePresence>
     </div>
   );
+}
+
+function buildSnapshotLocationSuggestions(
+  items: InventorySlice['fullInventory'],
+  selectedRoom?: string,
+  selectedCabinet?: string,
+): SnapshotLocationSuggestions {
+  const normalizedRoom = normalizeSuggestionKey(selectedRoom);
+  const normalizedCabinet = normalizeSuggestionKey(selectedCabinet);
+
+  const rooms = uniqueSorted(items.map((item) => item.comodo));
+  const cabinets = uniqueSorted(items
+    .filter((item) => !normalizedRoom || normalizeSuggestionKey(item.comodo) === normalizedRoom)
+    .map((item) => item.armario));
+  const boxes = uniqueSorted(items
+    .filter((item) => !normalizedRoom || normalizeSuggestionKey(item.comodo) === normalizedRoom)
+    .filter((item) => !normalizedCabinet || normalizeSuggestionKey(item.armario) === normalizedCabinet)
+    .map((item) => item.caixa));
+
+  return { rooms, cabinets, boxes };
+}
+
+function uniqueSorted(values: Array<string | null | undefined>) {
+  const byKey = new Map<string, string>();
+
+  for (const value of values) {
+    const trimmed = value?.trim();
+    if (!trimmed) continue;
+    const key = normalizeSuggestionKey(trimmed);
+    if (!byKey.has(key)) byKey.set(key, trimmed);
+  }
+
+  return Array.from(byKey.values()).sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+
+function normalizeSuggestionKey(value?: string | null) {
+  return value?.trim().toLocaleLowerCase('pt-BR') || '';
 }
 
 function LazySectionFallback({ label }: { label: string }) {

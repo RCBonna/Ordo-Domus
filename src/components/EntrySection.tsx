@@ -43,8 +43,15 @@ interface EntrySectionProps {
   triggerSnapshotImport: () => void;
   snapshotContext: SnapshotContext;
   setSnapshotContext: (context: SnapshotContext) => void;
+  snapshotLocationSuggestions: SnapshotLocationSuggestions;
   pendingTriageCount: number;
   openTriageModal: () => void;
+}
+
+export interface SnapshotLocationSuggestions {
+  rooms: string[];
+  cabinets: string[];
+  boxes: string[];
 }
 
 export function EntrySection({
@@ -77,6 +84,7 @@ export function EntrySection({
   triggerSnapshotImport,
   snapshotContext,
   setSnapshotContext,
+  snapshotLocationSuggestions,
   pendingTriageCount,
   openTriageModal
 }: EntrySectionProps) {
@@ -101,26 +109,59 @@ export function EntrySection({
             <div className="space-y-3">
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 <Input
+                  id="snapshot-comodo"
+                  name="ordo-domus-snapshot-comodo"
+                  list="snapshot-comodo-suggestions"
                   placeholder="Cômodo da foto"
                   value={snapshotContext.comodo || ''}
                   onChange={(event) => setSnapshotContext({ ...snapshotContext, comodo: event.target.value })}
                   disabled={isExtracting || isPendingConfirmation || !isSistemaLiberado || isSnapshotImporting}
+                  autoComplete="off"
+                  autoCorrect="off"
+                  spellCheck={false}
                   className="h-10 rounded-xl bg-slate-50 text-sm font-bold"
                 />
                 <Input
+                  id="snapshot-armario"
+                  name="ordo-domus-snapshot-armario"
+                  list="snapshot-armario-suggestions"
                   placeholder="Armário/local"
                   value={snapshotContext.armario || ''}
                   onChange={(event) => setSnapshotContext({ ...snapshotContext, armario: event.target.value })}
                   disabled={isExtracting || isPendingConfirmation || !isSistemaLiberado || isSnapshotImporting}
+                  autoComplete="off"
+                  autoCorrect="off"
+                  spellCheck={false}
                   className="h-10 rounded-xl bg-slate-50 text-sm font-bold"
                 />
                 <Input
+                  id="snapshot-caixa"
+                  name="ordo-domus-snapshot-caixa"
+                  list="snapshot-caixa-suggestions"
                   placeholder="Prateleira/caixa"
                   value={snapshotContext.caixa || ''}
                   onChange={(event) => setSnapshotContext({ ...snapshotContext, caixa: event.target.value })}
                   disabled={isExtracting || isPendingConfirmation || !isSistemaLiberado || isSnapshotImporting}
+                  autoComplete="off"
+                  autoCorrect="off"
+                  spellCheck={false}
                   className="h-10 rounded-xl bg-slate-50 text-sm font-bold"
                 />
+                <datalist id="snapshot-comodo-suggestions">
+                  {snapshotLocationSuggestions.rooms.map((value) => (
+                    <option key={value} value={value} />
+                  ))}
+                </datalist>
+                <datalist id="snapshot-armario-suggestions">
+                  {snapshotLocationSuggestions.cabinets.map((value) => (
+                    <option key={value} value={value} />
+                  ))}
+                </datalist>
+                <datalist id="snapshot-caixa-suggestions">
+                  {snapshotLocationSuggestions.boxes.map((value) => (
+                    <option key={value} value={value} />
+                  ))}
+                </datalist>
               </div>
               <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
                 <input 

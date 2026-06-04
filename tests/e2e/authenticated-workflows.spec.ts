@@ -33,9 +33,25 @@ test.describe('fluxos autenticados com seed', () => {
   test('inventario por foto usa IA mockada e cria triagem pendente', async ({ page }) => {
     await mockSnapshotExtraction(page);
 
-    await page.getByPlaceholder('Cômodo da foto').fill('Cozinha');
-    await page.getByPlaceholder('Armário/local').fill('Despensa E2E');
-    await page.getByPlaceholder('Prateleira/caixa').fill('Prateleira 1');
+    const roomInput = page.getByPlaceholder('Cômodo da foto');
+    const cabinetInput = page.getByPlaceholder('Armário/local');
+    const boxInput = page.getByPlaceholder('Prateleira/caixa');
+
+    await expect(roomInput).toHaveAttribute('autocomplete', 'off');
+    await expect(cabinetInput).toHaveAttribute('autocomplete', 'off');
+    await expect(boxInput).toHaveAttribute('autocomplete', 'off');
+    await expect(roomInput).toHaveAttribute('list', 'snapshot-comodo-suggestions');
+    await expect(cabinetInput).toHaveAttribute('list', 'snapshot-armario-suggestions');
+    await expect(boxInput).toHaveAttribute('list', 'snapshot-caixa-suggestions');
+
+    await expect(page.locator('datalist#snapshot-comodo-suggestions option[value="Cozinha"]')).toHaveCount(1, { timeout: 20_000 });
+    await roomInput.fill('Cozinha');
+    await expect(page.locator('datalist#snapshot-armario-suggestions option[value="Armario E2E"]')).toHaveCount(1);
+    await cabinetInput.fill('Armario E2E');
+    await expect(page.locator('datalist#snapshot-caixa-suggestions option[value="Prateleira 1"]')).toHaveCount(1);
+
+    await cabinetInput.fill('Despensa E2E');
+    await boxInput.fill('Prateleira 1');
 
     const fileChooserPromise = page.waitForEvent('filechooser');
     await page.getByRole('button', { name: 'Inventário por Foto' }).click();

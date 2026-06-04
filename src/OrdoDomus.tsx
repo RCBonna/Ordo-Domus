@@ -172,9 +172,9 @@ export default function OrdoDomus() {
     }
   };
 
-  // Carregar inventário ao mudar de aba
+  // Carregar inventário ao mudar de aba e alimentar sugestoes de local da entrada
   useEffect(() => {
-    if (unidadeAtiva && (activeTab === 'inventário' || activeTab === 'dashboard' || activeTab === 'consumo')) {
+    if (unidadeAtiva && (activeTab === 'entrada' || activeTab === 'inventário' || activeTab === 'dashboard' || activeTab === 'consumo')) {
       carregarInventarioCompleto();
     }
   }, [

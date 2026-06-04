@@ -2,6 +2,11 @@
 
 ## 2026-06-03
 
+- Corrigido bug reportado nos inputs de local do Inventario por Foto: o autocomplete nativo do navegador foi desativado para `Cômodo da foto`, `Armário/local` e `Prateleira/caixa`, evitando sugestoes antigas/irrelevantes como nomes de produtos.
+- Adicionadas sugestoes internas por `datalist` a partir dos locais ja usados no inventario da unidade, com filtro de armarios por comodo e de caixas/prateleiras por comodo + armario.
+- A aba Entrada passou a carregar inventario tambem para alimentar as sugestoes de local do Inventario por Foto.
+- Criada e fechada a issue GitHub #30 (`Bug - Autocomplete estranho nos locais do Inventario por Foto`) apos validacao.
+- Validacoes da correcao dos inputs de local: `npm run lint`, `npm test`, `npm run build` e `npm run test:e2e` passaram; Playwright executou 13 testes com sucesso.
 - Revisado o plano inicial `plans/implementation_plan_name.md` da issue GitHub #24 (`Melhoria - Exibir nome e e-mail dos membros da unidade`).
 - Atualizado `plans/implementation_plan_name-v1.md` como revisao consolidada, comparando o plano inicial com o estado atual de `AdminPanel`, `Onboarding`, `useAuth`, tipos de dominio e RPCs `listar_membros`/`listar_pendentes`.
 - Recomendado fechar a decisao de nomenclatura em `public.perfis`, restringir leitura de perfis por proprio usuario/unidade em comum/RPC autorizada e evitar leitura global autenticada de todos os perfis.
