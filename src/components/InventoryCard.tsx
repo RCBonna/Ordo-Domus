@@ -227,15 +227,12 @@ export function InventoryCard({
                 )}
                 <motion.div 
                   key={item.quantidade}
-                  initial={{ scale: 1.1, backgroundColor: "#fecdd3" }}
-                  animate={{
-                    scale: 1,
-                    backgroundColor: isZeroQuantity ? "#e11d48" : "#0f172a",
-                  }}
+                  initial={{ scale: 1.1 }}
+                  animate={{ scale: 1 }}
                   className={`w-10 h-10 rounded-2xl flex items-center justify-center font-black text-lg shadow-lg ${
                     isZeroQuantity
-                      ? 'text-white ring-4 ring-rose-100 shadow-rose-100 dark:ring-rose-950/60 dark:shadow-black/20'
-                      : 'bg-slate-900 text-white dark:bg-primary dark:text-primary-foreground'
+                      ? 'bg-rose-600 text-white ring-4 ring-rose-100 shadow-rose-100 dark:bg-rose-500 dark:text-white dark:ring-rose-950/60 dark:shadow-black/20'
+                      : 'bg-sky-100 text-sky-950 ring-1 ring-sky-200 shadow-sky-100 dark:bg-sky-300 dark:text-slate-950 dark:ring-sky-200 dark:shadow-black/20'
                   }`}
                   title={isZeroQuantity ? 'Local zerado' : 'Quantidade disponível'}
                 >
