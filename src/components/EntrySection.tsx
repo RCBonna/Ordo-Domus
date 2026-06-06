@@ -8,7 +8,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 import { 
   Mic, MicOff, Box, Loader2, Tag, MapPin, 
-  RefreshCw, PlusCircle, History, Trash2, Plus, Edit3, TrendingUp, Receipt, Package, Camera
+  RefreshCw, PlusCircle, History, Trash2, Plus, Edit3, TrendingUp, Receipt, Package, Camera, PackagePlus
 } from 'lucide-react';
 import type { ExtractedItem, SnapshotContext } from '../services/geminiService';
 import type { HistoryItem } from '../types/domain';
@@ -98,12 +98,19 @@ export function EntrySection({
       transition={{ duration: 0.3 }}
       className="grid grid-cols-1 lg:grid-cols-12 gap-8"
     >
-      <div className="lg:col-span-5 space-y-6">
+      <div className="lg:col-span-6 space-y-6">
         <Card className="border-none shadow-lg rounded-[32px] bg-white overflow-hidden dark:border dark:border-border dark:bg-card">
           <div className="h-1.5 bg-primary w-full opacity-50" />
           <CardHeader>
-            <CardTitle className="text-xl font-bold text-slate-900 dark:text-foreground">Nova Entrada</CardTitle>
-            <CardDescription className="text-slate-500 dark:text-muted-foreground">Registre itens usando sua voz ou texto</CardDescription>
+            <div className="flex items-center gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300">
+                <PackagePlus className="h-5 w-5" />
+              </div>
+              <div>
+                <CardTitle className="text-xl font-bold text-slate-900 dark:text-foreground">Nova Entrada</CardTitle>
+                <CardDescription className="text-slate-500 dark:text-muted-foreground">Registre itens usando sua voz ou texto</CardDescription>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-3">
@@ -163,7 +170,7 @@ export function EntrySection({
                   ))}
                 </datalist>
               </div>
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-4">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <input 
                   type="file" 
                   accept="image/*" 
@@ -384,7 +391,7 @@ export function EntrySection({
         )}
       </div>
 
-      <div className="lg:col-span-7">
+      <div className="lg:col-span-6">
         <Card className="border-none shadow-lg rounded-[32px] h-full flex flex-col bg-white overflow-hidden dark:border dark:border-border dark:bg-card">
           <CardHeader className="pb-4 flex flex-row items-center justify-between">
             <div>
@@ -408,28 +415,28 @@ export function EntrySection({
             ) : (
               <ScrollArea className="h-[600px] w-full">
                 <div className="overflow-x-auto">
-                  <Table>
+                  <Table className="table-fixed">
                     <TableHeader className="bg-slate-50/50 sticky top-0 backdrop-blur-md dark:bg-muted/70">
                       <TableRow className="border-slate-100 dark:border-border">
-                        <TableHead className="font-bold text-slate-400 uppercase text-[10px] tracking-widest dark:text-muted-foreground">Item</TableHead>
-                        <TableHead className="font-bold text-slate-400 uppercase text-[10px] tracking-widest dark:text-muted-foreground">Detalhes</TableHead>
-                        <TableHead className="font-bold text-slate-400 uppercase text-[10px] tracking-widest text-center dark:text-muted-foreground">Qtd</TableHead>
+                        <TableHead className="w-[34%] font-bold text-slate-400 uppercase text-[10px] tracking-widest dark:text-muted-foreground">Item</TableHead>
+                        <TableHead className="w-[48%] font-bold text-slate-400 uppercase text-[10px] tracking-widest dark:text-muted-foreground">Detalhes</TableHead>
+                        <TableHead className="w-[18%] font-bold text-slate-400 uppercase text-[10px] tracking-widest text-center dark:text-muted-foreground">Qtd</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {history.map((item, idx) => (
                         <TableRow key={idx} className="border-slate-50 hover:bg-slate-50/50 transition-colors dark:border-border dark:hover:bg-muted/50">
-                          <TableCell>
-                            <div className="flex flex-col">
-                              <span className="font-bold text-slate-700 dark:text-foreground">{item.item}</span>
-                              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest dark:text-muted-foreground">{item.categoria}</span>
+                          <TableCell className="w-[34%]">
+                            <div className="flex min-w-0 flex-col">
+                              <span className="truncate font-bold text-slate-700 dark:text-foreground" title={item.item}>{item.item}</span>
+                              <span className="truncate text-[10px] text-slate-400 font-bold uppercase tracking-widest dark:text-muted-foreground">{item.categoria}</span>
                             </div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="w-[48%]">
                             <div className="flex flex-col gap-1">
                               <div className="flex items-center gap-1.5 text-slate-500 dark:text-muted-foreground">
                                 <MapPin className="w-3 h-3 opacity-40" />
-                                <span className="text-xs font-bold">{item.comodo}</span>
+                                <span className="truncate text-xs font-bold">{item.comodo}</span>
                               </div>
                               {item.data && (
                                 <div className="flex items-center gap-1.5 text-slate-400 dark:text-muted-foreground">
@@ -441,7 +448,7 @@ export function EntrySection({
                               )}
                             </div>
                           </TableCell>
-                          <TableCell className="text-center">
+                          <TableCell className="w-[18%] text-center">
                             <Badge 
                               variant="secondary" 
                               className={`rounded-lg border-none font-black ${
