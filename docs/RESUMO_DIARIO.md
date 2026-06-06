@@ -8,7 +8,7 @@
 - `Onboarding` passou a solicitar nome de exibicao antes de criar unidade ou solicitar acesso.
 - Seed e E2E autenticado foram preparados para validar perfil do usuario seed no painel admin.
 - O fixture E2E de salvamento de Inventario por Foto passou a usar imagem unica por execucao para nao bater no historico de fonte ja importada.
-- Atualizada a versao temporaria de validacao para `V-20260606-10:30:00`.
+- Atualizada a versao temporaria de validacao para `V-20260606-18:51:01`.
 
 ## 2026-06-05
 
