@@ -418,21 +418,21 @@ export function EntrySection({
                   <Table className="table-fixed">
                     <TableHeader className="bg-slate-50/50 sticky top-0 backdrop-blur-md dark:bg-muted/70">
                       <TableRow className="border-slate-100 dark:border-border">
-                        <TableHead className="w-[34%] font-bold text-slate-400 uppercase text-[10px] tracking-widest dark:text-muted-foreground">Item</TableHead>
-                        <TableHead className="w-[48%] font-bold text-slate-400 uppercase text-[10px] tracking-widest dark:text-muted-foreground">Detalhes</TableHead>
+                        <TableHead className="w-[42%] font-bold text-slate-400 uppercase text-[10px] tracking-widest dark:text-muted-foreground">Item</TableHead>
+                        <TableHead className="w-[40%] font-bold text-slate-400 uppercase text-[10px] tracking-widest dark:text-muted-foreground">Detalhes</TableHead>
                         <TableHead className="w-[18%] font-bold text-slate-400 uppercase text-[10px] tracking-widest text-center dark:text-muted-foreground">Qtd</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {history.map((item, idx) => (
                         <TableRow key={idx} className="border-slate-50 hover:bg-slate-50/50 transition-colors dark:border-border dark:hover:bg-muted/50">
-                          <TableCell className="w-[34%]">
+                          <TableCell className="w-[42%]">
                             <div className="flex min-w-0 flex-col">
                               <span className="truncate font-bold text-slate-700 dark:text-foreground" title={item.item}>{item.item}</span>
                               <span className="truncate text-[10px] text-slate-400 font-bold uppercase tracking-widest dark:text-muted-foreground">{item.categoria}</span>
                             </div>
                           </TableCell>
-                          <TableCell className="w-[48%]">
+                          <TableCell className="w-[40%]">
                             <div className="flex flex-col gap-1">
                               <div className="flex items-center gap-1.5 text-slate-500 dark:text-muted-foreground">
                                 <MapPin className="w-3 h-3 opacity-40" />
