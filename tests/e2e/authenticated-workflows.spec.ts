@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 import { acceptAiConsent } from './helpers/ai-consent';
-import { hasAuthenticatedE2eEnv, loginWithSeedUser } from './helpers/auth';
+import { e2eEmail, e2eUserName, hasAuthenticatedE2eEnv, loginWithSeedUser } from './helpers/auth';
 
 test.describe('fluxos autenticados com seed', () => {
   test.skip(!hasAuthenticatedE2eEnv, 'Defina E2E_USER_EMAIL e E2E_USER_PASSWORD para rodar os fluxos autenticados.');
@@ -106,10 +106,11 @@ test.describe('fluxos autenticados com seed', () => {
     const fileChooserPromise = page.waitForEvent('filechooser');
     await page.getByRole('button', { name: 'Inventário por Foto' }).click();
     const fileChooser = await fileChooserPromise;
+    const saveSnapshotColor = Math.floor(Math.random() * 0xffffff).toString(16).padStart(6, '0');
     await fileChooser.setFiles({
       name: 'snapshot-save-e2e.svg',
       mimeType: 'image/svg+xml',
-      buffer: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="12"><rect width="16" height="12" fill="#00aaff"/></svg>`),
+      buffer: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="12"><rect width="16" height="12" fill="#${saveSnapshotColor}"/></svg>`),
     });
     await acceptAiConsent(page);
 
@@ -155,6 +156,8 @@ test.describe('fluxos autenticados com seed', () => {
     await expect(page.getByRole('button', { name: 'Fechar painel administrativo' })).toBeVisible();
     await expect(page.getByRole('heading', { name: 'Acesso à Unidade' })).toBeVisible({ timeout: 20_000 });
     await expect(page.getByTestId('admin-panel-loading')).toHaveCount(0);
+    await expect(page.getByText(e2eUserName)).toBeVisible();
+    await expect(page.locator('span').filter({ hasText: e2eEmail! }).first()).toBeVisible();
 
     const originalName = await input.inputValue();
     const temporaryName = originalName === 'Ordo E2E Config' ? 'Ordo E2E Config Alt' : 'Ordo E2E Config';

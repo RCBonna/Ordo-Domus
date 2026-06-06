@@ -18,6 +18,8 @@ interface UnitMember {
   papel: string;
   status: string;
   adicionado_em: string;
+  nome?: string | null;
+  email?: string | null;
 }
 
 const MEMBERS_LOAD_TIMEOUT_MS = 6_000;
@@ -224,7 +226,9 @@ export default function AdminPanel({ unidadeId, papel, unidadeNome }: Props) {
           </div>
 
           <div className="space-y-3">
-            {pendentes.map(convite => (
+            {pendentes.map(convite => {
+              const identity = getMemberIdentity(convite);
+              return (
               <div 
                 key={convite.user_id} 
                 className="group flex items-center justify-between rounded-[28px] border border-slate-100 bg-white p-6 transition-all hover:border-amber-200 hover:shadow-lg hover:shadow-amber-500/5 dark:border-border dark:bg-card dark:hover:border-amber-900/70 dark:hover:shadow-none"
@@ -234,8 +238,13 @@ export default function AdminPanel({ unidadeId, papel, unidadeNome }: Props) {
                     <Users className="h-7 w-7" />
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-300 dark:text-muted-foreground">ID do Solicitante</span>
-                    <span className="font-mono text-xs font-bold text-slate-600 dark:text-foreground">{convite.user_id.slice(0, 18)}...</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-300 dark:text-muted-foreground">Solicitante</span>
+                    <span className={`text-sm font-black text-slate-700 dark:text-foreground ${identity.isFallback ? 'font-mono text-xs' : ''}`}>
+                      {identity.primary}
+                    </span>
+                    {identity.secondary && (
+                      <span className="mt-0.5 text-xs font-bold text-slate-500 dark:text-muted-foreground">{identity.secondary}</span>
+                    )}
                     <span className="mt-1 text-[10px] font-bold text-slate-400 dark:text-muted-foreground">
                       Enviado em {new Date(convite.adicionado_em).toLocaleDateString()}
                     </span>
@@ -262,7 +271,8 @@ export default function AdminPanel({ unidadeId, papel, unidadeNome }: Props) {
                   </Button>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -284,7 +294,9 @@ export default function AdminPanel({ unidadeId, papel, unidadeNome }: Props) {
           </div>
 
           <div className="space-y-3">
-            {aprovados.map(membro => (
+            {aprovados.map(membro => {
+              const identity = getMemberIdentity(membro);
+              return (
               <div 
                 key={membro.user_id} 
                 className="group flex items-center justify-between rounded-[28px] border border-slate-100 bg-white p-6 transition-all hover:border-slate-200 dark:border-border dark:bg-card dark:hover:border-muted-foreground/30"
@@ -295,13 +307,18 @@ export default function AdminPanel({ unidadeId, papel, unidadeNome }: Props) {
                   </div>
                   <div className="flex flex-col">
                     <div className="flex items-center gap-2">
-                      <span className="font-mono text-xs font-bold text-slate-700 dark:text-foreground">{membro.user_id.slice(0, 18)}...</span>
+                      <span className={`text-sm font-black text-slate-700 dark:text-foreground ${identity.isFallback ? 'font-mono text-xs' : ''}`}>
+                        {identity.primary}
+                      </span>
                       {membro.papel === 'admin' && (
                         <Badge variant="secondary" className="border-none bg-blue-50 px-2 py-0.5 text-[9px] font-black tracking-widest text-blue-600 dark:bg-blue-950/40 dark:text-blue-300">
                           ADMIN
                         </Badge>
                       )}
                     </div>
+                    {identity.secondary && (
+                      <span className="mt-0.5 text-xs font-bold text-slate-500 dark:text-muted-foreground">{identity.secondary}</span>
+                    )}
                     <span className="mt-1 text-[10px] font-bold text-slate-400 dark:text-muted-foreground">
                       Membro desde {new Date(membro.adicionado_em).toLocaleDateString()}
                     </span>
@@ -324,10 +341,39 @@ export default function AdminPanel({ unidadeId, papel, unidadeNome }: Props) {
                   </div>
                 )}
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
     </div>
   );
+}
+
+function getMemberIdentity(member: UnitMember) {
+  const name = member.nome?.trim();
+  const email = member.email?.trim();
+  const fallback = `${member.user_id.slice(0, 18)}...`;
+
+  if (name) {
+    return {
+      primary: name,
+      secondary: email || fallback,
+      isFallback: false,
+    };
+  }
+
+  if (email) {
+    return {
+      primary: email,
+      secondary: fallback,
+      isFallback: false,
+    };
+  }
+
+  return {
+    primary: fallback,
+    secondary: null,
+    isFallback: true,
+  };
 }

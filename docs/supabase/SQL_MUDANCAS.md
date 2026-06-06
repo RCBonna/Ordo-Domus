@@ -1,5 +1,57 @@
 # Mudancas SQL
 
+## Perfis de Usuario para Membros da Unidade
+
+Data/hora de criacao: 2026-06-06 10:30:00 -03:00
+
+Data/hora de modificacao: 2026-06-06 10:30:00 -03:00
+
+Arquivo SQL:
+
+```text
+supabase/migrations/20260606103000_user_profiles_for_unit_members.sql
+```
+
+Necessidade:
+
+- Atender a issue GitHub #24 exibindo nome e e-mail de membros aprovados e solicitantes pendentes no painel administrativo da unidade.
+- Evitar que o frontend consulte `auth.users` diretamente.
+- Manter `listar_membros` e `listar_pendentes` como fronteiras de autorizacao para admins aprovados da unidade.
+- Preservar `user_id` como fallback tecnico quando perfil estiver incompleto.
+
+Blocos de comandos documentados:
+
+```sql
+create table if not exists public.perfis (...);
+create or replace function public.set_updated_at_perfis() ...;
+create trigger set_updated_at_perfis ...;
+create or replace function public.sync_auth_user_profile() ...;
+create trigger on_auth_user_profile_sync ...;
+insert into public.perfis (...) select ... from auth.users ...;
+alter table public.perfis enable row level security;
+create policy "Usuario le proprio perfil" ...;
+create policy "Usuario atualiza proprio perfil" ...;
+create policy "Usuario cria proprio perfil" ...;
+drop function if exists public.listar_pendentes(uuid);
+create function public.listar_pendentes(p_unidade_id uuid) returns table (..., nome text, email text) ...;
+drop function if exists public.listar_membros(uuid);
+create function public.listar_membros(p_unidade_id uuid) returns table (..., nome text, email text) ...;
+```
+
+Implementacao relacionada:
+
+- `src/components/AdminPanel.tsx`: membros e solicitantes passam a priorizar nome/e-mail e usar `user_id` truncado como fallback.
+- `src/components/Onboarding.tsx`: novo usuario informa nome de exibicao antes de criar unidade ou solicitar acesso.
+- `scripts/e2e/seed.ts`: seed autenticado passa a garantir perfil E2E quando a tabela existir.
+- `tests/e2e/authenticated-workflows.spec.ts`: fluxo admin valida exibicao de nome/e-mail do membro seed.
+
+Status:
+
+- Criado no repositorio em 2026-06-06.
+- Validado antes da aplicacao com `npm run supabase:migrations:dry-run`: apenas `20260606103000_user_profiles_for_unit_members.sql` seria enviada.
+- Aplicado no Supabase em 2026-06-06 com `npm run supabase:migrations:push`.
+- Validacao pos-aplicacao com `npm run supabase:migrations:dry-run`: `Remote database is up to date`.
+
 ## Historico de Fontes Importadas - Inventario por Foto
 
 Data/hora de criacao: 2026-06-04 12:05:00 -03:00

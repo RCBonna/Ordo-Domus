@@ -15,6 +15,7 @@ interface OnboardingProps {
 export default function Onboarding({ onSuccess }: OnboardingProps) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'error' | 'success', text: string } | null>(null);
+  const [nomeExibicao, setNomeExibicao] = useState('');
   
   // States para Criar
   const [nomeUnidade, setNomeUnidade] = useState('');
@@ -24,13 +25,14 @@ export default function Onboarding({ onSuccess }: OnboardingProps) {
 
   const handleCriarUnidade = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nomeUnidade.trim()) return;
+    if (!nomeUnidade.trim() || !nomeExibicao.trim()) return;
     setLoading(true);
     setMessage(null);
 
     try {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error("Usuário não logado");
+      await salvarPerfil(userData.user.id, userData.user.email);
 
       const newUnitId = crypto.randomUUID();
 
@@ -66,13 +68,14 @@ export default function Onboarding({ onSuccess }: OnboardingProps) {
   const handleEntrarUnidade = async (e: React.FormEvent) => {
     e.preventDefault();
     const codigoLimpo = codigoUnidade.trim();
-    if (!codigoLimpo) return;
+    if (!codigoLimpo || !nomeExibicao.trim()) return;
     setLoading(true);
     setMessage(null);
 
     try {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error("Usuário não logado");
+      await salvarPerfil(userData.user.id, userData.user.email);
 
       // Adicionar o membro como convidado pendente
       const { error: errMembro } = await supabase
@@ -104,11 +107,37 @@ export default function Onboarding({ onSuccess }: OnboardingProps) {
     }
   };
 
+  const salvarPerfil = async (userId: string, email?: string) => {
+    const { error } = await supabase
+      .from('perfis')
+      .upsert({
+        id: userId,
+        nome: nomeExibicao.trim(),
+        email: email || null,
+      }, { onConflict: 'id' });
+
+    if (error) throw error;
+  };
+
   return (
     <div className="max-w-4xl mx-auto my-12">
       <div className="text-center mb-8">
         <h2 className="text-3xl font-bold tracking-tight text-gray-900 mb-2 dark:text-foreground">Bem-vindo(a) ao Ordo Domus!</h2>
         <p className="text-muted-foreground text-lg">Para começar, você precisa criar uma Unidade nova ou entrar em uma existente.</p>
+      </div>
+
+      <div className="mb-8 max-w-2xl mx-auto rounded-[24px] border border-slate-100 bg-white p-6 shadow-sm dark:border-border dark:bg-card dark:shadow-none">
+        <div className="space-y-2">
+          <Label htmlFor="nomeExibicao">Nome de exibição</Label>
+          <Input
+            id="nomeExibicao"
+            placeholder="Como os administradores devem te reconhecer?"
+            value={nomeExibicao}
+            onChange={(e) => setNomeExibicao(e.target.value)}
+            disabled={loading}
+            required
+          />
+        </div>
       </div>
 
       {message && (

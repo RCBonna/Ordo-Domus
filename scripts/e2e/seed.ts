@@ -16,6 +16,7 @@ interface SeedContext {
   serviceRoleKey: string;
   userEmail: string;
   userPassword: string;
+  userName: string;
   unitName: string;
   unitCode: string;
 }
@@ -32,6 +33,7 @@ const admin = createClient(context.supabaseUrl, context.serviceRoleKey, {
 });
 
 const user = await ensureUser(context.userEmail, context.userPassword);
+await ensureProfile(user.id, context.userName, context.userEmail);
 const unit = await ensureUnit(context.unitName, context.unitCode);
 await ensureMembership(unit.id, user.id);
 await seedInventory(unit.id);
@@ -63,6 +65,7 @@ function readContext(): SeedContext {
     serviceRoleKey,
     userEmail,
     userPassword,
+    userName: env.E2E_USER_NAME || 'Usuario E2E Ordo',
     unitName: env.E2E_UNIT_NAME || 'Ordo E2E',
     unitCode: env.E2E_UNIT_CODE || 'ORDO-E2E',
   };
@@ -224,6 +227,21 @@ async function ensureMembership(unitId: string, userId: string) {
     }, { onConflict: 'unidade_id,user_id' });
 
   if (error) throw error;
+}
+
+async function ensureProfile(userId: string, name: string, email: string) {
+  const { error } = await admin
+    .from('perfis')
+    .upsert({
+      id: userId,
+      nome: name,
+      email,
+    }, { onConflict: 'id' });
+
+  if (error && error.code !== '42P01') throw error;
+  if (error?.code === '42P01') {
+    console.warn('Tabela public.perfis ausente; seed E2E continuou sem perfil.');
+  }
 }
 
 async function seedInventory(unitId: string) {

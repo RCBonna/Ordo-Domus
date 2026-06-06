@@ -1,5 +1,15 @@
 # Resumo Diario
 
+## 2026-06-06
+
+- Iniciada a implementacao da issue GitHub #24 para exibir nome e e-mail de membros e solicitantes no painel administrativo da unidade.
+- Criada migration `20260606103000_user_profiles_for_unit_members.sql` com tabela `public.perfis`, trigger de sincronizacao com `auth.users`, backfill de usuarios existentes, RLS de perfil proprio e RPCs `listar_membros`/`listar_pendentes` retornando `nome` e `email`.
+- `AdminPanel` passou a priorizar nome/e-mail e manter `user_id` truncado apenas como fallback tecnico.
+- `Onboarding` passou a solicitar nome de exibicao antes de criar unidade ou solicitar acesso.
+- Seed e E2E autenticado foram preparados para validar perfil do usuario seed no painel admin.
+- O fixture E2E de salvamento de Inventario por Foto passou a usar imagem unica por execucao para nao bater no historico de fonte ja importada.
+- Atualizada a versao temporaria de validacao para `V-20260606-10:30:00`.
+
 ## 2026-06-05
 
 - Criada e fechada a issue GitHub #35 para exibir uma versao temporaria de validacao no app.

@@ -5,6 +5,7 @@ import { gotoApp } from './navigation';
 export const e2eEmail = process.env.E2E_USER_EMAIL;
 export const e2ePassword = process.env.E2E_USER_PASSWORD;
 export const e2eUnitName = process.env.E2E_UNIT_NAME || 'Ordo E2E';
+export const e2eUserName = process.env.E2E_USER_NAME || 'Usuario E2E Ordo';
 export const hasAuthenticatedE2eEnv = Boolean(e2eEmail && e2ePassword);
 
 export async function loginWithSeedUser(page: Page) {
