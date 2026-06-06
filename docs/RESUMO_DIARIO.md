@@ -7,6 +7,7 @@
 - A tabela de `Historico Recente` passou a usar largura fixa, com primeira coluna reduzida e textos longos truncados com tooltip.
 - Atualizada a versao temporaria de validacao para `V-20260606-19:11:37`.
 - Ajustada a proporcao do `Historico Recente` para dar mais largura a coluna `Item` e reduzir a coluna `Detalhes`; versao de validacao atualizada para `V-20260606-19:24:13`.
+- Ajustada novamente a proporcao do `Historico Recente` para `45% / 30% / 15%`; versao de validacao atualizada para `V-20260606-19:28:48`.
 - Iniciada a implementacao da issue GitHub #24 para exibir nome e e-mail de membros e solicitantes no painel administrativo da unidade.
 - Criada migration `20260606103000_user_profiles_for_unit_members.sql` com tabela `public.perfis`, trigger de sincronizacao com `auth.users`, backfill de usuarios existentes, RLS de perfil proprio e RPCs `listar_membros`/`listar_pendentes` retornando `nome` e `email`.
 - `AdminPanel` passou a priorizar nome/e-mail e manter `user_id` truncado apenas como fallback tecnico.
