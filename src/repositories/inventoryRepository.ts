@@ -5,7 +5,32 @@ import { selectBestInventoryPurchaseMatch } from '../lib/shoppingDefaults';
 import { formatarData, isReponivelParaCompras, normalizarBusca } from '../lib/utils';
 import type { FinalizeReceiptImportParams, InventoryItem, InventoryPageResult, InventoryQueryParams, ShoppingListItem, ShoppingListResult, UpsertInventoryParams, UpsertInventoryResult } from '../types/domain';
 
+const INVENTORY_MUTATION_TIMEOUT_MS = 20000;
 const escapeIlike = (value: string) => value.replace(/[%_]/g, char => `\\${char}`);
+
+async function withInventoryMutationTimeout<T>(
+  operationName: string,
+  operation: (signal: AbortSignal) => PromiseLike<T>,
+): Promise<T> {
+  const controller = new AbortController();
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
+
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    timeoutId = setTimeout(() => {
+      controller.abort();
+      reject(new Error(`Tempo limite ao executar ${operationName}.`));
+    }, INVENTORY_MUTATION_TIMEOUT_MS);
+  });
+
+  try {
+    return await Promise.race([
+      operation(controller.signal),
+      timeoutPromise,
+    ]);
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
+  }
+}
 
 interface InventoryPageRpcRow {
   id: string;
@@ -145,16 +170,18 @@ export async function upsertInventoryItem({
   const { data, error } = await measureAsync(
     'upsert_inventario',
     'supabase.rpc',
-    async () => await supabase.rpc('upsert_inventario', {
-      p_unidade_id: unidadeId,
-      p_nome: nome,
-      p_categoria: categoria,
-      p_comodo: comodo,
-      p_armario: armario,
-      p_caixa: caixa,
-      p_quantidade: quantidade,
-      p_validade: normalizedValidade,
-    }),
+    async () => await withInventoryMutationTimeout('upsert_inventario', (signal) =>
+      supabase.rpc('upsert_inventario', {
+        p_unidade_id: unidadeId,
+        p_nome: nome,
+        p_categoria: categoria,
+        p_comodo: comodo,
+        p_armario: armario,
+        p_caixa: caixa,
+        p_quantidade: quantidade,
+        p_validade: normalizedValidade,
+      }).abortSignal(signal),
+    ),
     {
       hasExpiry: Boolean(normalizedValidade),
       quantity: quantidade,
@@ -181,16 +208,18 @@ export async function finalizeReceiptImportItem({
   const { data, error } = await measureAsync(
     'efetivar_importacao_cupom',
     'supabase.rpc',
-    async () => await supabase.rpc('efetivar_importacao_cupom', {
-      p_importacao_id: importacaoId,
-      p_nome: nome,
-      p_categoria: categoria,
-      p_comodo: comodo,
-      p_armario: armario,
-      p_caixa: caixa,
-      p_quantidade: quantidade,
-      p_validade: normalizedValidade,
-    }),
+    async () => await withInventoryMutationTimeout('efetivar_importacao_cupom', (signal) =>
+      supabase.rpc('efetivar_importacao_cupom', {
+        p_importacao_id: importacaoId,
+        p_nome: nome,
+        p_categoria: categoria,
+        p_comodo: comodo,
+        p_armario: armario,
+        p_caixa: caixa,
+        p_quantidade: quantidade,
+        p_validade: normalizedValidade,
+      }).abortSignal(signal),
+    ),
     {
       hasExpiry: Boolean(normalizedValidade),
       quantity: quantidade,

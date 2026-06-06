@@ -1,5 +1,27 @@
 # Resumo Diario
 
+## 2026-06-05
+
+- Criada e fechada a issue GitHub #35 para exibir uma versao temporaria de validacao no app.
+- Adicionada versao temporaria de validacao no cabecalho, abaixo do e-mail do usuario, no formato `V-AAAAMMDD-HH-MM-SS`; versao atual: `V-20260605-14-09-04`.
+- Validacoes da melhoria: `npm run lint` e `npm run build` passaram; app local carregou em `http://localhost:3000/`, com exibicao da versao condicionada ao usuario autenticado.
+- Criada a issue GitHub #36 para melhoria futura: incluir hash curto do Git junto da versao de validacao exibida no cabecalho.
+- Criada e fechada a issue GitHub #37 para refinar o visual da Triagem de Importacoes, reduzindo excesso de cores nos cards.
+- A triagem passou a usar cards neutros com barra lateral discreta para o nivel de match, badges mais suaves, status textual separado do titulo e acao `Salvar` em azul, mantendo `Descartar` como acao secundaria/destrutiva discreta.
+- Atualizada a versao temporaria de validacao para `V-20260605-14-19-54`.
+- Ajustado o helper E2E autenticado para selecionar a unidade seed quando o login cair na tela intermediaria de selecao de unidade.
+- Validacoes do refinamento da triagem: `npm run lint`, `npm run build`, `npm run test:e2e:seed` e `npx playwright test tests/e2e/authenticated-workflows.spec.ts -g "inventario por foto usa IA mockada"` passaram.
+- Criada e fechada a issue GitHub #38 para investigar lentidao/travamento na Triagem de Importacoes.
+- Verificado o Supabase com `node --use-system-ca`: REST root respondeu `401` em 435ms, login E2E respondeu em 282ms, consulta de unidades em 297ms e consulta de triagem em 71ms, indicando banco respondendo no momento do teste.
+- Corrigido risco de processamento indefinido ao salvar triagem: RPCs de gravacao `efetivar_importacao_cupom` e `upsert_inventario` passaram a usar timeout de 20s com `AbortController`, liberando a UI e exibindo mensagem quando exceder o limite.
+- O toast de erro ao efetivar item de triagem passou a exibir a mensagem real do erro/timeout.
+- Adicionado E2E autenticado para salvar item de Inventario por Foto na triagem e validar que o card sai da tela apos sucesso.
+- Atualizada a versao temporaria de validacao para `V-20260605-14-38-12`.
+- Validacoes do bug #38: `npm run lint`, `npm run build`, `npm run test:e2e:seed` e `npx playwright test tests/e2e/authenticated-workflows.spec.ts -g "triagem salva item de foto"` passaram.
+- Criada e fechada a issue GitHub #39 para corrigir a regra/formato da versao de validacao: sempre que o Codex alterar qualquer codigo do APP, atualizar o carimbo no formato `V-AAAAMMDD-HH:MM:SS`, independente de commit ou envio para Git.
+- Atualizada a versao temporaria de validacao para `V-20260605-21:33:14`.
+- Tema claro/escuro da issue GitHub #33 foi avaliado e aprovado pelo usuario; issue fechada apos aceite funcional/visual.
+
 ## 2026-06-04
 
 - Criada a issue GitHub #32 para ajustes de UX: orientar organizacao manual de arquivos importados e trocar o icone principal de administracao da unidade para configuracoes.

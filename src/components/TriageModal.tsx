@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { buildTriageDraft, useTriage } from '../hooks/useTriage';
 import type { TriageMatchLevel } from '../hooks/useTriage';
+import { getErrorMessage } from '../lib/utils';
 import type { HistoryItem, ReceiptTriageDraft } from '../types/domain';
 
 interface TriageModalProps {
@@ -101,8 +102,8 @@ export function TriageModal({ isOpen, onClose, unidadeId, onItemFinalized, onTri
       onItemFinalized(historyItem);
       onTriageChanged();
       toast.success('Item efetivado no inventário.');
-    } catch {
-      toast.error('Não foi possível efetivar o item.');
+    } catch (error) {
+      toast.error(getErrorMessage(error, 'Não foi possível efetivar o item.'));
     } finally {
       setSavingItemId(null);
     }
@@ -316,8 +317,9 @@ export function TriageModal({ isOpen, onClose, unidadeId, onItemFinalized, onTri
                 return (
                   <div
                     key={item.id}
-                    className={`rounded-xl border p-4 shadow-sm transition-shadow hover:shadow-md dark:shadow-none ${isLowConfidenceSnapshot ? 'border-amber-300 bg-amber-50/70 ring-1 ring-amber-100 dark:border-amber-900/70 dark:bg-amber-950/25 dark:ring-amber-900/30' : tone.card}`}
+                    className={`relative overflow-hidden rounded-xl border bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:border-border dark:bg-card dark:shadow-none ${isLowConfidenceSnapshot ? 'border-amber-300 dark:border-amber-900/70' : 'border-slate-200'}`}
                   >
+                    <div className={`absolute inset-y-0 left-0 w-1 ${isLowConfidenceSnapshot ? 'bg-amber-400 dark:bg-amber-500/80' : tone.accent}`} />
                     <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
@@ -335,13 +337,15 @@ export function TriageModal({ isOpen, onClose, unidadeId, onItemFinalized, onTri
                               {Math.round(confidence * 100)}% confiança
                             </Badge>
                           )}
-                          <span className={`text-xs font-bold ${tone.reason}`}>{item.matchReason}</span>
                           {item.valor_unitario && (
                             <span className="text-xs font-bold text-gray-400 dark:text-muted-foreground">R$ {item.valor_unitario}</span>
                           )}
                         </div>
+                        <p className={`mt-2 text-xs font-semibold ${tone.reason}`}>
+                          {item.matchReason}
+                        </p>
                         {(observation || brand || barcode || item.validade_sugerida) && (
-                          <div className="mt-2 flex flex-wrap gap-2 text-xs font-bold text-slate-500 dark:text-muted-foreground">
+                          <div className="mt-2 flex flex-wrap gap-2 text-xs font-semibold text-slate-500 dark:text-muted-foreground">
                             {brand && <span>Marca: {brand}</span>}
                             {barcode && <span>Codigo: {barcode}</span>}
                             {item.validade_sugerida && <span>Validade sugerida: {item.validade_sugerida}</span>}
@@ -355,7 +359,7 @@ export function TriageModal({ isOpen, onClose, unidadeId, onItemFinalized, onTri
                           variant="outline"
                           size="sm"
                           disabled={isMutating}
-                          className="gap-2 text-red-600 hover:bg-red-50 hover:text-red-700 dark:text-rose-300 dark:hover:bg-rose-950/40 dark:hover:text-rose-200"
+                          className="gap-2 border-slate-200 text-slate-500 hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 dark:border-border dark:text-muted-foreground dark:hover:border-rose-900/70 dark:hover:bg-rose-950/30 dark:hover:text-rose-300"
                           onClick={() => handleDiscard(item.id)}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -455,9 +459,9 @@ function getMatchTone(level: TriageMatchLevel) {
   if (level === 'strong') {
     return {
       label: 'Match forte',
-      card: 'border-emerald-200 bg-emerald-50/45 ring-1 ring-emerald-100 dark:border-emerald-900/70 dark:bg-emerald-950/25 dark:ring-emerald-900/30',
-      badge: 'border border-emerald-200 bg-white text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/35 dark:text-emerald-300',
-      button: 'bg-emerald-600 hover:bg-emerald-700',
+      accent: 'bg-emerald-500 dark:bg-emerald-500/80',
+      badge: 'border border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/70 dark:bg-emerald-950/35 dark:text-emerald-300',
+      button: 'bg-sky-600 hover:bg-sky-700',
       reason: 'text-emerald-700 dark:text-emerald-300',
     };
   }
@@ -465,18 +469,18 @@ function getMatchTone(level: TriageMatchLevel) {
   if (level === 'possible') {
     return {
       label: 'Possível match',
-      card: 'border-amber-200 bg-amber-50/55 ring-1 ring-amber-100 dark:border-amber-900/70 dark:bg-amber-950/25 dark:ring-amber-900/30',
-      badge: 'border border-amber-200 bg-white text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/35 dark:text-amber-300',
-      button: 'bg-amber-500 hover:bg-amber-600',
+      accent: 'bg-amber-400 dark:bg-amber-500/80',
+      badge: 'border border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/70 dark:bg-amber-950/35 dark:text-amber-300',
+      button: 'bg-sky-600 hover:bg-sky-700',
       reason: 'text-amber-700 dark:text-amber-300',
     };
   }
 
   return {
     label: 'Match fraco',
-    card: 'border-slate-200 bg-white dark:border-border dark:bg-card',
+    accent: 'bg-slate-300 dark:bg-slate-600',
     badge: 'border border-slate-200 bg-slate-50 text-slate-500 dark:border-border dark:bg-muted dark:text-muted-foreground',
-    button: 'bg-slate-700 hover:bg-slate-800',
+    button: 'bg-sky-600 hover:bg-sky-700',
     reason: 'text-slate-400 dark:text-muted-foreground',
   };
 }
@@ -485,7 +489,7 @@ function getOriginMeta(origin?: string) {
   if (origin === 'snapshot') {
     return {
       label: 'Foto',
-      badge: 'border border-indigo-200 bg-white text-indigo-700 dark:border-indigo-900/70 dark:bg-indigo-950/35 dark:text-indigo-300',
+      badge: 'border border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/70 dark:bg-sky-950/35 dark:text-sky-300',
       icon: <Camera className="mr-0.5 h-3 w-3" />,
     };
   }
@@ -501,7 +505,7 @@ function getOriginMeta(origin?: string) {
   if (origin === 'video') {
     return {
       label: 'Video',
-      badge: 'border border-purple-200 bg-white text-purple-700 dark:border-purple-900/70 dark:bg-purple-950/35 dark:text-purple-300',
+      badge: 'border border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900/70 dark:bg-sky-950/35 dark:text-sky-300',
       icon: <Camera className="mr-0.5 h-3 w-3" />,
     };
   }
@@ -523,12 +527,12 @@ interface FilterButtonProps {
 
 function FilterButton({ label, count, isActive, onClick, tone }: FilterButtonProps) {
   const toneClass = tone === 'strong'
-    ? 'border-emerald-200 text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900/70 dark:text-emerald-300 dark:hover:bg-emerald-950/35'
+    ? 'border-slate-200 text-slate-600 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700 dark:border-border dark:text-muted-foreground dark:hover:border-emerald-900/70 dark:hover:bg-emerald-950/30 dark:hover:text-emerald-300'
     : tone === 'possible'
-      ? 'border-amber-200 text-amber-700 hover:bg-amber-50 dark:border-amber-900/70 dark:text-amber-300 dark:hover:bg-amber-950/35'
+      ? 'border-slate-200 text-slate-600 hover:border-amber-200 hover:bg-amber-50 hover:text-amber-700 dark:border-border dark:text-muted-foreground dark:hover:border-amber-900/70 dark:hover:bg-amber-950/30 dark:hover:text-amber-300'
       : tone === 'weak'
         ? 'border-slate-200 text-slate-500 hover:bg-slate-50 dark:border-border dark:text-muted-foreground dark:hover:bg-muted'
-        : 'border-indigo-200 text-indigo-700 hover:bg-indigo-50 dark:border-indigo-900/70 dark:text-indigo-300 dark:hover:bg-indigo-950/35';
+        : 'border-slate-200 text-slate-600 hover:border-sky-200 hover:bg-sky-50 hover:text-sky-700 dark:border-border dark:text-muted-foreground dark:hover:border-sky-900/70 dark:hover:bg-sky-950/30 dark:hover:text-sky-300';
 
   const activeClass = tone === 'strong'
     ? 'bg-emerald-600 border-emerald-600 text-white hover:bg-emerald-700'
@@ -536,7 +540,7 @@ function FilterButton({ label, count, isActive, onClick, tone }: FilterButtonPro
       ? 'bg-amber-500 border-amber-500 text-white hover:bg-amber-600'
       : tone === 'weak'
         ? 'bg-slate-700 border-slate-700 text-white hover:bg-slate-800 dark:bg-slate-600 dark:hover:bg-slate-500'
-        : 'bg-indigo-600 border-indigo-600 text-white hover:bg-indigo-700';
+        : 'bg-sky-600 border-sky-600 text-white hover:bg-sky-700';
 
   return (
     <button

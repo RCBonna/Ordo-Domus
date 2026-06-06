@@ -95,6 +95,39 @@ test.describe('fluxos autenticados com seed', () => {
     await expect(page.getByRole('button', { name: 'Importar novamente' })).toBeVisible();
   });
 
+  test('triagem salva item de foto e libera processamento', async ({ page }) => {
+    const snapshotItemName = `E2E TRIAGEM SAVE ${Date.now()}`;
+    await mockSnapshotExtraction(page, snapshotItemName);
+
+    await page.getByPlaceholder('Cômodo da foto').fill('Cozinha');
+    await page.getByPlaceholder('Armário/local').fill('Despensa E2E');
+    await page.getByPlaceholder('Prateleira/caixa').fill('Prateleira 1');
+
+    const fileChooserPromise = page.waitForEvent('filechooser');
+    await page.getByRole('button', { name: 'Inventário por Foto' }).click();
+    const fileChooser = await fileChooserPromise;
+    await fileChooser.setFiles({
+      name: 'snapshot-save-e2e.svg',
+      mimeType: 'image/svg+xml',
+      buffer: Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" width="16" height="12"><rect width="16" height="12" fill="#00aaff"/></svg>`),
+    });
+    await acceptAiConsent(page);
+
+    await expect(page.getByText(/Inventário por Foto importado!/)).toBeVisible({ timeout: 20_000 });
+    await page.getByRole('button', { name: /Triagem Pendente/ }).click();
+    await expect(page.getByText('Triagem de Importações')).toBeVisible();
+
+    const snapshotCard = page
+      .getByRole('heading', { name: snapshotItemName })
+      .first()
+      .locator('xpath=ancestor::div[.//button[normalize-space()="Salvar"]][1]');
+
+    await expect(snapshotCard.getByRole('button', { name: 'Salvar' })).toBeEnabled();
+    await snapshotCard.getByRole('button', { name: 'Salvar' }).click();
+    await expect(page.getByText('Item efetivado no inventário.')).toBeVisible({ timeout: 20_000 });
+    await expect(page.getByRole('heading', { name: snapshotItemName })).toHaveCount(0);
+  });
+
   test('lista de compras mostra alertas e item manual seed', async ({ page }) => {
     await page.getByRole('button', { name: 'FALTAS' }).click();
 

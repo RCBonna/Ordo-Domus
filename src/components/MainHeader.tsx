@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { motion } from 'motion/react';
 import { Package, Settings, LogOut, ChevronDown, Check, BarChart2, Table as TableIcon, Box, ShoppingCart, MapPin, ClipboardList } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { APP_VALIDATION_VERSION } from '../lib/appVersion';
 import type { UnitMembership } from '../types/domain';
 
 export type AppTab = 'entrada' | 'inventário' | 'compras' | 'consumo' | 'dashboard' | 'saas-admin';
@@ -180,6 +181,12 @@ export function MainHeader({
               <div className="hidden sm:flex flex-col items-end">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1 dark:text-muted-foreground">Usuário</p>
                 <p className="text-sm font-bold text-slate-700 max-w-[150px] truncate dark:text-foreground">{currentUserEmail}</p>
+                <p
+                  className="mt-0.5 font-mono text-[9px] font-bold leading-none text-slate-400 dark:text-muted-foreground"
+                  title="Versão temporária para validação"
+                >
+                  {APP_VALIDATION_VERSION}
+                </p>
               </div>
 
               {isSystemAdmin && (
