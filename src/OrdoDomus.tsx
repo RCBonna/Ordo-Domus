@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Toaster } from 'sonner';
 import { Loader2, MapPin, ArrowRight, Clock, X, Package } from 'lucide-react';
+import { SpeedInsights } from '@vercel/speed-insights/react';
 
 // Components
 import Auth from './components/Auth';
@@ -189,6 +190,7 @@ export default function OrdoDomus() {
 
   return (
     <div className="min-h-screen bg-slate-50">
+      <SpeedInsights />
       <MainHeader 
         unidades={unidades}
         unidadeAtiva={unidadeAtiva}
