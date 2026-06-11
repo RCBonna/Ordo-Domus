@@ -10,7 +10,6 @@ jobs:
   verify:
     runs-on: ubuntu-latest
     env:
-      NODE_OPTIONS: --use-system-ca
       VITE_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}
       VITE_SUPABASE_ANON_KEY: ${{ secrets.E2E_SUPABASE_ANON_KEY }}
       E2E_SUPABASE_URL: ${{ secrets.E2E_SUPABASE_URL }}

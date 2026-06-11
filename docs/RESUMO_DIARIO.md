@@ -1,5 +1,10 @@
 # Resumo Diario
 
+## 2026-06-11
+
+- Investigado erro do GitHub Actions no passo `Checkout`: `--use-system-ca is not allowed in NODE_OPTIONS`.
+- Corrigido o workflow de CI removendo `NODE_OPTIONS: --use-system-ca` do ambiente global do job, evitando que `actions/checkout@v4` falhe antes do `setup-node`.
+
 ## 2026-06-06
 
 - Criada a issue GitHub #40 para refinar o layout da aba Entrada apos avaliacao visual do usuario.
